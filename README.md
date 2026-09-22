@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PHOS Frontend
 
-## Getting Started
+Next.js App Router UI for the PHOS clinic backend (`../phos-backend`).
 
-First, run the development server:
+## Setup
+
+```bash
+npm install
+cp .env.local.example .env.local
+```
+
+Ensure backend runs on port **4000** with `CORS_ORIGINS=http://localhost:3000`.
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000/login](http://localhost:3000/login).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Default seed admin (from backend `.env`): see `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Phases
 
-## Learn More
+- **W0–W1**: foundation, API client, login, session
+- **W2**: role sidebar, mobile menu, facility/department context, `/forbidden`
+- **W3**: patient search, register, profile
+- **W4**: reception — start visit, triage queue
+- **W5**: nurse triage (`/nurse`, `/nurse/[encounterId]`)
+- **W6**: doctor consultation (`/doctor`, `/doctor/[encounterId]`)
+- **W7**: laboratory queue, orders, results, verify (`/laboratory`, `/laboratory/orders/[id]`)
+- **W8**: pharmacy queue + dispense (`/pharmacy`, `/pharmacy/prescriptions/[id]`)
+- **W9**: inventory stock, low/expiring, receive, adjust (`/inventory`)
+- **W10**: billing — create/issue invoices (`/billing`, `/billing/invoices/[id]`)
+- **W11**: cashier — payments & refunds (`/cashier`)
+- **W12**: cash session open/close (`/reconciliation`)
+- **W13**: notifications inbox, polling sync, sidebar unread badge (`/notifications`)
+- **W14**: admin users & catalog (`/admin`), operational reports (`/reports`), audit placeholder (`/audit`)
+- **W15**: network/offline banners, API error messages, error boundaries, consultation draft recovery
 
-To learn more about Next.js, take a look at the following resources:
+Contract notes: `docs/frontend-backend-contract.md`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy (Render + Vercel)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Backend (Render)** — repo `phos-backend`, use `render.yaml` or manual Web Service:
 
-## Deploy on Vercel
+- Build: `npm ci --include=dev && npm run build`
+- Start: `npm run start:render` (runs migrations, then API)
+- Health check: `/api/v1/health`
+- Env: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` (≥32 chars), `CORS_ORIGINS` = your Vercel site URL, `COOKIE_SECURE=true`
+- One-time seed (Render Shell): `npx prisma db seed`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Frontend (Vercel)** — import `phos-frontend`, framework Next.js:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Env: `NEXT_PUBLIC_API_URL=https://<your-render-service>.onrender.com/api/v1`
+- Redeploy after changing `NEXT_PUBLIC_*` variables.
