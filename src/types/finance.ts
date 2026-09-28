@@ -11,6 +11,7 @@ export type InvoiceItemType =
 
 export const PaymentMethod = {
   CASH: "CASH",
+  CARD: "CARD",
   TELEBIRR: "TELEBIRR",
   BANK_TRANSFER: "BANK_TRANSFER",
   INSURANCE: "INSURANCE",

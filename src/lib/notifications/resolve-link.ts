@@ -8,7 +8,7 @@ const TYPE_HINT: Partial<Record<NotificationType, string>> = {
   EXPIRING_STOCK: "Inventory",
   PAYMENT_COMPLETED: "Cashier",
   REFUND_COMPLETED: "Cashier",
-  SYSTEM: "System",
+  SYSTEM: "System / billing",
 };
 
 export function notificationCategory(type: NotificationType): string {

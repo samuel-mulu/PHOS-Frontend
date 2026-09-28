@@ -37,6 +37,8 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
         weightKg: t.weightKg != null ? String(t.weightKg) : "",
         heightCm: t.heightCm != null ? String(t.heightCm) : "",
         painScore: t.painScore != null ? String(t.painScore) : "",
+        bloodGlucoseMgDl:
+          t.bloodGlucoseMgDl != null ? String(t.bloodGlucoseMgDl) : "",
         notes: (t.notes as string) ?? "",
       });
     }
@@ -94,6 +96,12 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
           </VitalField>
           <VitalField label="Pain 0–10" error={form.formState.errors.painScore?.message}>
             <Input type="number" {...form.register("painScore")} />
+          </VitalField>
+          <VitalField
+            label="Blood glucose (mg/dL)"
+            error={form.formState.errors.bloodGlucoseMgDl?.message}
+          >
+            <Input type="number" {...form.register("bloodGlucoseMgDl")} />
           </VitalField>
         </div>
         {bmi ? (

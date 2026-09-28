@@ -14,6 +14,7 @@ import {
   UserPlus,
   Users,
   Wallet,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import { canRegisterPatient } from "@/lib/permissions";
@@ -53,13 +54,26 @@ export const NAV_ITEMS: NavItem[] = [
       Role.LAB_SUPERVISOR,
       Role.PHARMACIST,
       Role.CASHIER,
+      Role.FRONT_DESK,
+    ],
+  },
+  {
+    href: "/front-desk",
+    label: "Front desk",
+    icon: LayoutGrid,
+    roles: [
+      Role.CEO,
+      Role.ADMIN,
+      Role.RECEPTIONIST,
+      Role.CASHIER,
+      Role.FRONT_DESK,
     ],
   },
   {
     href: "/reception",
     label: "Reception",
     icon: UserPlus,
-    roles: [Role.CEO, Role.ADMIN, Role.RECEPTIONIST],
+    roles: [Role.CEO, Role.ADMIN],
   },
   {
     href: "/nurse",
@@ -100,6 +114,7 @@ export const NAV_ITEMS: NavItem[] = [
       Role.ADMIN,
       Role.CASHIER,
       Role.RECEPTIONIST,
+      Role.FRONT_DESK,
       Role.REPORTING_OFFICER,
     ],
   },
@@ -107,13 +122,13 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/cashier",
     label: "Cashier",
     icon: Wallet,
-    roles: [Role.CEO, Role.ADMIN, Role.CASHIER],
+    roles: [Role.CEO, Role.ADMIN],
   },
   {
     href: "/reconciliation",
     label: "Reconciliation",
     icon: ClipboardList,
-    roles: [Role.CEO, Role.ADMIN, Role.CASHIER],
+    roles: [Role.CEO, Role.ADMIN, Role.CASHIER, Role.FRONT_DESK],
   },
   {
     href: "/notifications",

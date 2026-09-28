@@ -10,6 +10,8 @@ export type NotificationType =
   | "REFUND_COMPLETED"
   | "SYSTEM";
 
+export type AlertPriority = "CRITICAL" | "HIGH" | "NORMAL";
+
 export type Notification = {
   id: string;
   type: NotificationType;
@@ -19,12 +21,29 @@ export type Notification = {
   entityId: string | null;
   readAt: string | null;
   createdAt: string;
+  priority?: AlertPriority;
 };
 
-export async function fetchNotifications(unreadOnly?: boolean) {
+export type NotificationSummary = {
+  total: number;
+  byPriority: Record<AlertPriority, number>;
+};
+
+export async function fetchNotifications(
+  unreadOnly?: boolean,
+  priority?: AlertPriority,
+) {
   const { data } = await api.get<Notification[]>("/notifications", {
-    params: unreadOnly ? { unreadOnly: "true" } : undefined,
+    params: {
+      ...(unreadOnly ? { unreadOnly: "true" } : {}),
+      ...(priority ? { priority } : {}),
+    },
   });
+  return data;
+}
+
+export async function fetchNotificationSummary() {
+  const { data } = await api.get<NotificationSummary>("/notifications/summary");
   return data;
 }
 

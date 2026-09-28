@@ -6,6 +6,7 @@ import { normalizeApiError } from "@/lib/api/errors";
 import type { LabOrderStatus } from "@/types/lab";
 import {
   enterLabResults,
+  receiveLabOrder,
   fetchLabOrder,
   fetchLabOrders,
   fetchLabTests,
@@ -31,6 +32,18 @@ export function useLabOrder(id: string) {
     queryKey: ["lab", "orders", id],
     queryFn: () => fetchLabOrder(id),
     enabled: Boolean(id),
+  });
+}
+
+export function useReceiveLabOrder(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => receiveLabOrder(orderId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["lab", "orders"] });
+      toast.success("Sample marked as received");
+    },
+    onError: (e) => toast.error(normalizeApiError(e).message),
   });
 }
 

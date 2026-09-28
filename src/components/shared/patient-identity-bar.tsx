@@ -2,6 +2,7 @@
 
 import { format } from "date-fns";
 import type { Patient } from "@/types/patient";
+import { encounterStatusBadge } from "@/components/shared/status-badge";
 
 export function PatientIdentityBar({
   patient,
@@ -33,11 +34,7 @@ export function PatientIdentityBar({
         {encounterNumber ? (
           <span className="text-slate-600">Encounter {encounterNumber}</span>
         ) : null}
-        {encounterStatus ? (
-          <span className="rounded bg-white px-2 py-0.5 text-xs font-medium text-slate-700">
-            {encounterStatus.replaceAll("_", " ")}
-          </span>
-        ) : null}
+        {encounterStatus ? encounterStatusBadge(encounterStatus) : null}
       </div>
       {patient.allergies ? (
         <p className="mt-2 text-xs font-medium text-amber-900">

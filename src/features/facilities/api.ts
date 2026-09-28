@@ -71,6 +71,14 @@ export async function setDepartmentActive(id: string, active: boolean) {
   return data;
 }
 
+export async function updateService(
+  id: string,
+  body: { name?: string; priceCents?: number; durationMinutes?: number },
+) {
+  const { data } = await api.patch<Service>(`/services/${id}`, body);
+  return data;
+}
+
 export async function createService(body: {
   departmentId: string;
   code: string;

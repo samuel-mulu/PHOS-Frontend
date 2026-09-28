@@ -21,6 +21,7 @@ import { QueueStation } from "@/types/encounter";
 const FILTERS: Array<{ label: string; value?: LabOrderStatus }> = [
   { label: "All open", value: undefined },
   { label: "Ordered", value: LabOrderStatus.ORDERED },
+  { label: "Received", value: LabOrderStatus.RECEIVED },
   { label: "Processing", value: LabOrderStatus.PROCESSING },
   { label: "Ready to verify", value: LabOrderStatus.RESULT_ENTERED },
   { label: "Verified", value: LabOrderStatus.VERIFIED },
@@ -34,6 +35,7 @@ export function LabDashboard() {
     const all = orders.data ?? [];
     return {
       ordered: all.filter((o) => o.status === LabOrderStatus.ORDERED).length,
+      received: all.filter((o) => o.status === LabOrderStatus.RECEIVED).length,
       processing: all.filter((o) => o.status === LabOrderStatus.PROCESSING).length,
       verify: all.filter((o) => o.status === LabOrderStatus.RESULT_ENTERED).length,
       verified: all.filter((o) => o.status === LabOrderStatus.VERIFIED).length,

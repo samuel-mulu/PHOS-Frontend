@@ -14,10 +14,21 @@ import {
   parseDuplicateConflict,
   useCreatePatient,
 } from "@/features/patients/hooks";
+import type { Patient } from "@/types/patient";
 import { Sex } from "@/types/patient";
 
-export function PatientRegisterForm() {
-  const create = useCreatePatient();
+export function PatientRegisterForm({
+  onRegistered,
+  showCancelLink = true,
+}: {
+  /** When set, skips redirect to profile (use with front desk start-visit flow). */
+  onRegistered?: (patient: Patient) => void;
+  showCancelLink?: boolean;
+}) {
+  const create = useCreatePatient({
+    redirectToProfile: !onRegistered,
+    onRegistered,
+  });
   const duplicate = create.isError
     ? parseDuplicateConflict(create.error)
     : null;
@@ -72,14 +83,18 @@ export function PatientRegisterForm() {
         </div>
       ) : null}
 
+      <p className="text-sm text-slate-600">
+        Only first name and last name are required. Leave other fields blank if
+        unknown.
+      </p>
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="First name" error={errors.firstName?.message}>
+        <Field label="First name *" error={errors.firstName?.message}>
           <Input id="firstName" {...register("firstName")} />
         </Field>
-        <Field label="Middle name" error={errors.middleName?.message}>
+        <Field label="Middle name (optional)" error={errors.middleName?.message}>
           <Input id="middleName" {...register("middleName")} />
         </Field>
-        <Field label="Last name" error={errors.lastName?.message}>
+        <Field label="Last name *" error={errors.lastName?.message}>
           <Input id="lastName" {...register("lastName")} />
         </Field>
         <Field label="Sex" error={errors.sex?.message}>
@@ -95,29 +110,29 @@ export function PatientRegisterForm() {
             ))}
           </select>
         </Field>
-        <Field label="Date of birth" error={errors.dateOfBirth?.message}>
+        <Field label="Date of birth (optional)" error={errors.dateOfBirth?.message}>
           <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
         </Field>
-        <Field label="Phone" error={errors.phone?.message}>
+        <Field label="Phone (optional)" error={errors.phone?.message}>
           <Input id="phone" {...register("phone")} />
         </Field>
-        <Field label="Email" error={errors.email?.message}>
+        <Field label="Email (optional)" error={errors.email?.message}>
           <Input id="email" type="email" {...register("email")} />
         </Field>
-        <Field label="Government ID" error={errors.governmentId?.message}>
+        <Field label="Government ID (optional)" error={errors.governmentId?.message}>
           <Input id="governmentId" {...register("governmentId")} />
         </Field>
-        <Field label="Address" error={errors.address?.message} className="md:col-span-2">
+        <Field label="Address (optional)" error={errors.address?.message} className="md:col-span-2">
           <Input id="address" {...register("address")} />
         </Field>
         <Field
-          label="Emergency contact name"
+          label="Emergency contact name (optional)"
           error={errors.emergencyContactName?.message}
         >
           <Input id="emergencyContactName" {...register("emergencyContactName")} />
         </Field>
         <Field
-          label="Emergency contact phone"
+          label="Emergency contact phone (optional)"
           error={errors.emergencyContactPhone?.message}
         >
           <Input
@@ -125,7 +140,7 @@ export function PatientRegisterForm() {
             {...register("emergencyContactPhone")}
           />
         </Field>
-        <Field label="Allergies" error={errors.allergies?.message} className="md:col-span-2">
+        <Field label="Allergies (optional)" error={errors.allergies?.message} className="md:col-span-2">
           <Input id="allergies" {...register("allergies")} />
         </Field>
       </div>
@@ -134,11 +149,13 @@ export function PatientRegisterForm() {
         <Button type="submit" disabled={create.isPending}>
           {create.isPending ? "Saving…" : "Register patient"}
         </Button>
-        <Link href="/patients">
-          <Button type="button" variant="outline">
-            Cancel
-          </Button>
-        </Link>
+        {showCancelLink ? (
+          <Link href="/patients">
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
+          </Link>
+        ) : null}
       </div>
     </form>
   );

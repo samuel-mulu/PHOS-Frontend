@@ -15,7 +15,9 @@ import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { useIssueInvoice, useInvoice, useVoidInvoice } from "@/features/billing/hooks";
 import { formatCents } from "@/lib/format/money";
 import { useCurrentUser } from "@/features/auth/hooks";
+import { canIssueInvoice, canTakePayment } from "@/lib/permissions";
 import { Role } from "@/types/role";
+import { invoiceStatusBadge } from "@/components/shared/status-badge";
 
 export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const invoice = useInvoice(invoiceId);
@@ -30,14 +32,15 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
 
   const inv = invoice.data;
   const balance = inv.totalCents - inv.paidCents;
+  const role = user?.role;
   const canIssue =
-    inv.status === "DRAFT" &&
-    (user?.role === Role.CASHIER || user?.role === Role.ADMIN);
+    inv.status === "DRAFT" && role != null && canIssueInvoice(role);
   const canVoid = user?.role === Role.ADMIN && inv.paidCents === 0;
   const canPay =
     ["ISSUED", "PARTIALLY_PAID"].includes(inv.status) &&
     balance > 0 &&
-    (user?.role === Role.CASHIER || user?.role === Role.ADMIN);
+    role != null &&
+    canTakePayment(role);
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
@@ -46,7 +49,13 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           ← Billing
         </Link>
         {canPay ? (
-          <Link href={`/cashier?invoiceId=${inv.id}`}>
+          <Link
+            href={
+              role === Role.FRONT_DESK || role === Role.RECEPTIONIST
+                ? `/front-desk?tab=cashier&invoiceId=${inv.id}`
+                : `/cashier?invoiceId=${inv.id}`
+            }
+          >
             <Button type="button" size="sm">
               Take payment
             </Button>
@@ -64,9 +73,10 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         <div className="flex flex-wrap justify-between gap-2">
           <div>
             <p className="text-lg font-semibold">{inv.invoiceNumber}</p>
-            <p className="text-sm text-slate-600">
-              Status: {inv.status.replaceAll("_", " ")}
-            </p>
+            <div className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+              <span>Status</span>
+              {invoiceStatusBadge(inv.status)}
+            </div>
           </div>
           <div className="text-right text-sm">
             <p>Subtotal: {formatCents(inv.subtotalCents)}</p>

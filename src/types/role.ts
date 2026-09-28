@@ -10,6 +10,7 @@ export const Role = {
   STOREKEEPER: "STOREKEEPER",
   RECEPTIONIST: "RECEPTIONIST",
   CASHIER: "CASHIER",
+  FRONT_DESK: "FRONT_DESK",
   REPORTING_OFFICER: "REPORTING_OFFICER",
   IT_ADMIN: "IT_ADMIN",
 } as const;
@@ -19,7 +20,8 @@ export type Role = (typeof Role)[keyof typeof Role];
 export function getRoleHomePath(role: Role): string {
   switch (role) {
     case Role.RECEPTIONIST:
-      return "/reception";
+    case Role.FRONT_DESK:
+      return "/front-desk";
     case Role.NURSE:
       return "/nurse";
     case Role.DOCTOR:
@@ -30,7 +32,7 @@ export function getRoleHomePath(role: Role): string {
     case Role.PHARMACIST:
       return "/pharmacy";
     case Role.CASHIER:
-      return "/cashier";
+      return "/front-desk";
     case Role.STOREKEEPER:
       return "/inventory";
     default:

@@ -22,7 +22,7 @@ import {
   useServices,
 } from "@/features/facilities/hooks";
 import { normalizeApiError } from "@/lib/api/errors";
-import { formatCents } from "@/lib/format/money";
+import { ServicePriceRow } from "@/components/admin/service-price-row";
 
 export function AdminCatalogPanel() {
   const facilities = useFacilities();
@@ -233,7 +233,11 @@ export function AdminCatalogPanel() {
         </Card>
 
         <Card className="p-4">
-          <Label htmlFor="sel-dept">Department (services)</Label>
+          <Label htmlFor="sel-dept">Department (consultation / visit services)</Label>
+          <p className="mt-1 text-xs text-slate-500">
+            Each service price becomes the consultation line on new invoices for that
+            visit type.
+          </p>
           <select
             id="sel-dept"
             className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
@@ -246,23 +250,15 @@ export function AdminCatalogPanel() {
               </option>
             ))}
           </select>
-          <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto text-sm text-slate-700">
+          <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto text-sm text-slate-700">
             {(services.data ?? []).map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-2">
-                <span>
-                  {s.name} — {formatCents(s.priceCents)}
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() =>
-                    toggleService.mutate({ id: s.id, active: !s.active })
-                  }
-                >
-                  {s.active ? "Off" : "On"}
-                </Button>
-              </li>
+              <ServicePriceRow
+                key={s.id}
+                service={s}
+                onToggleActive={() =>
+                  toggleService.mutate({ id: s.id, active: !s.active })
+                }
+              />
             ))}
           </ul>
           {selectedDept ? (
@@ -300,7 +296,7 @@ export function AdminCatalogPanel() {
                 }
               />
               <Input
-                placeholder="Price (cents)"
+                placeholder="Consultation fee (cents, e.g. 50000 = 500 ETB)"
                 required
                 inputMode="numeric"
                 value={svcForm.priceCents}

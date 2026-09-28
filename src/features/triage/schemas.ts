@@ -10,6 +10,7 @@ export const triageSchema = z.object({
   weightKg: z.string().optional(),
   heightCm: z.string().optional(),
   painScore: z.string().optional(),
+  bloodGlucoseMgDl: z.string().optional(),
   notes: z.string().optional(),
 });
 

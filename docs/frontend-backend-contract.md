@@ -63,7 +63,13 @@ Response: user profile (`id`, `email`, `phone`, `firstName`, `lastName`, `role`,
 
 ## Role enum
 
-`CEO`, `ADMIN`, `DOCTOR`, `NURSE`, `LAB_TECH`, `LAB_SUPERVISOR`, `PHARMACIST`, `STOREKEEPER`, `RECEPTIONIST`, `CASHIER`, `REPORTING_OFFICER`, `IT_ADMIN`
+`CEO`, `ADMIN`, `DOCTOR`, `NURSE`, `LAB_TECH`, `LAB_SUPERVISOR`, `PHARMACIST`, `STOREKEEPER`, `RECEPTIONIST`, `CASHIER`, `FRONT_DESK`, `REPORTING_OFFICER`, `IT_ADMIN`
+
+`FRONT_DESK` combines reception + billing create/issue + payments + cash session (one login at the physical desk).
+
+### POST /encounters/:id/billing-request
+
+**Roles:** `DOCTOR`, `ADMIN`, `CEO`. Notifies front desk to bill/collect for the visit.
 
 ## Error envelope
 

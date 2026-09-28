@@ -12,16 +12,19 @@ import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import {
   useEnterLabResults,
   useLabOrder,
+  useReceiveLabOrder,
   useVerifyLabOrder,
 } from "@/features/laboratory/hooks";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { LabOrderStatus, LabResultFlag } from "@/types/lab";
 import { Role } from "@/types/role";
 import type { ResultValueInput } from "@/features/laboratory/api";
+import { PrintLabReport } from "@/components/print/print-lab-report";
 
 export function LabOrderDetail({ orderId }: { orderId: string }) {
   const { data: user } = useCurrentUser();
   const order = useLabOrder(orderId);
+  const receive = useReceiveLabOrder(orderId);
   const enter = useEnterLabResults(orderId);
   const verify = useVerifyLabOrder(orderId);
 
@@ -40,11 +43,13 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
     user?.role === Role.LAB_SUPERVISOR ||
     user?.role === Role.ADMIN ||
     user?.role === Role.CEO;
+  const canReceive =
+    canEnter && o.status === LabOrderStatus.ORDERED;
   const canEnterResults =
     canEnter &&
     (
       [
-        LabOrderStatus.ORDERED,
+        LabOrderStatus.RECEIVED,
         LabOrderStatus.PROCESSING,
         LabOrderStatus.RESULT_ENTERED,
       ] as string[]
@@ -83,7 +88,10 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
       <Link href="/laboratory" className="text-sm text-teal-700 underline">
         ← Laboratory
       </Link>
-      <PatientIdentityBar patient={o.patient} encounterStatus={o.status} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PatientIdentityBar patient={o.patient} encounterStatus={o.status} />
+        <PrintLabReport order={o} />
+      </div>
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm text-sm">
         <p>
           <span className="font-semibold">{o.orderNumber}</span> · Priority{" "}
@@ -99,6 +107,18 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           <p className="mt-2 rounded bg-slate-50 p-2 text-slate-700">
             {o.clinicalNotes}
           </p>
+        ) : null}
+        {canReceive ? (
+          <Button
+            type="button"
+            className="mt-3"
+            disabled={receive.isPending}
+            onClick={() =>
+              receive.mutate(undefined, { onSuccess: () => order.refetch() })
+            }
+          >
+            Mark sample received
+          </Button>
         ) : null}
       </div>
 

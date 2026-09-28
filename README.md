@@ -9,7 +9,7 @@ npm install
 cp .env.local.example .env.local
 ```
 
-Ensure backend runs on port **4000** with `CORS_ORIGINS=http://localhost:3000`.
+Ensure backend runs on port **4001** (see `PORT` in backend `.env`; avoid clashing with other apps on 4000) with `CORS_ORIGINS=http://localhost:3000`.
 
 ```bash
 npm run dev
@@ -36,6 +36,8 @@ Default seed admin (from backend `.env`): see `SEED_ADMIN_EMAIL` / `SEED_ADMIN_P
 - **W13**: notifications inbox, polling sync, sidebar unread badge (`/notifications`)
 - **W14**: admin users & catalog (`/admin`), operational reports (`/reports`), audit placeholder (`/audit`)
 - **W15**: network/offline banners, API error messages, error boundaries, consultation draft recovery
+- **Front desk**: `/front-desk` (Reception | Billing | Cashier tabs), role `FRONT_DESK`
+- **Doctor workflow tabs** + payment request; **print** receipt / lab report; reports **CSV** export
 
 Contract notes: `docs/frontend-backend-contract.md`
 

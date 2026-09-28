@@ -7,6 +7,7 @@ import { isAxiosError } from "axios";
 import {
   createEncounter,
   fetchEncounter,
+  requestBilling,
   type CreateEncounterInput,
 } from "./api";
 
@@ -15,6 +16,18 @@ export function useEncounter(id: string) {
     queryKey: ["encounters", id],
     queryFn: () => fetchEncounter(id),
     enabled: Boolean(id),
+  });
+}
+
+export function useRequestBilling(encounterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => requestBilling(encounterId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("Payment request sent to front desk");
+    },
+    onError: (error) => toast.error(normalizeApiError(error).message),
   });
 }
 

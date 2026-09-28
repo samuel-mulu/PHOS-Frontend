@@ -15,6 +15,7 @@ import {
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { useQueue, useUpdateQueueEntry } from "@/features/queues/hooks";
 import type { QueueStation } from "@/types/encounter";
+import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
 
 export function QueueBoard({
   station,
@@ -69,8 +70,22 @@ export function QueueBoard({
                 entry={entry}
                 hrefPrefix={hrefPrefix}
                 resolveHref={resolveHref}
+                station={station}
                 onStart={() =>
                   updateEntry.mutate({ id: entry.id, status: "IN_SERVICE" })
+                }
+                onCall={() =>
+                  updateEntry.mutate(
+                    { id: entry.id, status: "CALLED" },
+                    {
+                      onSuccess: () => {
+                        const p = entry.encounter.patient;
+                        announceClinic(
+                          `${p.firstName} ${p.lastName}, please proceed to ${stationCallLabel(station)}.`,
+                        );
+                      },
+                    },
+                  )
                 }
                 starting={updateEntry.isPending}
               />
@@ -86,13 +101,17 @@ function QueueRow({
   entry,
   hrefPrefix,
   resolveHref,
+  station,
   onStart,
+  onCall,
   starting,
 }: {
   entry: QueueEntry;
   hrefPrefix: string;
   resolveHref?: (entry: QueueEntry) => string | null;
+  station: QueueStation;
   onStart: () => void;
+  onCall: () => void;
   starting: boolean;
 }) {
   const href =
@@ -114,10 +133,30 @@ function QueueRow({
       <DataTableCell>{formatWaitingSince(entry.enteredAt)}</DataTableCell>
       <DataTableCell>{entry.status.replaceAll("_", " ")}</DataTableCell>
       <DataTableCell className="text-right">
-        {entry.status === "WAITING" ? (
-          <Button type="button" size="sm" variant="outline" disabled={starting} onClick={onStart}>
-            Start
-          </Button>
+        {entry.status === "WAITING" || entry.status === "CALLED" ? (
+          <>
+            {entry.status === "WAITING" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                disabled={starting}
+                onClick={onCall}
+              >
+                Call
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={starting}
+              onClick={onStart}
+              className="ml-1"
+            >
+              Start
+            </Button>
+          </>
         ) : null}
         {href ? (
           <Link href={href}>

@@ -8,6 +8,8 @@ import {
 } from "@/components/shared/state-blocks";
 import { Card } from "@/components/ui/card";
 import { useOperationalSnapshot } from "@/features/reports/hooks";
+import { Button } from "@/components/ui/button";
+import { HmisReportPanel } from "@/components/reports/hmis-report-panel";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
@@ -44,19 +46,46 @@ function Breakdown({
   );
 }
 
+function downloadOperationalCsv(data: import("@/features/reports/api").OperationalSnapshot) {
+  const lines = [
+    "metric,value",
+    `patientsTotal,${data.patientsTotal}`,
+    `encountersTotal,${data.encountersTotal}`,
+    `labOrdersTotal,${data.labOrdersTotal}`,
+    `prescriptionsTotal,${data.prescriptionsTotal}`,
+    `stockSkuCount,${data.stockSkuCount}`,
+    `lowStockSkuCount,${data.lowStockSkuCount}`,
+    `expiringBatchCount,${data.expiringBatchCount}`,
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `phos-operational-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function ReportsWorkspace() {
   const query = useOperationalSnapshot();
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-slate-900">Reports</h1>
-        <p className="text-sm text-slate-600">
-          Operational counts from live backend APIs. Dedicated reporting endpoints
-          are not exposed yet — totals are not a substitute for formal financial
-          statements.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold text-slate-900">Reports</h1>
+          <p className="text-sm text-slate-600">
+            Operational counts and HMIS/ministry period reports from the backend.
+          </p>
+        </div>
+        {query.data ? (
+          <Button type="button" variant="outline" onClick={() => downloadOperationalCsv(query.data!)}>
+            Export CSV
+          </Button>
+        ) : null}
       </div>
+
+      <HmisReportPanel />
 
       <QueryStaleBanner query={query} />
 

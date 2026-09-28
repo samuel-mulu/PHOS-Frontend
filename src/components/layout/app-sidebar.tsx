@@ -10,6 +10,7 @@ import { navItemsForRole } from "@/lib/navigation";
 import { useCurrentUser, useLogout } from "@/features/auth/hooks";
 import { useWorkspaceContext } from "@/features/facilities/hooks";
 import { useUnreadNotificationCount } from "@/features/notifications/hooks";
+import { LanguageSwitcher } from "@/components/layout/language-switcher";
 
 export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
@@ -68,6 +69,9 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
         <p>{user.role.replaceAll("_", " ")}</p>
         {facilityName ? <p className="mt-2">{facilityName}</p> : null}
         {departmentName ? <p>{departmentName}</p> : null}
+        <div className="mt-3">
+          <LanguageSwitcher />
+        </div>
         <Button
           type="button"
           variant="ghost"

@@ -20,7 +20,13 @@ export function useInvoice(id: string | null) {
   });
 }
 
-export function useCreateInvoice() {
+export type UseCreateInvoiceOptions = {
+  redirectToInvoice?: boolean;
+  onCreated?: (invoice: import("./api").Invoice) => void;
+};
+
+export function useCreateInvoice(options: UseCreateInvoiceOptions = {}) {
+  const { redirectToInvoice = true, onCreated } = options;
   const router = useRouter();
   const queryClient = useQueryClient();
   return useMutation({
@@ -35,8 +41,12 @@ export function useCreateInvoice() {
     }) => createInvoice(encounterId, { additionalItems, discountCents }),
     onSuccess: (invoice) => {
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      void queryClient.invalidateQueries({ queryKey: ["encounters"] });
       toast.success("Invoice created (draft)");
-      router.push(`/billing/invoices/${invoice.id}`);
+      onCreated?.(invoice);
+      if (redirectToInvoice) {
+        router.push(`/billing/invoices/${invoice.id}`);
+      }
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

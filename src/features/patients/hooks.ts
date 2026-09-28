@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
 import { normalizeApiError } from "@/lib/api/errors";
-import type { PatientDuplicateMatch } from "@/types/patient";
+import type { Patient, PatientDuplicateMatch } from "@/types/patient";
 import {
   createPatient,
   fetchPatient,
+  fetchPatientChart,
   fetchPatients,
+  lookupPatientByNumber,
   type PatientListParams,
 } from "./api";
 import type { CreatePatientFormValues } from "./schemas";
@@ -33,6 +35,22 @@ export function usePatient(id: string) {
   });
 }
 
+export function usePatientChart(id: string) {
+  return useQuery({
+    queryKey: ["patients", id, "chart"],
+    queryFn: () => fetchPatientChart(id),
+    enabled: Boolean(id),
+  });
+}
+
+export function usePatientLookup() {
+  return useMutation({
+    mutationFn: (patientNumber: string) =>
+      lookupPatientByNumber(patientNumber.trim()),
+    onError: (error) => toast.error(normalizeApiError(error).message),
+  });
+}
+
 export type DuplicateConflict = {
   message: string;
   matches: PatientDuplicateMatch[];
@@ -50,7 +68,15 @@ export function parseDuplicateConflict(error: unknown): DuplicateConflict | null
   };
 }
 
-export function useCreatePatient() {
+export type UseCreatePatientOptions = {
+  /** When false, stay on current page (e.g. front desk modal). Default true. */
+  redirectToProfile?: boolean;
+  /** Called after successful registration (before optional redirect). */
+  onRegistered?: (patient: Patient) => void;
+};
+
+export function useCreatePatient(options: UseCreatePatientOptions = {}) {
+  const { redirectToProfile = true, onRegistered } = options;
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -59,7 +85,10 @@ export function useCreatePatient() {
     onSuccess: (patient) => {
       void queryClient.invalidateQueries({ queryKey: ["patients"] });
       toast.success("Patient registered");
-      router.push(`/patients/${patient.id}`);
+      onRegistered?.(patient);
+      if (redirectToProfile) {
+        router.push(`/patients/${patient.id}`);
+      }
     },
     onError: (error) => {
       const duplicate = parseDuplicateConflict(error);

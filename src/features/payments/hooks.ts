@@ -24,6 +24,8 @@ export function useCreatePayment(invoiceId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
       void queryClient.invalidateQueries({ queryKey: ["cash-session"] });
+      void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
       toast.success("Payment recorded");
     },
     onError: (e) => {

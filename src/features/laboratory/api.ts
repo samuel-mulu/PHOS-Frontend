@@ -71,6 +71,11 @@ export async function fetchLabOrder(id: string) {
   return data;
 }
 
+export async function receiveLabOrder(id: string) {
+  const { data } = await api.post<LabOrder>(`/lab/orders/${id}/receive`);
+  return data;
+}
+
 export async function enterLabResults(id: string, results: ResultValueInput[]) {
   const { data } = await api.post<LabOrder>(`/lab/orders/${id}/results`, {
     results,

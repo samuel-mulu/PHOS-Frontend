@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { fetchInvoice } from "@/features/billing/api";
+import { SimpleDialog } from "@/components/shared/simple-dialog";
+import { announceClinic } from "@/lib/voice/announce";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,40 +13,73 @@ import { Label } from "@/components/ui/label";
 import { LoadingBlock } from "@/components/shared/state-blocks";
 import { QueueBoard } from "@/components/queues/queue-board";
 import { useInvoice } from "@/features/billing/hooks";
+import { useEncounter } from "@/features/encounters/hooks";
 import { useCreatePayment, useCreateRefund } from "@/features/payments/hooks";
+import { PrintReceipt } from "@/components/print/print-receipt";
+import type { QueueEntry } from "@/features/queues/api";
 import { useCurrentCashSession } from "@/features/cash-sessions/hooks";
 import { PaymentMethod } from "@/types/finance";
 import { formatCents } from "@/lib/format/money";
+import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { QueueStation } from "@/types/encounter";
+import { invoiceStatusBadge } from "@/components/shared/status-badge";
 
-export function CashierWorkspace() {
+export function CashierWorkspace({
+  embedded,
+  onInvoiceFullyPaid,
+}: {
+  embedded?: boolean;
+  onInvoiceFullyPaid?: (invoiceId: string) => void;
+} = {}) {
   const searchParams = useSearchParams();
   const initialInvoice = searchParams.get("invoiceId") ?? "";
+  const encounterFromQueue = searchParams.get("encounterId") ?? "";
   const [invoiceId, setInvoiceId] = useState(initialInvoice);
   const [loadId, setLoadId] = useState(initialInvoice);
 
   const session = useCurrentCashSession();
   const invoice = useInvoice(loadId || null);
+  const encounterQuery = useEncounter(encounterFromQueue || "");
 
   useEffect(() => {
-    if (initialInvoice) setLoadId(initialInvoice);
+    if (initialInvoice) {
+      setInvoiceId(initialInvoice);
+      setLoadId(initialInvoice);
+    }
   }, [initialInvoice]);
+
+  useEffect(() => {
+    const inv = encounterQuery.data?.invoice as
+      | { id: string }
+      | null
+      | undefined;
+    if (inv?.id) {
+      setInvoiceId(inv.id);
+      setLoadId(inv.id);
+    }
+  }, [encounterQuery.data?.invoice]);
+
+  const queueBase = embedded ? "/front-desk?tab=cashier" : "/cashier";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Cashier</h1>
-        <p className="text-sm text-slate-600">Payments and refunds (idempotent API).</p>
-      </div>
+      {!embedded ? (
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Cashier</h1>
+          <p className="text-sm text-slate-600">Payments and refunds (idempotent API).</p>
+        </div>
+      ) : null}
 
       <SessionBanner session={session} />
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <QueueBoard
           station={QueueStation.CASHIER}
-          hrefPrefix="/cashier"
+          hrefPrefix={queueBase}
           title="Cashier queue"
-          resolveHref={() => null}
+          resolveHref={(entry: QueueEntry) =>
+            `${queueBase}&encounterId=${entry.encounterId}`
+          }
         />
       </div>
 
@@ -59,18 +96,26 @@ export function CashierWorkspace() {
       {loadId && invoice.isLoading ? <LoadingBlock label="Loading invoice" /> : null}
       {loadId && invoice.data ? (
         <div className="space-y-3">
-          <p className="text-sm">
-            {invoice.data.invoiceNumber} · {invoice.data.status} ·{" "}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="font-medium">{invoice.data.invoiceNumber}</span>
+            {invoiceStatusBadge(invoice.data.status)}
             <Link href={`/billing/invoices/${loadId}`} className="text-teal-700 underline">
               View invoice
             </Link>
-          </p>
+          </div>
           <PaymentPanel
             invoiceId={loadId}
+            invoiceNumber={invoice.data.invoiceNumber}
+            patientName={
+              invoice.data.patient
+                ? `${invoice.data.patient.firstName} ${invoice.data.patient.lastName}`
+                : ""
+            }
             balance={invoice.data.totalCents - invoice.data.paidCents}
             status={invoice.data.status}
             cashSessionId={session.data?.id}
             payments={invoice.data.payments}
+            onFullyPaid={onInvoiceFullyPaid}
           />
         </div>
       ) : null}
@@ -110,15 +155,21 @@ function SessionBanner({
 
 function PaymentPanel({
   invoiceId,
+  invoiceNumber,
+  patientName,
   balance,
   status,
   cashSessionId,
   payments,
+  onFullyPaid,
 }: {
   invoiceId: string;
+  invoiceNumber: string;
+  patientName: string;
   balance: number;
   status: string;
   cashSessionId?: string;
+  onFullyPaid?: (invoiceId: string) => void;
   payments: Array<{
     id: string;
     paymentNumber: string;
@@ -129,62 +180,162 @@ function PaymentPanel({
   }>;
 }) {
   const pay = useCreatePayment(invoiceId);
+  const queryClient = useQueryClient();
   const [amountCents, setAmountCents] = useState(balance);
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [reference, setReference] = useState("");
+  const [paidDialogOpen, setPaidDialogOpen] = useState(false);
+  const [lastReceipt, setLastReceipt] = useState<{
+    paymentNumber: string;
+    amountCents: number;
+    method: string;
+  } | null>(null);
 
   const payable = ["ISSUED", "PARTIALLY_PAID"].includes(status) && balance > 0;
 
-  if (!payable) return null;
+  useEffect(() => {
+    setAmountCents(balance);
+  }, [balance]);
+
+  if (!payable && payments.length === 0) return null;
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
-      <h2 className="text-sm font-semibold">Record payment</h2>
-      <p className="text-sm">Balance due: {formatCents(balance)}</p>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div>
-          <Label className="text-xs">Amount (cents)</Label>
-          <Input
-            type="number"
-            min={1}
-            max={balance}
-            value={amountCents}
-            onChange={(e) => setAmountCents(Number(e.target.value))}
-          />
-        </div>
-        <div>
-          <Label className="text-xs">Method</Label>
-          <select
-            className="h-10 w-full rounded-md border px-2 text-sm"
-            value={method}
-            onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-          >
-            {Object.values(PaymentMethod).map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
+      {payments.length > 0 ? (
+        <div className="space-y-2 border-b border-slate-100 pb-3">
+          <h2 className="text-sm font-semibold">Payments recorded</h2>
+          <ul className="space-y-1 text-sm text-slate-700">
+            {payments.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-2">
+                {p.paymentNumber} — {formatCents(p.amountCents)} (
+                {paymentMethodLabel(p.method)})
+                <PrintReceipt
+                  paymentNumber={p.paymentNumber}
+                  invoiceNumber={invoiceNumber}
+                  patientName={patientName}
+                  amountCents={p.amountCents}
+                  method={p.method}
+                />
+              </li>
             ))}
-          </select>
+          </ul>
         </div>
-        <div>
-          <Label className="text-xs">Reference</Label>
-          <Input value={reference} onChange={(e) => setReference(e.target.value)} />
+      ) : null}
+      {lastReceipt ? (
+        <p className="text-sm text-teal-800">
+          Payment saved: {lastReceipt.paymentNumber}{" "}
+          <PrintReceipt
+            paymentNumber={lastReceipt.paymentNumber}
+            invoiceNumber={invoiceNumber}
+            patientName={patientName}
+            amountCents={lastReceipt.amountCents}
+            method={lastReceipt.method}
+          />
+        </p>
+      ) : null}
+      {payable ? (
+        <>
+          <h2 className="text-sm font-semibold">Record payment</h2>
+          <p className="text-sm">Balance due: {formatCents(balance)}</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <Label className="text-xs">Amount (cents)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={balance}
+                value={amountCents}
+                onChange={(e) => setAmountCents(Number(e.target.value))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Method</Label>
+              <select
+                className="h-10 w-full rounded-md border px-2 text-sm"
+                value={method}
+                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+              >
+                {Object.values(PaymentMethod).map((m) => (
+                  <option key={m} value={m}>
+                    {paymentMethodLabel(m)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="text-xs">Reference</Label>
+              <Input value={reference} onChange={(e) => setReference(e.target.value)} />
+            </div>
+          </div>
+          <Button
+            type="button"
+            disabled={pay.isPending || amountCents < 1 || !payable}
+            onClick={() =>
+              pay.mutate(
+                {
+                  amountCents,
+                  method,
+                  referenceNumber: reference || undefined,
+                  cashSessionId:
+                    method === PaymentMethod.CASH ? cashSessionId : undefined,
+                },
+                {
+                  onSuccess: async (payment) => {
+                    setLastReceipt({
+                      paymentNumber: payment.paymentNumber,
+                      amountCents: payment.amountCents,
+                      method: payment.method,
+                    });
+                    const inv = await queryClient.fetchQuery({
+                      queryKey: ["invoices", invoiceId],
+                      queryFn: () => fetchInvoice(invoiceId),
+                    });
+                    if (inv.status === "PAID") {
+                      setPaidDialogOpen(true);
+                      announceClinic(
+                        `Payment complete for ${patientName}. Invoice paid in full.`,
+                      );
+                      onFullyPaid?.(invoiceId);
+                    }
+                  },
+                },
+              )
+            }
+          >
+            {pay.isPending ? "Processing…" : "Submit payment"}
+          </Button>
+        </>
+      ) : null}
+
+      {!payable && status === "PAID" ? (
+        <div className="flex items-center gap-2">
+          {invoiceStatusBadge("PAID")}
+          <span className="text-sm text-emerald-800">This invoice is fully paid.</span>
         </div>
-      </div>
-      <Button
-        type="button"
-        disabled={pay.isPending || amountCents < 1}
-        onClick={() =>
-          pay.mutate({
-            amountCents,
-            method,
-            referenceNumber: reference || undefined,
-            cashSessionId: method === PaymentMethod.CASH ? cashSessionId : undefined,
-          })
-        }
+      ) : null}
+
+      <SimpleDialog
+        open={paidDialogOpen}
+        title="Payment complete"
+        primaryLabel="Done"
+        onPrimary={() => setPaidDialogOpen(false)}
+        onClose={() => setPaidDialogOpen(false)}
       >
-        {pay.isPending ? "Processing…" : "Submit payment"}
-      </Button>
+        <p>
+          <strong>{patientName}</strong> — invoice <strong>{invoiceNumber}</strong> is
+          now <span className="font-semibold text-emerald-800">PAID</span>.
+        </p>
+        {lastReceipt ? (
+          <p className="mt-2 text-slate-600">
+            Receipt {lastReceipt.paymentNumber} ·{" "}
+            {formatCents(lastReceipt.amountCents)} ·{" "}
+            {paymentMethodLabel(lastReceipt.method)}
+          </p>
+        ) : null}
+        <p className="mt-2 text-xs text-slate-500">
+          Visit status updates to completed when the full balance was collected.
+        </p>
+      </SimpleDialog>
 
       {payments.length > 0 ? (
         <div className="border-t pt-3 space-y-2">

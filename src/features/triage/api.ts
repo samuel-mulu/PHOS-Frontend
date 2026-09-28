@@ -18,6 +18,7 @@ function toPayload(values: TriageFormValues) {
   const weightKg = num(values.weightKg);
   const heightCm = num(values.heightCm);
   const painScore = num(values.painScore);
+  const bloodGlucoseMgDl = num(values.bloodGlucoseMgDl);
 
   if (temperature !== undefined) out.temperature = temperature;
   if (systolic !== undefined) out.systolic = Math.trunc(systolic);
@@ -28,6 +29,8 @@ function toPayload(values: TriageFormValues) {
   if (weightKg !== undefined) out.weightKg = weightKg;
   if (heightCm !== undefined) out.heightCm = heightCm;
   if (painScore !== undefined) out.painScore = Math.trunc(painScore);
+  if (bloodGlucoseMgDl !== undefined)
+    out.bloodGlucoseMgDl = Math.trunc(bloodGlucoseMgDl);
   if (values.notes?.trim()) out.notes = values.notes.trim();
 
   return out;

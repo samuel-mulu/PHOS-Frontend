@@ -20,6 +20,7 @@ export type Encounter = {
 };
 
 export type EncounterDetail = Encounter & {
+  invoice?: { id: string; invoiceNumber: string; status: string } | null;
   patient: Patient;
   queueEntries: Array<{
     id: string;
@@ -72,5 +73,12 @@ export async function fetchEncounters(params?: {
   patientId?: string;
 }) {
   const { data } = await api.get<Encounter[]>("/encounters", { params });
+  return data;
+}
+
+export async function requestBilling(encounterId: string) {
+  const { data } = await api.post<{ success: boolean; encounterId: string }>(
+    `/encounters/${encounterId}/billing-request`,
+  );
   return data;
 }

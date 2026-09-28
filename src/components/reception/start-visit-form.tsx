@@ -10,6 +10,7 @@ import {
   useServices,
 } from "@/features/facilities/hooks";
 import { useCreateEncounter } from "@/features/encounters/hooks";
+import type { Encounter } from "@/features/encounters/api";
 import { EncounterPriority, EncounterType } from "@/types/encounter";
 import type { Patient } from "@/types/patient";
 
@@ -18,7 +19,7 @@ export function StartVisitForm({
   onSuccess,
 }: {
   patient: Patient;
-  onSuccess?: () => void;
+  onSuccess?: (encounter: Encounter) => void;
 }) {
   const facilities = useFacilities();
   const [facilityId, setFacilityId] = useState("");
@@ -61,7 +62,9 @@ export function StartVisitForm({
         priority,
         reason: reason || undefined,
       },
-      { onSuccess: () => onSuccess?.() },
+      {
+        onSuccess: (encounter) => onSuccess?.(encounter),
+      },
     );
   }
 

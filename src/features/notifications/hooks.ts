@@ -7,14 +7,23 @@ import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  type AlertPriority,
 } from "./api";
 
 export const notificationsQueryKey = ["notifications"] as const;
 
-export function useNotifications(unreadOnly?: boolean, refetchInterval = 30_000) {
+export function useNotifications(
+  unreadOnly?: boolean,
+  refetchInterval = 30_000,
+  priority?: AlertPriority,
+) {
   return useQuery({
-    queryKey: [...notificationsQueryKey, unreadOnly ? "unread" : "all"],
-    queryFn: () => fetchNotifications(unreadOnly),
+    queryKey: [
+      ...notificationsQueryKey,
+      unreadOnly ? "unread" : "all",
+      priority ?? "any",
+    ],
+    queryFn: () => fetchNotifications(unreadOnly, priority),
     refetchInterval,
   });
 }
@@ -33,6 +42,7 @@ export function useMarkNotificationRead() {
     mutationFn: markNotificationRead,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: ["notifications", "summary"] });
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });
@@ -44,6 +54,7 @@ export function useMarkAllNotificationsRead() {
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: ["notifications", "summary"] });
       toast.success("All notifications marked read");
     },
     onError: (e) => toast.error(normalizeApiError(e).message),

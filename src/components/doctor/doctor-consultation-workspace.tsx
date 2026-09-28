@@ -24,6 +24,11 @@ import {
   useFinalizeConsultation,
   useSaveConsultation,
 } from "@/features/consultations/hooks";
+import { useRequestBilling } from "@/features/encounters/hooks";
+import { DoctorPatientChartPanel } from "@/components/doctor/doctor-patient-chart-panel";
+import { PaymentBillingExplainer } from "@/components/shared/payment-billing-explainer";
+import { useTranslation } from "@/i18n/context";
+import { cn } from "@/lib/utils";
 import { DiagnosisType, EncounterPriority } from "@/types/encounter";
 import { useLabOrders, useLabTests, useCreateLabOrder } from "@/features/laboratory/hooks";
 import {
@@ -42,6 +47,11 @@ export function DoctorConsultationWorkspace({
   const save = useSaveConsultation(encounterId);
   const [labOpen, setLabOpen] = useState(false);
   const [rxOpen, setRxOpen] = useState(false);
+  const [workflowStep, setWorkflowStep] = useState<
+    "consult" | "diagnosis" | "lab" | "rx" | "payment" | "followup"
+  >("consult");
+  const requestBilling = useRequestBilling(encounterId);
+  const { t } = useTranslation();
 
   const consultation = consultationQuery.data;
   const consultationId = consultation?.id;
@@ -110,6 +120,65 @@ export function DoctorConsultationWorkspace({
         />
       ) : null}
 
+      <nav
+        className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
+        aria-label="Consultation workflow"
+      >
+        {(
+          [
+            ["consult", "Consult"],
+            ["diagnosis", "Diagnosis"],
+            ["lab", "Lab"],
+            ["rx", "Prescription"],
+            ["payment", t("billing.termRequest")],
+            ["followup", "Follow-up"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(
+              "rounded-md px-3 py-1.5 text-sm",
+              workflowStep === id
+                ? "bg-teal-800 text-white"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+            )}
+            onClick={() => {
+              setWorkflowStep(id);
+              if (id === "lab" && consultationId) setLabOpen(true);
+              if (id === "rx" && consultationId) setRxOpen(true);
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {workflowStep === "payment" ? (
+        <div className="space-y-3">
+          <PaymentBillingExplainer
+            variant="doctor"
+            encounterNumber={encounter.data.encounterNumber}
+            invoiceNumber={encounter.data.invoice?.invoiceNumber}
+            invoiceStatus={encounter.data.invoice?.status}
+          />
+          <Button
+            type="button"
+            disabled={requestBilling.isPending}
+            onClick={() => requestBilling.mutate()}
+          >
+            {requestBilling.isPending ? "Sending…" : "Request payment"}
+          </Button>
+        </div>
+      ) : null}
+
+      {workflowStep === "followup" ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+          Record follow-up instructions in the <strong>Plan</strong> field under
+          Consult, then save the consultation draft.
+        </div>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-12">
         <aside className="space-y-3 lg:col-span-3">
           <Panel title="Triage summary">
@@ -127,6 +196,9 @@ export function DoctorConsultationWorkspace({
                   <li>Pulse: {String(triage.heartRate)}</li>
                 ) : null}
                 {triage.spo2 != null ? <li>SpO2: {String(triage.spo2)}%</li> : null}
+                {triage.bloodGlucoseMgDl != null ? (
+                  <li>Glucose: {String(triage.bloodGlucoseMgDl)} mg/dL</li>
+                ) : null}
                 {triage.notes ? <li>Notes: {String(triage.notes)}</li> : null}
               </ul>
             ) : (
@@ -138,6 +210,10 @@ export function DoctorConsultationWorkspace({
           ) : (
             <p className="text-xs text-slate-500">Save draft to create orders.</p>
           )}
+          <DoctorPatientChartPanel
+            patientId={patient.id}
+            encounterId={encounterId}
+          />
         </aside>
 
         <section className="lg:col-span-6">

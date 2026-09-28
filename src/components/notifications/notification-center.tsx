@@ -28,11 +28,27 @@ import {
   notificationCategory,
   notificationHref,
 } from "@/lib/notifications/resolve-link";
+import {
+  priorityForNotification,
+  priorityLabel,
+  type AlertPriority,
+} from "@/lib/notifications/priority";
 import { cn } from "@/lib/utils";
+
+const PRIORITY_STYLES: Record<AlertPriority, string> = {
+  CRITICAL: "bg-red-100 text-red-900",
+  HIGH: "bg-amber-100 text-amber-900",
+  NORMAL: "bg-slate-100 text-slate-700",
+};
 
 export function NotificationCenter() {
   const [filterUnread, setFilterUnread] = useState(false);
-  const query = useNotifications(filterUnread);
+  const [priority, setPriority] = useState<AlertPriority | "ALL">("ALL");
+  const query = useNotifications(
+    filterUnread,
+    30_000,
+    priority === "ALL" ? undefined : priority,
+  );
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
 
@@ -46,11 +62,22 @@ export function NotificationCenter() {
         <div>
           <h1 className="text-lg font-semibold text-slate-900">Notifications</h1>
           <p className="text-sm text-slate-600">
-            Operational alerts from the clinic system. Lists refresh automatically;
-            realtime push is not enabled on the backend yet.
+            Alert center with Critical / High / Normal priority. Payment requests
+            from doctors appear as High priority.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {(["ALL", "CRITICAL", "HIGH", "NORMAL"] as const).map((p) => (
+            <Button
+              key={p}
+              type="button"
+              variant={priority === p ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPriority(p)}
+            >
+              {p === "ALL" ? "All priorities" : priorityLabel(p)}
+            </Button>
+          ))}
           <Button
             type="button"
             variant={filterUnread ? "default" : "outline"}
@@ -104,6 +131,7 @@ export function NotificationCenter() {
           <DataTableHead>
             <DataTableRow>
               <DataTableHeaderCell>When</DataTableHeaderCell>
+              <DataTableHeaderCell>Priority</DataTableHeaderCell>
               <DataTableHeaderCell>Category</DataTableHeaderCell>
               <DataTableHeaderCell>Title</DataTableHeaderCell>
               <DataTableHeaderCell>Message</DataTableHeaderCell>
@@ -116,6 +144,7 @@ export function NotificationCenter() {
             {query.data.map((n) => {
               const href = notificationHref(n);
               const unread = !n.readAt;
+              const pri = priorityForNotification(n);
               return (
                 <DataTableRow
                   key={n.id}
@@ -123,6 +152,16 @@ export function NotificationCenter() {
                 >
                   <DataTableCell className="whitespace-nowrap text-xs text-slate-600">
                     {format(new Date(n.createdAt), "MMM d, HH:mm")}
+                  </DataTableCell>
+                  <DataTableCell className="text-xs">
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 font-medium",
+                        PRIORITY_STYLES[pri],
+                      )}
+                    >
+                      {priorityLabel(pri)}
+                    </span>
                   </DataTableCell>
                   <DataTableCell className="text-xs">
                     {notificationCategory(n.type)}
