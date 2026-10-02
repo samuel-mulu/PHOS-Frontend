@@ -28,14 +28,14 @@ export function PatientNumberScan({
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-dashed border-teal-300 bg-teal-50/50 p-3">
-      <Label htmlFor="patient-scan" className="text-xs font-semibold text-teal-900">
-        QR / card number
+    <div className="space-y-2">
+      <Label htmlFor="patient-scan" className="text-xs text-slate-600">
+        Patient number / QR
       </Label>
       <div className="flex gap-2">
         <Input
           id="patient-scan"
-          placeholder="Scan or type patient number"
+          placeholder="Scan or type number"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -52,9 +52,6 @@ export function PatientNumberScan({
           Look up
         </Button>
       </div>
-      <p className="text-xs text-slate-600">
-        USB scanners usually paste into this field; press Enter to search.
-      </p>
     </div>
   );
 }

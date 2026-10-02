@@ -24,18 +24,38 @@ import {
   useFinalizeConsultation,
   useSaveConsultation,
 } from "@/features/consultations/hooks";
-import { useRequestBilling } from "@/features/encounters/hooks";
+import {
+  useRequestBilling,
+  useRouteEncounter,
+} from "@/features/encounters/hooks";
 import { DoctorPatientChartPanel } from "@/components/doctor/doctor-patient-chart-panel";
 import { PaymentBillingExplainer } from "@/components/shared/payment-billing-explainer";
-import { useTranslation } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { DiagnosisType, EncounterPriority } from "@/types/encounter";
-import { useLabOrders, useLabTests, useCreateLabOrder } from "@/features/laboratory/hooks";
+import {
+  DiagnosisType,
+  EncounterPriority,
+  QueueStation,
+} from "@/types/encounter";
+import {
+  useLabOrders,
+  useLabTests,
+  useCreateLabOrder,
+} from "@/features/laboratory/hooks";
 import {
   useCreatePrescription,
   useMedicines,
   usePrescriptions,
 } from "@/features/prescriptions/hooks";
+import { toast } from "sonner";
+
+type Step =
+  | "consult"
+  | "diagnosis"
+  | "lab"
+  | "rx"
+  | "send"
+  | "payment"
+  | "followup";
 
 export function DoctorConsultationWorkspace({
   encounterId,
@@ -45,13 +65,10 @@ export function DoctorConsultationWorkspace({
   const encounter = useEncounter(encounterId);
   const consultationQuery = useConsultation(encounterId);
   const save = useSaveConsultation(encounterId);
-  const [labOpen, setLabOpen] = useState(false);
-  const [rxOpen, setRxOpen] = useState(false);
-  const [workflowStep, setWorkflowStep] = useState<
-    "consult" | "diagnosis" | "lab" | "rx" | "payment" | "followup"
-  >("consult");
+  const [workflowStep, setWorkflowStep] = useState<Step>("consult");
+  const [ensuringDraft, setEnsuringDraft] = useState(false);
   const requestBilling = useRequestBilling(encounterId);
-  const { t } = useTranslation();
+  const routePatient = useRouteEncounter(encounterId);
 
   const consultation = consultationQuery.data;
   const consultationId = consultation?.id;
@@ -93,6 +110,32 @@ export function DoctorConsultationWorkspace({
     },
   );
 
+  async function ensureConsultation(): Promise<string | null> {
+    if (consultationId) return consultationId;
+    setEnsuringDraft(true);
+    try {
+      const values = form.getValues();
+      const saved = await save.mutateAsync(values);
+      clearDraft();
+      return saved.id;
+    } catch {
+      toast.error("Save the consult first, then try again");
+      return null;
+    } finally {
+      setEnsuringDraft(false);
+    }
+  }
+
+  async function goToStep(id: Step) {
+    setWorkflowStep(id);
+    if (
+      (id === "lab" || id === "rx" || id === "diagnosis" || id === "send") &&
+      !consultationId
+    ) {
+      await ensureConsultation();
+    }
+  }
+
   if (encounter.isLoading || consultationQuery.isLoading) {
     return <LoadingBlock label="Loading consultation workspace" />;
   }
@@ -130,7 +173,8 @@ export function DoctorConsultationWorkspace({
             ["diagnosis", "Diagnosis"],
             ["lab", "Lab"],
             ["rx", "Prescription"],
-            ["payment", t("billing.termRequest")],
+            ["send", "Send"],
+            ["payment", "Pay"],
             ["followup", "Follow-up"],
           ] as const
         ).map(([id, label]) => (
@@ -143,40 +187,15 @@ export function DoctorConsultationWorkspace({
                 ? "bg-teal-800 text-white"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200",
             )}
-            onClick={() => {
-              setWorkflowStep(id);
-              if (id === "lab" && consultationId) setLabOpen(true);
-              if (id === "rx" && consultationId) setRxOpen(true);
-            }}
+            onClick={() => void goToStep(id)}
           >
             {label}
           </button>
         ))}
       </nav>
 
-      {workflowStep === "payment" ? (
-        <div className="space-y-3">
-          <PaymentBillingExplainer
-            variant="doctor"
-            encounterNumber={encounter.data.encounterNumber}
-            invoiceNumber={encounter.data.invoice?.invoiceNumber}
-            invoiceStatus={encounter.data.invoice?.status}
-          />
-          <Button
-            type="button"
-            disabled={requestBilling.isPending}
-            onClick={() => requestBilling.mutate()}
-          >
-            {requestBilling.isPending ? "Sending…" : "Request payment"}
-          </Button>
-        </div>
-      ) : null}
-
-      {workflowStep === "followup" ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-          Record follow-up instructions in the <strong>Plan</strong> field under
-          Consult, then save the consultation draft.
-        </div>
+      {ensuringDraft ? (
+        <p className="text-sm text-slate-600">Saving consult draft…</p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-12">
@@ -195,7 +214,9 @@ export function DoctorConsultationWorkspace({
                 {triage.heartRate != null ? (
                   <li>Pulse: {String(triage.heartRate)}</li>
                 ) : null}
-                {triage.spo2 != null ? <li>SpO2: {String(triage.spo2)}%</li> : null}
+                {triage.spo2 != null ? (
+                  <li>SpO2: {String(triage.spo2)}%</li>
+                ) : null}
                 {triage.bloodGlucoseMgDl != null ? (
                   <li>Glucose: {String(triage.bloodGlucoseMgDl)} mg/dL</li>
                 ) : null}
@@ -216,105 +237,227 @@ export function DoctorConsultationWorkspace({
           />
         </aside>
 
-        <section className="lg:col-span-6">
-          <form
-            className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-            onSubmit={form.handleSubmit((values) =>
-              save.mutate(values, { onSuccess: () => clearDraft() }),
-            )}
-          >
-            <h2 className="text-sm font-semibold text-slate-800">Consultation</h2>
-            <Field label="Chief complaint">
-              <Textarea rows={2} disabled={isFinalized} {...form.register("chiefComplaint")} />
-            </Field>
-            <Field label="History (HPI)">
-              <Textarea rows={3} disabled={isFinalized} {...form.register("historyPresentIllness")} />
-            </Field>
-            <Field label="Examination">
-              <Textarea rows={3} disabled={isFinalized} {...form.register("physicalExam")} />
-            </Field>
-            <Field label="Assessment">
-              <Textarea rows={2} disabled={isFinalized} {...form.register("assessment")} />
-            </Field>
-            <Field label="Plan">
-              <Textarea rows={2} disabled={isFinalized} {...form.register("plan")} />
-            </Field>
-            <Field label="Notes">
-              <Textarea rows={2} disabled={isFinalized} {...form.register("notes")} />
-            </Field>
-            {!isFinalized ? (
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={save.isPending}>
-                  {save.isPending ? "Saving…" : "Save draft"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!consultationId}
-                  onClick={() => setLabOpen(true)}
-                >
-                  Lab order
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!consultationId}
-                  onClick={() => setRxOpen(true)}
-                >
-                  Prescription
-                </Button>
-              </div>
-            ) : null}
-          </form>
-          {consultationId && !isFinalized ? (
-            <DiagnosisSection
+        <section className="space-y-4 lg:col-span-6">
+          {workflowStep === "consult" ? (
+            <form
+              className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+              onSubmit={form.handleSubmit((values) =>
+                save.mutate(values, { onSuccess: () => clearDraft() }),
+              )}
+            >
+              <h2 className="text-sm font-semibold text-slate-800">
+                Consultation
+              </h2>
+              <Field label="Chief complaint">
+                <Textarea
+                  rows={2}
+                  disabled={isFinalized}
+                  {...form.register("chiefComplaint")}
+                />
+              </Field>
+              <Field label="History (HPI)">
+                <Textarea
+                  rows={3}
+                  disabled={isFinalized}
+                  {...form.register("historyPresentIllness")}
+                />
+              </Field>
+              <Field label="Examination">
+                <Textarea
+                  rows={3}
+                  disabled={isFinalized}
+                  {...form.register("physicalExam")}
+                />
+              </Field>
+              <Field label="Assessment">
+                <Textarea
+                  rows={2}
+                  disabled={isFinalized}
+                  {...form.register("assessment")}
+                />
+              </Field>
+              <Field label="Plan">
+                <Textarea
+                  rows={2}
+                  disabled={isFinalized}
+                  {...form.register("plan")}
+                />
+              </Field>
+              <Field label="Notes">
+                <Textarea
+                  rows={2}
+                  disabled={isFinalized}
+                  {...form.register("notes")}
+                />
+              </Field>
+              {!isFinalized ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button type="submit" disabled={save.isPending}>
+                    {save.isPending ? "Saving…" : "Save draft"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void goToStep("lab")}
+                  >
+                    Lab
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void goToStep("rx")}
+                  >
+                    Prescription
+                  </Button>
+                </div>
+              ) : null}
+            </form>
+          ) : null}
+
+          {workflowStep === "diagnosis" ? (
+            <DiagnosisTab
               consultationId={consultationId}
               encounterId={encounterId}
               diagnoses={consultation?.diagnoses ?? []}
+              isFinalized={isFinalized}
+              onNeedDraft={() => void ensureConsultation()}
             />
           ) : null}
-          {consultationId && consultation?.diagnoses?.length ? (
-            <ul className="mt-3 space-y-1 text-sm text-slate-700">
-              {consultation.diagnoses.map((d) => (
-                <li key={d.id}>
-                  {d.isPrimary ? "★ " : ""}
-                  {d.label} ({d.type})
-                </li>
-              ))}
-            </ul>
+
+          {workflowStep === "lab" ? (
+            <LabTab
+              consultationId={consultationId}
+              isFinalized={isFinalized}
+              onNeedDraft={() => void ensureConsultation()}
+              onSentToLab={() =>
+                routePatient.mutate(QueueStation.LAB)
+              }
+            />
+          ) : null}
+
+          {workflowStep === "rx" ? (
+            <PrescriptionTab
+              consultationId={consultationId}
+              isFinalized={isFinalized}
+              onNeedDraft={() => void ensureConsultation()}
+              onSentToPharmacy={() =>
+                routePatient.mutate(QueueStation.PHARMACY)
+              }
+            />
+          ) : null}
+
+          {workflowStep === "send" ? (
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-800">
+                Send patient to
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    [QueueStation.LAB, "Lab"],
+                    [QueueStation.PHARMACY, "Pharmacy"],
+                    [QueueStation.CASHIER, "Front desk / Pay"],
+                    [QueueStation.TRIAGE, "Triage / Nurse"],
+                    [QueueStation.DOCTOR, "Back to doctor queue"],
+                  ] as const
+                ).map(([station, label]) => (
+                  <Button
+                    key={station}
+                    type="button"
+                    variant={
+                      station === QueueStation.CASHIER ? "default" : "outline"
+                    }
+                    disabled={routePatient.isPending}
+                    onClick={() => {
+                      if (station === QueueStation.LAB) {
+                        void goToStep("lab");
+                      } else if (station === QueueStation.PHARMACY) {
+                        void goToStep("rx");
+                      }
+                      routePatient.mutate(station);
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {workflowStep === "payment" ? (
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-800">Payment</h2>
+              <PaymentBillingExplainer
+                variant="doctor"
+                encounterNumber={encounter.data.encounterNumber}
+                invoiceNumber={encounter.data.invoice?.invoiceNumber}
+                invoiceStatus={encounter.data.invoice?.status}
+              />
+              <Button
+                type="button"
+                disabled={requestBilling.isPending}
+                onClick={() => requestBilling.mutate()}
+              >
+                {requestBilling.isPending
+                  ? "Sending…"
+                  : "Send to front desk to pay"}
+              </Button>
+            </div>
+          ) : null}
+
+          {workflowStep === "followup" ? (
+            <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate-800">Follow-up</h2>
+              <Field label="Follow-up plan">
+                <Textarea
+                  rows={4}
+                  disabled={isFinalized}
+                  {...form.register("plan")}
+                />
+              </Field>
+              {!isFinalized ? (
+                <Button
+                  type="button"
+                  disabled={save.isPending}
+                  onClick={() =>
+                    save.mutate(form.getValues(), {
+                      onSuccess: () => clearDraft(),
+                    })
+                  }
+                >
+                  {save.isPending ? "Saving…" : "Save follow-up"}
+                </Button>
+              ) : null}
+            </div>
           ) : null}
         </section>
 
         <aside className="lg:col-span-3">
           {consultationId && !isFinalized ? (
-            <FinalizeBlock consultationId={consultationId} encounterId={encounterId} />
+            <FinalizeBlock
+              consultationId={consultationId}
+              encounterId={encounterId}
+            />
           ) : null}
           {isFinalized ? (
             <p className="rounded-md bg-slate-100 p-3 text-sm text-slate-700">
-              Consultation finalized. Next steps follow encounter status (
-              {encounter.data.status.replaceAll("_", " ")}).
+              Consultation finalized. Status:{" "}
+              {encounter.data.status.replaceAll("_", " ")}.
             </p>
           ) : null}
         </aside>
       </div>
-
-      {consultationId && labOpen ? (
-        <LabOrderDrawer
-          consultationId={consultationId}
-          onClose={() => setLabOpen(false)}
-        />
-      ) : null}
-      {consultationId && rxOpen ? (
-        <PrescriptionDrawer
-          consultationId={consultationId}
-          onClose={() => setRxOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }
 
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+function Panel({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -325,11 +468,76 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <Label className="mb-1 block text-xs">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function DiagnosisTab({
+  consultationId,
+  encounterId,
+  diagnoses,
+  isFinalized,
+  onNeedDraft,
+}: {
+  consultationId?: string;
+  encounterId: string;
+  diagnoses: Array<{
+    id: string;
+    label: string;
+    type?: string;
+    isPrimary?: boolean;
+  }>;
+  isFinalized: boolean;
+  onNeedDraft: () => void;
+}) {
+  if (!consultationId) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-sm text-slate-600">Save consult draft first.</p>
+        <Button type="button" className="mt-2" onClick={onNeedDraft}>
+          Save draft
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-800">Diagnosis</h2>
+      {diagnoses.length > 0 ? (
+        <ul className="space-y-1 text-sm text-slate-700">
+          {diagnoses.map((d) => (
+            <li key={d.id} className="flex items-center gap-2">
+              <input type="checkbox" checked readOnly className="h-4 w-4" />
+              <span>
+                {d.isPrimary ? "★ " : ""}
+                {d.label}
+                {d.type ? ` (${d.type})` : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-sm text-slate-500">No diagnoses yet.</p>
+      )}
+      {!isFinalized ? (
+        <DiagnosisSection
+          consultationId={consultationId}
+          encounterId={encounterId}
+          diagnoses={diagnoses}
+        />
+      ) : null}
     </div>
   );
 }
@@ -354,31 +562,370 @@ function DiagnosisSection({
   });
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <h3 className="text-sm font-semibold text-slate-800">Add diagnosis</h3>
-      <form
-        className="mt-2 flex flex-wrap gap-2"
-        onSubmit={form.handleSubmit((values) => {
-          add.mutate(values, {
-            onSuccess: () => form.reset({ label: "", type: DiagnosisType.PROVISIONAL }),
-          });
-        })}
+    <form
+      className="mt-2 flex flex-wrap gap-2 border-t border-slate-100 pt-3"
+      onSubmit={form.handleSubmit((values) => {
+        add.mutate(values, {
+          onSuccess: () =>
+            form.reset({
+              label: "",
+              type: DiagnosisType.PROVISIONAL,
+              isPrimary: false,
+            }),
+        });
+      })}
+    >
+      <Input
+        className="min-w-[200px] flex-1"
+        placeholder="Diagnosis label"
+        {...form.register("label")}
+      />
+      <select
+        className="h-10 rounded-md border border-slate-200 px-2 text-sm"
+        {...form.register("type")}
       >
-        <Input className="min-w-[200px] flex-1" placeholder="Label" {...form.register("label")} />
-        <select
-          className="h-10 rounded-md border border-slate-200 px-2 text-sm"
-          {...form.register("type")}
-        >
-          {Object.values(DiagnosisType).map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-        <Button type="submit" size="sm" disabled={add.isPending}>
-          Add
+        {Object.values(DiagnosisType).map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
+      </select>
+      <label className="flex items-center gap-1 text-xs text-slate-600">
+        <input type="checkbox" {...form.register("isPrimary")} />
+        Primary
+      </label>
+      <Button type="submit" size="sm" disabled={add.isPending}>
+        Add
+      </Button>
+    </form>
+  );
+}
+
+function LabTab({
+  consultationId,
+  isFinalized,
+  onNeedDraft,
+  onSentToLab,
+}: {
+  consultationId?: string;
+  isFinalized: boolean;
+  onNeedDraft: () => void;
+  onSentToLab: () => void;
+}) {
+  const tests = useLabTests();
+  const labs = useLabOrders();
+  const create = useCreateLabOrder(consultationId ?? "");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [priority, setPriority] = useState<EncounterPriority>(
+    EncounterPriority.ROUTINE,
+  );
+  const [notes, setNotes] = useState("");
+
+  const myOrders =
+    labs.data?.filter((o) => o.consultationId === consultationId) ?? [];
+
+  if (!consultationId) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-sm text-slate-600">Save consult draft first.</p>
+        <Button type="button" className="mt-2" onClick={onNeedDraft}>
+          Save draft
         </Button>
-      </form>
+      </div>
+    );
+  }
+
+  function toggle(id: string) {
+    setSelected((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  return (
+    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-800">Lab orders</h2>
+
+      {!isFinalized ? (
+        <div className="space-y-3">
+          <p className="text-xs font-medium text-slate-600">
+            Select tests (checkboxes)
+          </p>
+          {tests.isLoading ? <LoadingBlock label="Loading tests" /> : null}
+          {tests.isSuccess && (tests.data?.length ?? 0) === 0 ? (
+            <p className="text-sm text-amber-800">
+              No lab tests in catalog. Ask admin to add tests.
+            </p>
+          ) : null}
+          <ul className="max-h-56 space-y-1 overflow-y-auto rounded-md border border-slate-100 p-2 text-sm">
+            {tests.data?.map((t) => (
+              <li key={t.id}>
+                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={selected.includes(t.id)}
+                    onChange={() => toggle(t.id)}
+                  />
+                  <span className="flex-1">
+                    {t.name}
+                    <span className="ml-1 text-xs text-slate-500">{t.code}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field label="Priority">
+              <select
+                className="h-10 w-full rounded-md border border-slate-200 px-2 text-sm"
+                value={priority}
+                onChange={(e) =>
+                  setPriority(e.target.value as EncounterPriority)
+                }
+              >
+                {Object.values(EncounterPriority).map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Clinical notes">
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional"
+              />
+            </Field>
+          </div>
+          <Button
+            type="button"
+            disabled={!selected.length || create.isPending}
+            onClick={() =>
+              create.mutate(
+                {
+                  labTestIds: selected,
+                  priority,
+                  clinicalNotes: notes || undefined,
+                },
+                {
+                  onSuccess: () => {
+                    setSelected([]);
+                    setNotes("");
+                    onSentToLab();
+                  },
+                },
+              )
+            }
+          >
+            {create.isPending
+              ? "Sending…"
+              : `Send lab order (${selected.length})`}
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="border-t border-slate-100 pt-3">
+        <p className="mb-2 text-xs font-medium text-slate-600">
+          Lab reports / orders
+        </p>
+        {myOrders.length === 0 ? (
+          <p className="text-sm text-slate-500">No lab orders yet.</p>
+        ) : (
+          <ul className="space-y-3">
+            {myOrders.map((order) => (
+              <li
+                key={order.id}
+                className="rounded-md border border-slate-100 p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <input type="checkbox" checked readOnly className="h-4 w-4" />
+                  <span className="font-medium">{order.orderNumber}</span>
+                  <span className="text-xs text-slate-500">{order.status}</span>
+                </div>
+                <ul className="mt-2 space-y-1 pl-6 text-xs text-slate-700">
+                  {order.items?.map((item) => (
+                    <li key={item.id} className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-3.5 w-3.5"
+                        checked={Boolean(item.result?.value)}
+                        readOnly
+                      />
+                      <span>
+                        {item.labTest?.name ?? "Test"}
+                        {item.result?.value ? (
+                          <span className="text-slate-900">
+                            {" "}
+                            — {item.result.value}
+                            {item.result.unit ? ` ${item.result.unit}` : ""}
+                            {item.result.flag
+                              ? ` (${item.result.flag})`
+                              : ""}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400"> — pending</span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PrescriptionTab({
+  consultationId,
+  isFinalized,
+  onNeedDraft,
+  onSentToPharmacy,
+}: {
+  consultationId?: string;
+  isFinalized: boolean;
+  onNeedDraft: () => void;
+  onSentToPharmacy: () => void;
+}) {
+  const medicines = useMedicines();
+  const rxList = usePrescriptions();
+  const create = useCreatePrescription(consultationId ?? "");
+  const [selectedMeds, setSelectedMeds] = useState<string[]>([]);
+  const [dose, setDose] = useState("1 tab");
+  const [route, setRoute] = useState("PO");
+  const [frequency, setFrequency] = useState("TID");
+  const [duration, setDuration] = useState("5 days");
+  const [quantity, setQuantity] = useState(15);
+
+  const myRx =
+    rxList.data?.filter((p) => p.consultationId === consultationId) ?? [];
+
+  if (!consultationId) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-sm text-slate-600">Save consult draft first.</p>
+        <Button type="button" className="mt-2" onClick={onNeedDraft}>
+          Save draft
+        </Button>
+      </div>
+    );
+  }
+
+  function toggleMed(id: string) {
+    setSelectedMeds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }
+
+  return (
+    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-slate-800">Prescription</h2>
+
+      {!isFinalized ? (
+        <div className="space-y-3">
+          <p className="text-xs font-medium text-slate-600">
+            Select medicines (checkboxes)
+          </p>
+          {medicines.isLoading ? (
+            <LoadingBlock label="Loading medicines" />
+          ) : null}
+          <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-slate-100 p-2 text-sm">
+            {medicines.data?.map((m) => (
+              <li key={m.id}>
+                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={selectedMeds.includes(m.id)}
+                    onChange={() => toggleMed(m.id)}
+                  />
+                  <span>
+                    {m.name}
+                    <span className="ml-1 text-xs text-slate-500">{m.code}</span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              placeholder="Dose"
+              value={dose}
+              onChange={(e) => setDose(e.target.value)}
+            />
+            <Input
+              placeholder="Route"
+              value={route}
+              onChange={(e) => setRoute(e.target.value)}
+            />
+            <Input
+              placeholder="Frequency"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+            />
+            <Input
+              placeholder="Duration"
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+            />
+            <Input
+              type="number"
+              placeholder="Qty"
+              value={quantity}
+              onChange={(e) => setQuantity(Number(e.target.value))}
+            />
+          </div>
+          <Button
+            type="button"
+            disabled={!selectedMeds.length || create.isPending}
+            onClick={() =>
+              create.mutate(
+                {
+                  items: selectedMeds.map((medicineId) => ({
+                    medicineId,
+                    dose,
+                    route,
+                    frequency,
+                    duration,
+                    quantity,
+                  })),
+                },
+                {
+                  onSuccess: () => {
+                    setSelectedMeds([]);
+                    onSentToPharmacy();
+                  },
+                },
+              )
+            }
+          >
+            {create.isPending
+              ? "Sending…"
+              : `Send to pharmacy (${selectedMeds.length})`}
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="border-t border-slate-100 pt-3">
+        <p className="mb-2 text-xs font-medium text-slate-600">
+          Prescriptions sent
+        </p>
+        {myRx.length === 0 ? (
+          <p className="text-sm text-slate-500">None yet.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {myRx.map((p) => (
+              <li key={p.id} className="flex items-center gap-2">
+                <input type="checkbox" checked readOnly className="h-4 w-4" />
+                {p.prescriptionNumber} — {p.status}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -393,10 +940,6 @@ function FinalizeBlock({
   const finalize = useFinalizeConsultation(consultationId, encounterId);
   return (
     <Panel title="Complete">
-      <p className="mb-3 text-xs text-slate-600">
-        Finalize when documentation and orders are ready. Backend sets the next
-        encounter state.
-      </p>
       <Button
         type="button"
         className="w-full"
@@ -444,187 +987,5 @@ function OrdersPanel({ consultationId }: { consultationId: string }) {
         </ul>
       )}
     </Panel>
-  );
-}
-
-function LabOrderDrawer({
-  consultationId,
-  onClose,
-}: {
-  consultationId: string;
-  onClose: () => void;
-}) {
-  const tests = useLabTests();
-  const create = useCreateLabOrder(consultationId);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [priority, setPriority] = useState<EncounterPriority>(
-    EncounterPriority.ROUTINE,
-  );
-  const [notes, setNotes] = useState("");
-
-  return (
-    <DrawerShell title="Laboratory order" onClose={onClose}>
-      {tests.isLoading ? (
-        <LoadingBlock label="Loading tests" />
-      ) : (
-        <ul className="max-h-48 space-y-1 overflow-y-auto text-sm">
-          {tests.data?.map((t) => (
-            <li key={t.id}>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={selected.includes(t.id)}
-                  onChange={(e) =>
-                    setSelected((prev) =>
-                      e.target.checked
-                        ? [...prev, t.id]
-                        : prev.filter((id) => id !== t.id),
-                    )
-                  }
-                />
-                {t.code} — {t.name}
-              </label>
-            </li>
-          ))}
-        </ul>
-      )}
-      <select
-        className="mt-3 h-10 w-full rounded-md border px-2 text-sm"
-        value={priority}
-        onChange={(e) => setPriority(e.target.value as EncounterPriority)}
-      >
-        {Object.values(EncounterPriority).map((p) => (
-          <option key={p} value={p}>
-            {p}
-          </option>
-        ))}
-      </select>
-      <Textarea
-        className="mt-2"
-        placeholder="Clinical notes"
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-      />
-      <Button
-        type="button"
-        className="mt-3"
-        disabled={!selected.length || create.isPending}
-        onClick={() =>
-          create.mutate(
-            {
-              labTestIds: selected,
-              priority,
-              clinicalNotes: notes || undefined,
-            },
-            { onSuccess: onClose },
-          )
-        }
-      >
-        Submit lab order
-      </Button>
-    </DrawerShell>
-  );
-}
-
-function PrescriptionDrawer({
-  consultationId,
-  onClose,
-}: {
-  consultationId: string;
-  onClose: () => void;
-}) {
-  const medicines = useMedicines();
-  const create = useCreatePrescription(consultationId);
-  const [medicineId, setMedicineId] = useState("");
-  const [dose, setDose] = useState("1 tab");
-  const [route, setRoute] = useState("PO");
-  const [frequency, setFrequency] = useState("TID");
-  const [duration, setDuration] = useState("5 days");
-  const [quantity, setQuantity] = useState(15);
-
-  return (
-    <DrawerShell title="Prescription" onClose={onClose}>
-      <select
-        className="h-10 w-full rounded-md border px-2 text-sm"
-        value={medicineId}
-        onChange={(e) => setMedicineId(e.target.value)}
-      >
-        <option value="">Select medicine</option>
-        {medicines.data?.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.code} — {m.name}
-          </option>
-        ))}
-      </select>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <Input placeholder="Dose" value={dose} onChange={(e) => setDose(e.target.value)} />
-        <Input placeholder="Route" value={route} onChange={(e) => setRoute(e.target.value)} />
-        <Input
-          placeholder="Frequency"
-          value={frequency}
-          onChange={(e) => setFrequency(e.target.value)}
-        />
-        <Input
-          placeholder="Duration"
-          value={duration}
-          onChange={(e) => setDuration(e.target.value)}
-        />
-        <Input
-          type="number"
-          placeholder="Qty"
-          value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value))}
-        />
-      </div>
-      <Button
-        type="button"
-        className="mt-3"
-        disabled={!medicineId || create.isPending}
-        onClick={() =>
-          create.mutate(
-            {
-              items: [
-                {
-                  medicineId,
-                  dose,
-                  route,
-                  frequency,
-                  duration,
-                  quantity,
-                },
-              ],
-            },
-            { onSuccess: onClose },
-          )
-        }
-      >
-        Submit prescription
-      </Button>
-    </DrawerShell>
-  );
-}
-
-function DrawerShell({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button type="button" className="flex-1 bg-black/30" aria-label="Close" onClick={onClose} />
-      <div className="h-full w-full max-w-md overflow-y-auto bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold">{title}</h3>
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-        {children}
-      </div>
-    </div>
   );
 }

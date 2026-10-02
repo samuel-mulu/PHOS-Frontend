@@ -83,15 +83,11 @@ export function PatientRegisterForm({
         </div>
       ) : null}
 
-      <p className="text-sm text-slate-600">
-        Only first name and last name are required. Leave other fields blank if
-        unknown.
-      </p>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="First name *" error={errors.firstName?.message}>
           <Input id="firstName" {...register("firstName")} />
         </Field>
-        <Field label="Middle name (optional)" error={errors.middleName?.message}>
+        <Field label="Middle name" error={errors.middleName?.message}>
           <Input id="middleName" {...register("middleName")} />
         </Field>
         <Field label="Last name *" error={errors.lastName?.message}>
@@ -110,29 +106,29 @@ export function PatientRegisterForm({
             ))}
           </select>
         </Field>
-        <Field label="Date of birth (optional)" error={errors.dateOfBirth?.message}>
+        <Field label="Date of birth" error={errors.dateOfBirth?.message}>
           <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
         </Field>
-        <Field label="Phone (optional)" error={errors.phone?.message}>
+        <Field label="Phone" error={errors.phone?.message}>
           <Input id="phone" {...register("phone")} />
         </Field>
-        <Field label="Email (optional)" error={errors.email?.message}>
+        <Field label="Email" error={errors.email?.message}>
           <Input id="email" type="email" {...register("email")} />
         </Field>
-        <Field label="Government ID (optional)" error={errors.governmentId?.message}>
+        <Field label="Government ID" error={errors.governmentId?.message}>
           <Input id="governmentId" {...register("governmentId")} />
         </Field>
-        <Field label="Address (optional)" error={errors.address?.message} className="md:col-span-2">
+        <Field label="Address" error={errors.address?.message} className="md:col-span-2">
           <Input id="address" {...register("address")} />
         </Field>
         <Field
-          label="Emergency contact name (optional)"
+          label="Emergency contact name"
           error={errors.emergencyContactName?.message}
         >
           <Input id="emergencyContactName" {...register("emergencyContactName")} />
         </Field>
         <Field
-          label="Emergency contact phone (optional)"
+          label="Emergency contact phone"
           error={errors.emergencyContactPhone?.message}
         >
           <Input
@@ -140,14 +136,14 @@ export function PatientRegisterForm({
             {...register("emergencyContactPhone")}
           />
         </Field>
-        <Field label="Allergies (optional)" error={errors.allergies?.message} className="md:col-span-2">
+        <Field label="Allergies" error={errors.allergies?.message} className="md:col-span-2">
           <Input id="allergies" {...register("allergies")} />
         </Field>
       </div>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={create.isPending}>
-          {create.isPending ? "Saving…" : "Register patient"}
+          {create.isPending ? "Saving…" : "Save & continue"}
         </Button>
         {showCancelLink ? (
           <Link href="/patients">

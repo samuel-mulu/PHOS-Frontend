@@ -56,6 +56,8 @@ export type CreateEncounterInput = {
   type?: EncounterType;
   priority?: EncounterPriority;
   reason?: string;
+  /** TRIAGE or DOCTOR — defaults to DOCTOR on the server. */
+  initialStation?: "TRIAGE" | "DOCTOR";
 };
 
 export async function createEncounter(input: CreateEncounterInput) {
@@ -79,6 +81,17 @@ export async function fetchEncounters(params?: {
 export async function requestBilling(encounterId: string) {
   const { data } = await api.post<{ success: boolean; encounterId: string }>(
     `/encounters/${encounterId}/billing-request`,
+  );
+  return data;
+}
+
+export async function routeEncounter(
+  encounterId: string,
+  station: "TRIAGE" | "DOCTOR" | "LAB" | "PHARMACY" | "CASHIER",
+) {
+  const { data } = await api.post<EncounterDetail>(
+    `/encounters/${encounterId}/route`,
+    { station },
   );
   return data;
 }

@@ -114,8 +114,9 @@ function QueueRow({
   onCall: () => void;
   starting: boolean;
 }) {
-  const href =
-    resolveHref?.(entry) ?? `${hrefPrefix}/${entry.encounterId}`;
+  const href = resolveHref
+    ? resolveHref(entry)
+    : `${hrefPrefix}/${entry.encounterId}`;
   const p = entry.encounter.patient;
   return (
     <DataTableRow>

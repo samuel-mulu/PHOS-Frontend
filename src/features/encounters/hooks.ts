@@ -8,6 +8,7 @@ import {
   createEncounter,
   fetchEncounter,
   requestBilling,
+  routeEncounter,
   type CreateEncounterInput,
 } from "./api";
 
@@ -25,7 +26,35 @@ export function useRequestBilling(encounterId: string) {
     mutationFn: () => requestBilling(encounterId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      toast.success("Payment request sent to front desk");
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["encounters", encounterId],
+      });
+      toast.success("Patient sent to cashier");
+    },
+    onError: (error) => toast.error(normalizeApiError(error).message),
+  });
+}
+
+export function useRouteEncounter(encounterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      station: "TRIAGE" | "DOCTOR" | "LAB" | "PHARMACY" | "CASHIER",
+    ) => routeEncounter(encounterId, station),
+    onSuccess: (_data, station) => {
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["encounters", encounterId],
+      });
+      const labels: Record<string, string> = {
+        TRIAGE: "triage",
+        DOCTOR: "doctor",
+        LAB: "lab",
+        PHARMACY: "pharmacy",
+        CASHIER: "cashier",
+      };
+      toast.success(`Patient sent to ${labels[station] ?? station}`);
     },
     onError: (error) => toast.error(normalizeApiError(error).message),
   });
@@ -35,9 +64,11 @@ export function useCreateEncounter() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateEncounterInput) => createEncounter(input),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
-      toast.success("Visit started — patient sent to triage queue");
+      const dest =
+        variables.initialStation === "TRIAGE" ? "triage" : "doctor";
+      toast.success(`Visit started — patient sent to ${dest}`);
     },
     onError: (error) => {
       if (isAxiosError(error) && error.response?.status === 409) {

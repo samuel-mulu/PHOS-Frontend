@@ -26,8 +26,10 @@ import { useCurrentUser } from "@/features/auth/hooks";
 
 export function PatientSearchList({
   onSelectPatient,
+  hideRegisterLink = false,
 }: {
   onSelectPatient?: (patient: import("@/types/patient").Patient) => void;
+  hideRegisterLink?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -60,7 +62,7 @@ export function PatientSearchList({
             }}
           />
         </div>
-        {user && canRegisterPatient(user.role) ? (
+        {!hideRegisterLink && user && canRegisterPatient(user.role) ? (
           <Link href="/patients/new">
             <Button type="button">Register patient</Button>
           </Link>
@@ -76,14 +78,7 @@ export function PatientSearchList({
       ) : null}
 
       {query.isSuccess && query.data.items.length === 0 ? (
-        <EmptyState
-          title="No patients found"
-          description={
-            debouncedSearch
-              ? "Try a different search term."
-              : "Register a patient to get started."
-          }
-        />
+        <EmptyState title="No patients found" />
       ) : null}
 
       {query.isSuccess && query.data.items.length > 0 ? (

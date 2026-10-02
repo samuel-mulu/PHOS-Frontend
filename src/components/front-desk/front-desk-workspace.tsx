@@ -6,8 +6,6 @@ import { ReceptionWorkspace } from "@/components/reception/reception-workspace";
 import { BillingWorkspace } from "@/components/billing/billing-workspace";
 import { CashierWorkspace } from "@/components/cashier/cashier-workspace";
 import { AppointmentsPanel } from "@/components/front-desk/appointments-panel";
-import { FrontDeskFlowGuide } from "@/components/front-desk/front-desk-flow-guide";
-import { PaymentBillingExplainer } from "@/components/shared/payment-billing-explainer";
 import type { Encounter } from "@/features/encounters/api";
 import { cn } from "@/lib/utils";
 
@@ -62,14 +60,7 @@ export function FrontDeskWorkspace() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Front desk</h1>
-        <p className="text-sm text-slate-600">
-          Register → start visit → issue invoice → take payment.
-        </p>
-      </div>
-      <FrontDeskFlowGuide />
-      <PaymentBillingExplainer variant="desk" />
+      <h1 className="text-xl font-semibold text-slate-900">Front desk</h1>
       <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
         {TABS.map((t) => (
           <button
@@ -88,7 +79,11 @@ export function FrontDeskWorkspace() {
         ))}
       </div>
       {tab === "reception" ? (
-        <ReceptionWorkspace embedded onVisitStarted={goBillVisit} />
+        <ReceptionWorkspace
+          embedded
+          initialPatientId={searchParams.get("patientId") ?? undefined}
+          onVisitStarted={goBillVisit}
+        />
       ) : null}
       {tab === "appointments" ? <AppointmentsPanel /> : null}
       {tab === "billing" ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PatientSearchList } from "@/components/patients/patient-search-list";
 import { PatientNumberScan } from "@/components/patients/patient-number-scan";
 import { QueueBoard } from "@/components/queues/queue-board";
@@ -8,57 +8,80 @@ import { StartVisitForm } from "@/components/reception/start-visit-form";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
 import { Button } from "@/components/ui/button";
 import { PatientRegisterForm } from "@/components/patients/patient-register-form";
+import { usePatient } from "@/features/patients/hooks";
 import type { Encounter } from "@/features/encounters/api";
 import type { Patient } from "@/types/patient";
 import { QueueStation } from "@/types/encounter";
-import { SimpleDialog } from "@/components/shared/simple-dialog";
 import { announceClinic } from "@/lib/voice/announce";
 import { encounterStatusBadge } from "@/components/shared/status-badge";
 
 export function ReceptionWorkspace({
   embedded,
+  initialPatientId,
   onVisitStarted,
 }: {
   embedded?: boolean;
-  /** After start visit (embedded front desk): e.g. jump to billing. */
+  /** Open start-visit for this patient (e.g. after register handoff). */
+  initialPatientId?: string;
+  /** After start visit (embedded front desk): jump to billing. */
   onVisitStarted?: (encounter: Encounter) => void;
 } = {}) {
   const [selected, setSelected] = useState<Patient | null>(null);
   const [visitOpen, setVisitOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [lastEncounter, setLastEncounter] = useState<Encounter | null>(null);
-  const [registerDialogPatient, setRegisterDialogPatient] = useState<Patient | null>(
-    null,
-  );
+  const [lastPaid, setLastPaid] = useState(false);
+  const [justRegistered, setJustRegistered] = useState(false);
+
+  const handoff = usePatient(initialPatientId ?? "");
+  const [consumedHandoff, setConsumedHandoff] = useState(false);
+
+  useEffect(() => {
+    if (!initialPatientId || !handoff.data || consumedHandoff) return;
+    setSelected(handoff.data);
+    setVisitOpen(true);
+    setJustRegistered(true);
+    setConsumedHandoff(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("patientId");
+    window.history.replaceState({}, "", url.toString());
+  }, [initialPatientId, handoff.data, consumedHandoff]);
+
+  function selectPatient(patient: Patient, fromRegister = false) {
+    setSelected(patient);
+    setJustRegistered(fromRegister);
+    if (fromRegister) {
+      setVisitOpen(true);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {!embedded ? (
-        <div>
-          <h1 className="text-xl font-semibold text-slate-900">Reception</h1>
-          <p className="text-sm text-slate-600">
-            Register visits and monitor the triage queue.
-          </p>
-        </div>
+        <h1 className="text-xl font-semibold text-slate-900">Reception</h1>
       ) : null}
+
       {lastEncounter ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-md border border-teal-200 bg-teal-50 px-3 py-2 text-sm text-teal-900">
-          <span>
-            Visit <strong>{lastEncounter.encounterNumber}</strong> started — on triage
-            queue.
-          </span>
-          {encounterStatusBadge(lastEncounter.status)}
-          {embedded && onVisitStarted ? (
-            <button
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-teal-900">
+            <span>
+              Visit <strong>{lastEncounter.encounterNumber}</strong>
+              {lastPaid ? " — paid" : " started"}
+            </span>
+            {encounterStatusBadge(lastEncounter.status)}
+          </div>
+          {embedded && onVisitStarted && !lastPaid ? (
+            <Button
               type="button"
-              className="font-medium underline"
+              size="sm"
               onClick={() => onVisitStarted(lastEncounter)}
             >
-              Bill consultation fee
-            </button>
+              Collect payment
+            </Button>
           ) : null}
         </div>
       ) : null}
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -66,35 +89,34 @@ export function ReceptionWorkspace({
             <Button
               type="button"
               size="sm"
-              variant="secondary"
               onClick={() => setRegisterOpen(true)}
             >
-              Register new patient
+              New patient
             </Button>
           </div>
-          <PatientNumberScan onFound={setSelected} />
-          <PatientSearchList onSelectPatient={setSelected} />
+          <PatientNumberScan onFound={(p) => selectPatient(p)} />
+          <PatientSearchList
+            hideRegisterLink
+            onSelectPatient={(p) => selectPatient(p)}
+          />
           {selected ? (
             <div className="space-y-3 border-t border-slate-100 pt-4">
               <PatientIdentityBar patient={selected} />
               <Button type="button" onClick={() => setVisitOpen(true)}>
-                Start new visit
+                Bill & start visit
               </Button>
             </div>
-          ) : (
-            <p className="text-xs text-slate-500">
-              Search and click Select on a patient to start a visit.
-            </p>
-          )}
+          ) : null}
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <QueueBoard
             station={QueueStation.TRIAGE}
             hrefPrefix="/nurse"
-            title="Triage queue (incoming visits)"
+            title="Triage queue"
           />
         </div>
       </div>
+
       {registerOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
@@ -104,19 +126,17 @@ export function ReceptionWorkspace({
             onClick={() => setRegisterOpen(false)}
           />
           <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-semibold">Register patient</h3>
+            <h3 className="mb-4 text-lg font-semibold">New patient</h3>
             <PatientRegisterForm
               showCancelLink={false}
               onRegistered={(patient) => {
                 setRegisterOpen(false);
-                setSelected(patient);
-                setVisitOpen(true);
-                setRegisterDialogPatient(patient);
+                selectPatient(patient, true);
                 const name = [patient.firstName, patient.lastName]
                   .filter(Boolean)
                   .join(" ");
                 announceClinic(
-                  `Patient ${name}, number ${patient.patientNumber}, registered successfully.`,
+                  `Patient ${name}, number ${patient.patientNumber}, registered.`,
                 );
               }}
             />
@@ -131,6 +151,7 @@ export function ReceptionWorkspace({
           </div>
         </div>
       ) : null}
+
       {visitOpen && selected ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button
@@ -139,25 +160,29 @@ export function ReceptionWorkspace({
             aria-label="Close"
             onClick={() => setVisitOpen(false)}
           />
-          <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
-            <h3 className="mb-4 text-lg font-semibold">Start visit</h3>
-            <p className="mb-3 text-sm text-slate-600">
-              Patient is registered. Confirm service to send them to the triage
-              queue.
-            </p>
+          <div className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+            <h3 className="mb-4 text-lg font-semibold">
+              {justRegistered ? "Registered — bill & start" : "Start visit"}
+            </h3>
             <StartVisitForm
               patient={selected}
-              onSuccess={(encounter) => {
+              submitLabel="Start visit"
+              onSuccess={({ encounter, paid }) => {
                 const p = selected;
                 setVisitOpen(false);
                 setSelected(null);
+                setJustRegistered(false);
                 setLastEncounter(encounter);
+                setLastPaid(paid);
                 if (p) {
                   announceClinic(
-                    `${p.firstName} ${p.lastName}, please proceed to triage.`,
+                    paid
+                      ? `${p.firstName} ${p.lastName}, payment received. Please proceed.`
+                      : `${p.firstName} ${p.lastName}, please proceed.`,
                   );
                 }
-                if (embedded && onVisitStarted) {
+                // Already paid in dialog — no need to jump to Billing
+                if (embedded && onVisitStarted && !paid) {
                   onVisitStarted(encounter);
                 }
               }}
@@ -165,24 +190,6 @@ export function ReceptionWorkspace({
           </div>
         </div>
       ) : null}
-
-      <SimpleDialog
-        open={registerDialogPatient != null}
-        title="Patient registered"
-        primaryLabel="Start visit"
-        onPrimary={() => setRegisterDialogPatient(null)}
-        onClose={() => setRegisterDialogPatient(null)}
-      >
-        {registerDialogPatient ? (
-          <p>
-            <strong>
-              {registerDialogPatient.firstName} {registerDialogPatient.lastName}
-            </strong>{" "}
-            ({registerDialogPatient.patientNumber}) is in the system. Confirm the visit
-            dialog to send them to triage, then bill from the Billing tab.
-          </p>
-        ) : null}
-      </SimpleDialog>
     </div>
   );
 }

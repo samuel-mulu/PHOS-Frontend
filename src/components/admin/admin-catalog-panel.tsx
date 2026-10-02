@@ -86,7 +86,7 @@ export function AdminCatalogPanel() {
   const [svcForm, setSvcForm] = useState({
     code: "",
     name: "",
-    priceCents: "",
+    priceEtb: "",
     durationMinutes: "",
   });
 
@@ -233,10 +233,10 @@ export function AdminCatalogPanel() {
         </Card>
 
         <Card className="p-4">
-          <Label htmlFor="sel-dept">Department (consultation / visit services)</Label>
+          <Label htmlFor="sel-dept">Visit fees (for front desk)</Label>
           <p className="mt-1 text-xs text-slate-500">
-            Each service price becomes the consultation line on new invoices for that
-            visit type.
+            Create fees here (registration, consultation, patient card). Front
+            desk picks them from the start-visit dropdown.
           </p>
           <select
             id="sel-dept"
@@ -266,19 +266,53 @@ export function AdminCatalogPanel() {
               className="mt-4 grid gap-2 border-t border-slate-100 pt-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                const price = Number.parseInt(svcForm.priceCents, 10);
+                const etb = Number.parseFloat(svcForm.priceEtb);
+                const priceCents = Number.isFinite(etb)
+                  ? Math.round(etb * 100)
+                  : 0;
                 serviceCreate.mutate({
                   departmentId: selectedDept,
                   code: svcForm.code,
                   name: svcForm.name,
-                  priceCents: Number.isFinite(price) ? price : 0,
+                  priceCents,
                   durationMinutes: svcForm.durationMinutes
                     ? Number.parseInt(svcForm.durationMinutes, 10)
                     : undefined,
                 });
+                setSvcForm({
+                  code: "",
+                  name: "",
+                  priceEtb: "",
+                  durationMinutes: "",
+                });
               }}
             >
-              <p className="text-xs font-medium text-slate-600">New service</p>
+              <p className="text-xs font-medium text-slate-600">New fee</p>
+              <div className="flex flex-wrap gap-1">
+                {(
+                  [
+                    ["REG", "Registration fee", "50"],
+                    ["CONSULT", "Consultation", "200"],
+                    ["CARD", "Patient card", "20"],
+                  ] as const
+                ).map(([code, name, price]) => (
+                  <button
+                    key={code}
+                    type="button"
+                    className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
+                    onClick={() =>
+                      setSvcForm({
+                        code,
+                        name,
+                        priceEtb: price,
+                        durationMinutes: "",
+                      })
+                    }
+                  >
+                    + {name}
+                  </button>
+                ))}
+              </div>
               <Input
                 placeholder="Code"
                 required
@@ -288,7 +322,7 @@ export function AdminCatalogPanel() {
                 }
               />
               <Input
-                placeholder="Name"
+                placeholder="Fee name"
                 required
                 value={svcForm.name}
                 onChange={(e) =>
@@ -296,12 +330,12 @@ export function AdminCatalogPanel() {
                 }
               />
               <Input
-                placeholder="Consultation fee (cents, e.g. 50000 = 500 ETB)"
+                placeholder="Price (ETB)"
                 required
-                inputMode="numeric"
-                value={svcForm.priceCents}
+                inputMode="decimal"
+                value={svcForm.priceEtb}
                 onChange={(e) =>
-                  setSvcForm({ ...svcForm, priceCents: e.target.value })
+                  setSvcForm({ ...svcForm, priceEtb: e.target.value })
                 }
               />
               <Input
@@ -313,7 +347,7 @@ export function AdminCatalogPanel() {
                 }
               />
               <Button type="submit" size="sm" disabled={serviceCreate.isPending}>
-                Add service
+                Add fee
               </Button>
             </form>
           ) : null}

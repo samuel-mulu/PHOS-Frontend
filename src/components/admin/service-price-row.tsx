@@ -17,20 +17,24 @@ export function ServicePriceRow({
   onToggleActive: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [priceCents, setPriceCents] = useState(String(service.priceCents));
+  const [priceEtb, setPriceEtb] = useState(
+    (service.priceCents / 100).toFixed(2),
+  );
   const queryClient = useQueryClient();
 
   const save = useMutation({
     mutationFn: () => {
-      const parsed = Number.parseInt(priceCents, 10);
-      if (!Number.isFinite(parsed) || parsed < 0) {
-        throw new Error("Enter a valid price in cents");
+      const etb = Number.parseFloat(priceEtb);
+      if (!Number.isFinite(etb) || etb < 0) {
+        throw new Error("Enter a valid price in ETB");
       }
-      return updateService(service.id, { priceCents: parsed });
+      return updateService(service.id, {
+        priceCents: Math.round(etb * 100),
+      });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["services"] });
-      toast.success("Consultation fee updated");
+      toast.success("Fee updated");
       setEditing(false);
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
@@ -41,18 +45,19 @@ export function ServicePriceRow({
       <div className="min-w-0 flex-1">
         <p className="font-medium text-slate-900">{service.name}</p>
         <p className="text-xs text-slate-500">
-          Code {service.code} · {service.active ? "Active" : "Inactive"}
+          {service.code} · {service.active ? "Active" : "Inactive"}
         </p>
       </div>
       {editing ? (
         <div className="flex items-center gap-1">
           <Input
-            className="h-8 w-28 text-sm"
-            inputMode="numeric"
-            value={priceCents}
-            onChange={(e) => setPriceCents(e.target.value)}
-            aria-label="Price in cents"
+            className="h-8 w-24 text-sm"
+            inputMode="decimal"
+            value={priceEtb}
+            onChange={(e) => setPriceEtb(e.target.value)}
+            aria-label="Price in ETB"
           />
+          <span className="text-xs text-slate-500">ETB</span>
           <Button
             type="button"
             size="sm"
@@ -67,7 +72,7 @@ export function ServicePriceRow({
             variant="ghost"
             onClick={() => {
               setEditing(false);
-              setPriceCents(String(service.priceCents));
+              setPriceEtb((service.priceCents / 100).toFixed(2));
             }}
           >
             Cancel
@@ -78,9 +83,13 @@ export function ServicePriceRow({
           <span className="text-sm font-semibold tabular-nums text-teal-900">
             {formatCents(service.priceCents)}
           </span>
-          <span className="text-[10px] uppercase text-slate-400">visit fee</span>
-          <Button type="button" size="sm" variant="outline" onClick={() => setEditing(true)}>
-            Edit fee
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setEditing(true)}
+          >
+            Edit
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={onToggleActive}>
             {service.active ? "Off" : "On"}
