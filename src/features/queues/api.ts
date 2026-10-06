@@ -12,11 +12,23 @@ export type QueueEntry = {
   enteredAt: string;
   calledAt: string | null;
   serviceStartedAt: string | null;
+  assignedToId?: string | null;
+  assignedTo?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
   encounter: {
     id: string;
     encounterNumber: string;
     status: string;
     reason: string | null;
+    assignedDoctorId?: string | null;
+    assignedDoctor?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+    } | null;
     patient: Patient;
     service: { name: string };
   };

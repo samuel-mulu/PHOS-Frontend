@@ -60,6 +60,7 @@ export async function createPrescription(
   consultationId: string,
   body: {
     notes?: string;
+    sendToPharmacy?: boolean;
     items: Array<{
       medicineId: string;
       dose: string;

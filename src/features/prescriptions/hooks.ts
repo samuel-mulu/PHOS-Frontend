@@ -35,9 +35,15 @@ export function useCreatePrescription(consultationId: string) {
   return useMutation({
     mutationFn: (body: Parameters<typeof createPrescription>[1]) =>
       createPrescription(consultationId, body),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["prescriptions"] });
-      toast.success("Prescription created");
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      toast.success(
+        variables.sendToPharmacy
+          ? "Saved and sent to pharmacy"
+          : "Prescription saved — send from Finish when ready",
+      );
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

@@ -8,15 +8,51 @@ import type {
 } from "@/types/patient";
 import type { CreatePatientFormValues } from "./schemas";
 
+export type PatientChartPerson = {
+  id: string;
+  firstName: string;
+  lastName: string;
+};
+
 export type PatientChartEncounter = {
   id: string;
+  encounterNumber?: string;
   startedAt: string;
+  closedAt?: string | null;
   type: string;
   status: string;
-  service?: { name: string } | null;
-  triage?: { chiefComplaint: string | null } | null;
+  reason?: string | null;
+  priority?: string;
+  service?: { id?: string; name: string; code?: string } | null;
+  department?: { id?: string; name: string } | null;
+  assignedDoctor?: PatientChartPerson | null;
+  triage?: {
+    temperature?: number | null;
+    systolic?: number | null;
+    diastolic?: number | null;
+    heartRate?: number | null;
+    spo2?: number | null;
+    bloodGlucoseMgDl?: number | null;
+    notes?: string | null;
+  } | null;
   consultation?: {
-    diagnoses: Array<{ label: string; isPrimary: boolean }>;
+    id?: string;
+    status?: string;
+    chiefComplaint?: string | null;
+    historyPresentIllness?: string | null;
+    physicalExam?: string | null;
+    assessment?: string | null;
+    plan?: string | null;
+    notes?: string | null;
+    finalizedAt?: string | null;
+    doctor?: PatientChartPerson | null;
+    diagnoses: Array<{
+      id?: string;
+      label: string;
+      code?: string | null;
+      type?: string;
+      isPrimary: boolean;
+    }>;
   } | null;
 };
 
@@ -33,9 +69,26 @@ export type PatientChartInvoice = {
 
 export type PatientChartPrescription = {
   id: string;
+  encounterId?: string;
+  prescriptionNumber?: string;
   status: string;
   createdAt: string;
-  items: Array<{ medicine: { name: string }; quantity: number }>;
+  notes?: string | null;
+  doctor?: PatientChartPerson | null;
+  items: Array<{
+    dose?: string;
+    route?: string;
+    frequency?: string;
+    duration?: string;
+    quantity: number;
+    instructions?: string | null;
+    medicine: {
+      name: string;
+      code?: string;
+      strength?: string | null;
+      form?: string | null;
+    };
+  }>;
 };
 
 export type PatientChart = {

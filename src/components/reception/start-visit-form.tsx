@@ -11,6 +11,7 @@ import {
   useDepartments,
   useServices,
 } from "@/features/facilities/hooks";
+import { useDoctors } from "@/features/users/use-doctors";
 import { createEncounter, type Encounter } from "@/features/encounters/api";
 import { createInvoice, issueInvoice } from "@/features/billing/api";
 import { createPayment } from "@/features/payments/api";
@@ -49,6 +50,7 @@ export function StartVisitForm({
 }) {
   const queryClient = useQueryClient();
   const facilities = useFacilities();
+  const doctors = useDoctors();
   const cashSession = useCurrentCashSession();
   const [facilityId, setFacilityId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
@@ -59,6 +61,7 @@ export function StartVisitForm({
     EncounterPriority.ROUTINE,
   );
   const [reason, setReason] = useState("");
+  const [assignedDoctorId, setAssignedDoctorId] = useState("");
   const [initialStation, setInitialStation] =
     useState<InitialStation>(QueueStation.DOCTOR);
   const [collectPayment, setCollectPayment] = useState(true);
@@ -131,6 +134,7 @@ export function StartVisitForm({
         priority,
         reason: reason || undefined,
         initialStation,
+        assignedDoctorId: assignedDoctorId || undefined,
       });
 
       let paid = false;
@@ -220,6 +224,31 @@ export function StartVisitForm({
           />
         </div>
       </div>
+
+      <Field label="Assign doctor (by name)">
+        <select
+          className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+          value={assignedDoctorId}
+          onChange={(e) => setAssignedDoctorId(e.target.value)}
+        >
+          <option value="">Any available doctor</option>
+          {doctors.data?.map((d) => (
+            <option key={d.id} value={d.id}>
+              Dr. {d.firstName} {d.lastName}
+            </option>
+          ))}
+        </select>
+        {doctors.isSuccess && (doctors.data?.length ?? 0) === 0 ? (
+          <p className="mt-1 text-xs text-amber-800">
+            No active doctor users yet. Admin → Users to create a DOCTOR account.
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-slate-500">
+            Patient appears on that doctor&apos;s queue. Lab results return to
+            the same doctor.
+          </p>
+        )}
+      </Field>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Facility">

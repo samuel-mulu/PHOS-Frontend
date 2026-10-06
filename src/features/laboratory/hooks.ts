@@ -23,7 +23,7 @@ export function useLabOrders(status?: LabOrderStatus) {
   return useQuery({
     queryKey: ["lab", "orders", status ?? "all"],
     queryFn: () => fetchLabOrders(status),
-    refetchInterval: 20_000,
+    refetchInterval: 8_000,
   });
 }
 
@@ -66,7 +66,10 @@ export function useVerifyLabOrder(orderId: string) {
     mutationFn: () => verifyLabOrder(orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["lab", "orders"] });
-      toast.success("Order verified — doctor can review results");
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      toast.success("Verified and sent to doctor queue");
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

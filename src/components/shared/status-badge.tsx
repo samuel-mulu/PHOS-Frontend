@@ -60,6 +60,7 @@ export function encounterStatusBadge(status: string) {
     case "COMPLETED":
       return <StatusBadge label={label} tone="green" />;
     case "WAITING_PAYMENT":
+    case "WAITING_REVIEW":
       return <StatusBadge label={label} tone="amber" />;
     case "CANCELLED":
       return <StatusBadge label={label} tone="red" />;
@@ -73,5 +74,76 @@ export function encounterStatusBadge(status: string) {
       return <StatusBadge label={label} tone="teal" />;
     default:
       return <StatusBadge label={label} tone="slate" />;
+  }
+}
+
+/** Shared doctor ↔ lab vocabulary for lab order lifecycle. */
+export function labOrderStatusLabel(status: string): string {
+  switch (status.toUpperCase()) {
+    case "ORDERED":
+      return "Sent to lab";
+    case "RECEIVED":
+      return "Lab received sample";
+    case "PROCESSING":
+      return "In progress";
+    case "RESULT_ENTERED":
+      return "Awaiting verification";
+    case "VERIFIED":
+      return "Result ready";
+    case "CANCELLED":
+      return "Cancelled";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
+
+export function labOrderStatusTone(status: string): Tone {
+  switch (status.toUpperCase()) {
+    case "ORDERED":
+      return "slate";
+    case "RECEIVED":
+      return "blue";
+    case "PROCESSING":
+    case "RESULT_ENTERED":
+      return "amber";
+    case "VERIFIED":
+      return "green";
+    case "CANCELLED":
+      return "red";
+    default:
+      return "slate";
+  }
+}
+
+export function labOrderStatusBadge(status: string) {
+  return (
+    <StatusBadge
+      label={labOrderStatusLabel(status)}
+      tone={labOrderStatusTone(status)}
+    />
+  );
+}
+
+/** Progress steps for doctor/lab UI (ORDERED → VERIFIED). */
+export const LAB_PROGRESS_STEPS = [
+  { key: "ORDERED", label: "Sent" },
+  { key: "RECEIVED", label: "Received" },
+  { key: "PROCESSING", label: "Processing" },
+  { key: "VERIFIED", label: "Verified" },
+] as const;
+
+export function labOrderStepIndex(status: string): number {
+  switch (status.toUpperCase()) {
+    case "ORDERED":
+      return 0;
+    case "RECEIVED":
+      return 1;
+    case "PROCESSING":
+    case "RESULT_ENTERED":
+      return 2;
+    case "VERIFIED":
+      return 3;
+    default:
+      return -1;
   }
 }

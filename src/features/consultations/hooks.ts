@@ -50,16 +50,24 @@ export function useAddDiagnosis(consultationId: string, encounterId: string) {
 export function useFinalizeConsultation(
   consultationId: string,
   encounterId: string,
+  options?: { redirect?: boolean },
 ) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const redirect = options?.redirect !== false;
   return useMutation({
     mutationFn: () => finalizeConsultation(consultationId),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["consultation", encounterId] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["consultation", encounterId],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["encounters", encounterId],
+      });
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
-      toast.success("Consultation finalized");
-      router.push("/doctor");
+      void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      toast.success("Consultation completed — patient left your queue");
+      if (redirect) router.push("/doctor");
     },
     onError: (error) => toast.error(normalizeApiError(error).message),
   });

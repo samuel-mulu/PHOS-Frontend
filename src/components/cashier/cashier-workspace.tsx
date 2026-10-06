@@ -1,29 +1,43 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchInvoice } from "@/features/billing/api";
 import { SimpleDialog } from "@/components/shared/simple-dialog";
-import { announceClinic } from "@/lib/voice/announce";
+import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoadingBlock } from "@/components/shared/state-blocks";
-import { QueueBoard } from "@/components/queues/queue-board";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingBlock,
+} from "@/components/shared/state-blocks";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeaderCell,
+  DataTableRow,
+} from "@/components/shared/data-table";
 import { useInvoice } from "@/features/billing/hooks";
 import { useEncounter } from "@/features/encounters/hooks";
 import { useCreatePayment, useCreateRefund } from "@/features/payments/hooks";
 import { PrintReceipt } from "@/components/print/print-receipt";
-import type { QueueEntry } from "@/features/queues/api";
+import { useQueue, useUpdateQueueEntry } from "@/features/queues/hooks";
 import { useCurrentCashSession } from "@/features/cash-sessions/hooks";
 import { PaymentMethod } from "@/types/finance";
 import { formatCents } from "@/lib/format/money";
+import { formatWaitingSince } from "@/lib/format/wait-time";
 import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { QueueStation } from "@/types/encounter";
 import { invoiceStatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
+
+type CashierTab = "waiting" | "collect" | "load";
 
 const PRIMARY_METHODS: PaymentMethod[] = [
   PaymentMethod.CASH,
@@ -37,6 +51,23 @@ const OTHER_METHODS: PaymentMethod[] = [
   PaymentMethod.OTHER,
 ];
 
+function RedBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+function withQuery(base: string, params: Record<string, string>) {
+  const url = new URL(base, "http://local");
+  for (const [k, v] of Object.entries(params)) {
+    if (v) url.searchParams.set(k, v);
+  }
+  return `${url.pathname}${url.search}`;
+}
+
 export function CashierWorkspace({
   embedded,
   onInvoiceFullyPaid,
@@ -49,17 +80,28 @@ export function CashierWorkspace({
   const encounterFromQueue = searchParams.get("encounterId") ?? "";
   const [invoiceId, setInvoiceId] = useState(initialInvoice);
   const [loadId, setLoadId] = useState(initialInvoice);
-  const [showManualLoad, setShowManualLoad] = useState(!initialInvoice);
+  const [tab, setTab] = useState<CashierTab>(
+    initialInvoice || encounterFromQueue ? "collect" : "waiting",
+  );
 
   const session = useCurrentCashSession();
+  const queue = useQueue(QueueStation.CASHIER, 8_000);
+  const updateEntry = useUpdateQueueEntry();
   const invoice = useInvoice(loadId || null);
   const encounterQuery = useEncounter(encounterFromQueue || "");
+
+  const waitingCount = queue.data?.length ?? 0;
+  const hasCollect = Boolean(loadId && invoice.data);
+  const balanceDue =
+    invoice.data != null
+      ? invoice.data.totalCents - invoice.data.paidCents
+      : 0;
 
   useEffect(() => {
     if (initialInvoice) {
       setInvoiceId(initialInvoice);
       setLoadId(initialInvoice);
-      setShowManualLoad(false);
+      setTab("collect");
     }
   }, [initialInvoice]);
 
@@ -71,78 +113,317 @@ export function CashierWorkspace({
     if (inv?.id) {
       setInvoiceId(inv.id);
       setLoadId(inv.id);
-      setShowManualLoad(false);
+      setTab("collect");
     }
   }, [encounterQuery.data?.invoice]);
 
+  // New patients in queue → highlight Waiting tab
+  const prevWaiting = useRef(0);
+  useEffect(() => {
+    if (waitingCount > prevWaiting.current && !loadId) {
+      setTab("waiting");
+    }
+    prevWaiting.current = waitingCount;
+  }, [waitingCount, loadId]);
+
   const queueBase = embedded ? "/front-desk?tab=cashier" : "/cashier";
 
+  const waitingItems = useMemo(() => queue.data ?? [], [queue.data]);
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-4">
       {!embedded ? (
-        <h1 className="text-xl font-semibold text-slate-900">Cashier</h1>
+        <div>
+          <h1 className="text-xl font-semibold text-slate-900">Cashier</h1>
+          <p className="text-sm text-slate-600">
+            Call patients waiting to pay, then collect. Red badges update live.
+          </p>
+        </div>
       ) : null}
 
       <SessionBanner session={session} />
 
-      {loadId && invoice.isLoading ? (
-        <LoadingBlock label="Loading invoice" />
-      ) : null}
-
-      {loadId && invoice.data ? (
-        <PaymentPanel
-          invoiceId={loadId}
-          invoiceNumber={invoice.data.invoiceNumber}
-          patientName={
-            invoice.data.patient
-              ? `${invoice.data.patient.firstName} ${invoice.data.patient.lastName}`
-              : ""
-          }
-          balance={invoice.data.totalCents - invoice.data.paidCents}
-          totalCents={invoice.data.totalCents}
-          paidCents={invoice.data.paidCents}
-          status={invoice.data.status}
-          cashSessionId={session.data?.id}
-          payments={invoice.data.payments}
-          onFullyPaid={onInvoiceFullyPaid}
+      <nav
+        className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
+        aria-label="Cashier queues"
+      >
+        <TabButton
+          active={tab === "waiting"}
+          onClick={() => setTab("waiting")}
+          label="Waiting to pay"
+          badge={waitingCount}
+          emphasize={waitingCount > 0}
         />
+        <TabButton
+          active={tab === "collect"}
+          onClick={() => setTab("collect")}
+          label="Collect payment"
+          badge={hasCollect && balanceDue > 0 ? 1 : 0}
+          emphasize={hasCollect && balanceDue > 0}
+        />
+        <TabButton
+          active={tab === "load"}
+          onClick={() => setTab("load")}
+          label="Load invoice"
+          badge={0}
+          muted
+        />
+      </nav>
+
+      {tab === "waiting" ? (
+        <section
+          className={cn(
+            "rounded-lg border bg-white p-4 shadow-sm",
+            waitingCount > 0
+              ? "border-red-200 ring-1 ring-red-100"
+              : "border-slate-200",
+          )}
+        >
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800">
+                Waiting to pay
+              </h2>
+              <p className="text-xs text-slate-500">
+                Call → Start → Collect payment
+              </p>
+            </div>
+            {waitingCount > 0 ? (
+              <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
+                {waitingCount} waiting
+              </span>
+            ) : null}
+          </div>
+
+          {queue.isLoading ? (
+            <LoadingBlock label="Loading cashier queue" />
+          ) : null}
+          {queue.isError ? (
+            <ErrorState
+              message="Could not load cashier queue."
+              onRetry={() => void queue.refetch()}
+            />
+          ) : null}
+          {queue.isSuccess && waitingItems.length === 0 ? (
+            <EmptyState
+              title="No one waiting"
+              description="When a doctor or desk sends a patient for payment, they appear here."
+            />
+          ) : null}
+          {waitingItems.length > 0 ? (
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeaderCell>Patient</DataTableHeaderCell>
+                  <DataTableHeaderCell>Visit</DataTableHeaderCell>
+                  <DataTableHeaderCell>Waiting</DataTableHeaderCell>
+                  <DataTableHeaderCell>Status</DataTableHeaderCell>
+                  <DataTableHeaderCell> </DataTableHeaderCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {waitingItems.map((entry) => {
+                  const p = entry.encounter.patient;
+                  const href = withQuery(queueBase, {
+                    encounterId: entry.encounterId,
+                  });
+                  return (
+                    <DataTableRow
+                      key={entry.id}
+                      className="bg-red-50/30"
+                    >
+                      <DataTableCell>
+                        <span className="font-medium">
+                          {p.firstName} {p.lastName}
+                        </span>
+                        <p className="text-xs text-slate-500">
+                          {p.patientNumber}
+                        </p>
+                      </DataTableCell>
+                      <DataTableCell>
+                        {entry.encounter.encounterNumber}
+                      </DataTableCell>
+                      <DataTableCell>
+                        {formatWaitingSince(entry.enteredAt)}
+                      </DataTableCell>
+                      <DataTableCell className="text-xs">
+                        {entry.status.replaceAll("_", " ")}
+                      </DataTableCell>
+                      <DataTableCell className="text-right">
+                        {entry.status === "WAITING" ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            disabled={updateEntry.isPending}
+                            onClick={() =>
+                              updateEntry.mutate(
+                                { id: entry.id, status: "CALLED" },
+                                {
+                                  onSuccess: () => {
+                                    announceClinic(
+                                      `${p.firstName} ${p.lastName}, please proceed to ${stationCallLabel("CASHIER")}.`,
+                                    );
+                                  },
+                                },
+                              )
+                            }
+                          >
+                            Call
+                          </Button>
+                        ) : null}
+                        {(entry.status === "WAITING" ||
+                          entry.status === "CALLED") && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="ml-1"
+                            disabled={updateEntry.isPending}
+                            onClick={() =>
+                              updateEntry.mutate({
+                                id: entry.id,
+                                status: "IN_SERVICE",
+                              })
+                            }
+                          >
+                            Start
+                          </Button>
+                        )}
+                        <Link href={href}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="ml-2 bg-red-700 hover:bg-red-800"
+                            onClick={() => setTab("collect")}
+                          >
+                            Collect
+                          </Button>
+                        </Link>
+                      </DataTableCell>
+                    </DataTableRow>
+                  );
+                })}
+              </DataTableBody>
+            </DataTable>
+          ) : null}
+        </section>
       ) : null}
 
-      {!loadId || showManualLoad ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-2">
-          <Label className="text-xs">Load invoice</Label>
+      {tab === "collect" ? (
+        <section className="space-y-3">
+          {encounterFromQueue && encounterQuery.isLoading ? (
+            <LoadingBlock label="Loading visit invoice" />
+          ) : null}
+          {loadId && invoice.isLoading ? (
+            <LoadingBlock label="Loading invoice" />
+          ) : null}
+          {loadId && invoice.data ? (
+            <PaymentPanel
+              invoiceId={loadId}
+              invoiceNumber={invoice.data.invoiceNumber}
+              patientName={
+                invoice.data.patient
+                  ? `${invoice.data.patient.firstName} ${invoice.data.patient.lastName}`
+                  : ""
+              }
+              balance={invoice.data.totalCents - invoice.data.paidCents}
+              totalCents={invoice.data.totalCents}
+              paidCents={invoice.data.paidCents}
+              status={invoice.data.status}
+              cashSessionId={session.data?.id}
+              payments={invoice.data.payments}
+              onFullyPaid={(id) => {
+                onInvoiceFullyPaid?.(id);
+                setTab("waiting");
+              }}
+              onBackToQueue={() => setTab("waiting")}
+            />
+          ) : (
+            <EmptyState
+              title="No invoice open"
+              description="Open a patient from Waiting to pay, or load an invoice by ID."
+            />
+          )}
+          {!loadId ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setTab("load")}
+            >
+              Load invoice by ID
+            </Button>
+          ) : null}
+        </section>
+      ) : null}
+
+      {tab === "load" ? (
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">
+              Load invoice
+            </h2>
+            <p className="text-xs text-slate-500">
+              Paste an invoice ID if the patient is not in the queue
+            </p>
+          </div>
           <div className="flex gap-2">
             <Input
               placeholder="Invoice ID"
               value={invoiceId}
               onChange={(e) => setInvoiceId(e.target.value.trim())}
             />
-            <Button type="button" onClick={() => setLoadId(invoiceId)}>
-              Load
+            <Button
+              type="button"
+              onClick={() => {
+                setLoadId(invoiceId);
+                setTab("collect");
+              }}
+              disabled={!invoiceId}
+            >
+              Open
             </Button>
           </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="text-xs text-slate-500 underline"
-          onClick={() => setShowManualLoad(true)}
-        >
-          Load a different invoice
-        </button>
-      )}
-
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <QueueBoard
-          station={QueueStation.CASHIER}
-          hrefPrefix={queueBase}
-          title="Cashier queue"
-          resolveHref={(entry: QueueEntry) =>
-            `${queueBase}&encounterId=${entry.encounterId}`
-          }
-        />
-      </div>
+        </section>
+      ) : null}
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  label,
+  badge,
+  emphasize,
+  muted,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  badge: number;
+  emphasize?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+        active
+          ? "bg-teal-800 text-white"
+          : emphasize && badge > 0
+            ? "bg-red-50 text-red-900 ring-1 ring-red-200 hover:bg-red-100"
+            : muted
+              ? "bg-slate-50 text-slate-600 hover:bg-slate-100"
+              : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+      )}
+    >
+      {label}
+      <RedBadge count={badge} />
+    </button>
   );
 }
 
@@ -183,6 +464,7 @@ function PaymentPanel({
   cashSessionId,
   payments,
   onFullyPaid,
+  onBackToQueue,
 }: {
   invoiceId: string;
   invoiceNumber: string;
@@ -193,6 +475,7 @@ function PaymentPanel({
   status: string;
   cashSessionId?: string;
   onFullyPaid?: (invoiceId: string) => void;
+  onBackToQueue?: () => void;
   payments: Array<{
     id: string;
     paymentNumber: string;
@@ -227,10 +510,34 @@ function PaymentPanel({
     setAmountEtb((balance / 100).toFixed(2));
   }, [balance]);
 
-  if (!payable && payments.length === 0) return null;
+  if (!payable && payments.length === 0) {
+    return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-sm text-slate-600">
+          Invoice {invoiceNumber} has nothing to collect ({status}).
+        </p>
+        {onBackToQueue ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={onBackToQueue}
+          >
+            Back to waiting
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <div
+      className={cn(
+        "space-y-4 rounded-lg border bg-white p-5 shadow-sm",
+        payable ? "border-red-200 ring-1 ring-red-100" : "border-slate-200",
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-lg font-semibold text-slate-900">
@@ -372,57 +679,70 @@ function PaymentPanel({
             </p>
           ) : null}
 
-          <Button
-            type="button"
-            size="lg"
-            className="w-full sm:w-auto"
-            disabled={
-              pay.isPending ||
-              amountCents < 1 ||
-              amountCents > balance ||
-              (method === PaymentMethod.CASH && !cashSessionId)
-            }
-            onClick={() =>
-              pay.mutate(
-                {
-                  amountCents,
-                  method,
-                  referenceNumber: reference || undefined,
-                  cashSessionId:
-                    method === PaymentMethod.CASH ? cashSessionId : undefined,
-                },
-                {
-                  onSuccess: async (payment) => {
-                    setLastReceipt({
-                      paymentNumber: payment.paymentNumber,
-                      amountCents: payment.amountCents,
-                      method: payment.method,
-                    });
-                    const inv = await queryClient.fetchQuery({
-                      queryKey: ["invoices", invoiceId],
-                      queryFn: () => fetchInvoice(invoiceId),
-                    });
-                    if (inv.status === "PAID") {
-                      setPaidDialogOpen(true);
-                      announceClinic(
-                        `Payment complete for ${patientName}. Invoice paid in full.`,
-                      );
-                      onFullyPaid?.(invoiceId);
-                    }
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="lg"
+              disabled={
+                pay.isPending ||
+                amountCents < 1 ||
+                amountCents > balance ||
+                (method === PaymentMethod.CASH && !cashSessionId)
+              }
+              onClick={() =>
+                pay.mutate(
+                  {
+                    amountCents,
+                    method,
+                    referenceNumber: reference || undefined,
+                    cashSessionId:
+                      method === PaymentMethod.CASH
+                        ? cashSessionId
+                        : undefined,
                   },
-                },
-              )
-            }
-          >
-            {pay.isPending
-              ? "Processing…"
-              : `Take payment · ${formatCents(amountCents || 0)}`}
-          </Button>
+                  {
+                    onSuccess: async (payment) => {
+                      setLastReceipt({
+                        paymentNumber: payment.paymentNumber,
+                        amountCents: payment.amountCents,
+                        method: payment.method,
+                      });
+                      const inv = await queryClient.fetchQuery({
+                        queryKey: ["invoices", invoiceId],
+                        queryFn: () => fetchInvoice(invoiceId),
+                      });
+                      if (inv.status === "PAID") {
+                        setPaidDialogOpen(true);
+                        announceClinic(
+                          `Payment complete for ${patientName}. Invoice paid in full.`,
+                        );
+                        onFullyPaid?.(invoiceId);
+                      }
+                    },
+                  },
+                )
+              }
+            >
+              {pay.isPending
+                ? "Processing…"
+                : `Take payment · ${formatCents(amountCents || 0)}`}
+            </Button>
+            {onBackToQueue ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={onBackToQueue}
+              >
+                Back to waiting
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       {!payable && status === "PAID" ? (
-        <div className="flex items-center gap-2 border-t border-slate-100 pt-3">
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
           {invoiceStatusBadge("PAID")}
           <span className="text-sm text-emerald-800">Paid in full</span>
           {lastReceipt ? (
@@ -433,6 +753,16 @@ function PaymentPanel({
               amountCents={lastReceipt.amountCents}
               method={lastReceipt.method}
             />
+          ) : null}
+          {onBackToQueue ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onBackToQueue}
+            >
+              Back to waiting
+            </Button>
           ) : null}
         </div>
       ) : null}

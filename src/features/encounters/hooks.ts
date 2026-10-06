@@ -7,6 +7,7 @@ import { isAxiosError } from "axios";
 import {
   createEncounter,
   fetchEncounter,
+  fetchEncounters,
   requestBilling,
   routeEncounter,
   type CreateEncounterInput,
@@ -17,6 +18,14 @@ export function useEncounter(id: string) {
     queryKey: ["encounters", id],
     queryFn: () => fetchEncounter(id),
     enabled: Boolean(id),
+  });
+}
+
+export function useEncounters(params?: { status?: string; patientId?: string }) {
+  return useQuery({
+    queryKey: ["encounters", "list", params?.status ?? "all", params?.patientId ?? ""],
+    queryFn: () => fetchEncounters(params),
+    refetchInterval: params?.status === "WAITING_REVIEW" ? 8_000 : 20_000,
   });
 }
 

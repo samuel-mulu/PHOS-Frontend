@@ -6,10 +6,23 @@ import type {
   UserStatus,
 } from "@/types/user-admin";
 
+export type DoctorOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  departmentId: string | null;
+};
+
 export async function fetchUsers(search?: string) {
   const { data } = await api.get<AdminUser[]>("/users", {
     params: search ? { search } : undefined,
   });
+  return data;
+}
+
+export async function fetchDoctors() {
+  const { data } = await api.get<DoctorOption[]>("/users/doctors");
   return data;
 }
 

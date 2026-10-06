@@ -11,6 +11,8 @@ import {
   updateUserStatus,
 } from "./api";
 
+export { useDoctors } from "./use-doctors";
+
 export function useUsersList(search?: string) {
   return useQuery({
     queryKey: ["admin", "users", search ?? ""],

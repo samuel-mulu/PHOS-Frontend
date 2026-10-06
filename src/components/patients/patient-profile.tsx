@@ -97,11 +97,12 @@ export function PatientProfile({ patientId }: { patientId: string }) {
                   <DataTableCell>{enc.service?.name ?? enc.type}</DataTableCell>
                   <DataTableCell>{enc.status.replaceAll("_", " ")}</DataTableCell>
                   <DataTableCell className="max-w-xs truncate">
-                    {enc.triage?.chiefComplaint ??
+                    {enc.consultation?.chiefComplaint ??
                       enc.consultation?.diagnoses
                         ?.filter((d) => d.isPrimary)
                         .map((d) => d.label)
                         .join(", ") ??
+                      enc.triage?.notes ??
                       "—"}
                   </DataTableCell>
                 </DataTableRow>

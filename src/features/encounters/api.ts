@@ -14,6 +14,12 @@ export type Encounter = {
   priority: EncounterPriority;
   reason: string | null;
   startedAt: string;
+  assignedDoctorId?: string | null;
+  assignedDoctor?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
   patient?: Patient;
   service?: { id: string; name: string; code: string };
   department?: { id: string; name: string; code: string };
@@ -58,6 +64,8 @@ export type CreateEncounterInput = {
   reason?: string;
   /** TRIAGE or DOCTOR — defaults to DOCTOR on the server. */
   initialStation?: "TRIAGE" | "DOCTOR";
+  /** Optional doctor assignment by user id. */
+  assignedDoctorId?: string;
 };
 
 export async function createEncounter(input: CreateEncounterInput) {

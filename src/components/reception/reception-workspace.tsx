@@ -19,12 +19,16 @@ export function ReceptionWorkspace({
   embedded,
   initialPatientId,
   onVisitStarted,
+  onGoCashier,
+  cashierWaiting = 0,
 }: {
   embedded?: boolean;
   /** Open start-visit for this patient (e.g. after register handoff). */
   initialPatientId?: string;
   /** After start visit (embedded front desk): jump to billing. */
   onVisitStarted?: (encounter: Encounter) => void;
+  onGoCashier?: () => void;
+  cashierWaiting?: number;
 } = {}) {
   const [selected, setSelected] = useState<Patient | null>(null);
   const [visitOpen, setVisitOpen] = useState(false);
@@ -70,15 +74,44 @@ export function ReceptionWorkspace({
             </span>
             {encounterStatusBadge(lastEncounter.status)}
           </div>
-          {embedded && onVisitStarted && !lastPaid ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => onVisitStarted(lastEncounter)}
-            >
-              Collect payment
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {embedded && onVisitStarted && !lastPaid ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => onVisitStarted(lastEncounter)}
+              >
+                Go to billing
+              </Button>
+            ) : null}
+            {embedded && onGoCashier && cashierWaiting > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="border-red-200 text-red-900"
+                onClick={onGoCashier}
+              >
+                Cashier ({cashierWaiting})
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {embedded && onGoCashier && cashierWaiting > 0 && !lastEncounter ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-950">
+          <span>
+            {cashierWaiting} waiting at cashier
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            className="bg-red-700 hover:bg-red-800"
+            onClick={onGoCashier}
+          >
+            Open cashier
+          </Button>
         </div>
       ) : null}
 

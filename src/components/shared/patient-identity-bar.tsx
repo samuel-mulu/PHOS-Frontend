@@ -8,6 +8,7 @@ export function PatientIdentityBar({
   patient,
   encounterNumber,
   encounterStatus,
+  assignedDoctor,
 }: {
   patient: Pick<
     Patient,
@@ -15,6 +16,10 @@ export function PatientIdentityBar({
   >;
   encounterNumber?: string;
   encounterStatus?: string;
+  assignedDoctor?: {
+    firstName: string;
+    lastName: string;
+  } | null;
 }) {
   const name = [patient.firstName, patient.middleName, patient.lastName]
     .filter(Boolean)
@@ -33,6 +38,11 @@ export function PatientIdentityBar({
         ) : null}
         {encounterNumber ? (
           <span className="text-slate-600">Encounter {encounterNumber}</span>
+        ) : null}
+        {assignedDoctor ? (
+          <span className="font-medium text-slate-800">
+            Dr. {assignedDoctor.firstName} {assignedDoctor.lastName}
+          </span>
         ) : null}
         {encounterStatus ? encounterStatusBadge(encounterStatus) : null}
       </div>

@@ -28,7 +28,7 @@ export function QueueBoard({
   title: string;
   resolveHref?: (entry: QueueEntry) => string | null;
 }) {
-  const queue = useQueue(station);
+  const queue = useQueue(station, 8_000);
   const updateEntry = useUpdateQueueEntry();
 
   if (queue.isLoading) return <LoadingBlock label={`Loading ${title}`} />;
@@ -45,9 +45,15 @@ export function QueueBoard({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
-        <span className="text-xs text-slate-500">{items.length} waiting</span>
+        {items.length > 0 ? (
+          <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
+            {items.length} waiting
+          </span>
+        ) : (
+          <span className="text-xs text-slate-500">0 waiting</span>
+        )}
       </div>
       {items.length === 0 ? (
         <EmptyState title="Queue is empty" description="New visits will appear here." />
@@ -119,7 +125,7 @@ function QueueRow({
     : `${hrefPrefix}/${entry.encounterId}`;
   const p = entry.encounter.patient;
   return (
-    <DataTableRow>
+    <DataTableRow className={entry.status === "WAITING" ? "bg-red-50/30" : undefined}>
       <DataTableCell>
         <span className="font-medium">
           {p.firstName} {p.lastName}
