@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { normalizeApiError } from "@/lib/api/errors";
 import type { AppointmentStatus } from "@/types/appointment";
 import {
+  checkInAppointment,
   createAppointment,
   fetchAppointments,
   updateAppointmentStatus,
@@ -42,6 +43,25 @@ export function useUpdateAppointmentStatus() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Appointment updated");
+    },
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
+}
+
+export function useCheckInAppointment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      encounterId,
+    }: {
+      id: string;
+      encounterId: string;
+    }) => checkInAppointment(id, encounterId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

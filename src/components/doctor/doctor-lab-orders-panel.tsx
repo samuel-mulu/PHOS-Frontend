@@ -16,6 +16,7 @@ import {
 } from "@/features/laboratory/hooks";
 import { EncounterPriority } from "@/types/encounter";
 import { LabOrderStatus } from "@/types/lab";
+import { sortByCreatedAtDesc } from "@/lib/queues/sort";
 
 const WAITING_STATUSES: LabOrderStatus[] = [
   LabOrderStatus.ORDERED,
@@ -96,8 +97,15 @@ function ReadyResultCard({ order }: { order: LabOrder }) {
 }
 
 function WaitingOrderCard({ order }: { order: LabOrder }) {
+  const statusHint =
+    order.status === LabOrderStatus.ORDERED
+      ? "Waiting for lab to receive"
+      : order.status === LabOrderStatus.RESULT_ENTERED
+        ? "Lab entering / verifying"
+        : "In progress at lab";
+
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <article className="rounded-lg border border-amber-200 bg-amber-50/40 p-3 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium text-slate-900">
@@ -107,6 +115,7 @@ function WaitingOrderCard({ order }: { order: LabOrder }) {
             {order.items.map((i) => i.labTest.code).join(", ")} · Sent{" "}
             {format(new Date(order.createdAt), "dd MMM HH:mm")}
           </p>
+          <p className="mt-0.5 text-xs text-amber-900">{statusHint}</p>
         </div>
         {labOrderStatusBadge(order.status)}
       </div>
@@ -117,13 +126,13 @@ function WaitingOrderCard({ order }: { order: LabOrder }) {
 export function DoctorLabOrdersPanel({
   consultationId,
   isFinalized,
-  preferResults,
+  preferResults: _preferResults,
   onNeedDraft,
   onSentToLab,
 }: {
   consultationId?: string;
   isFinalized: boolean;
-  /** When true (e.g. WAITING_REVIEW), open on results first. */
+  /** Kept for callers; results + pending now show together. */
   preferResults?: boolean;
   onNeedDraft: () => void;
   onSentToLab: () => void;
@@ -136,11 +145,13 @@ export function DoctorLabOrdersPanel({
     EncounterPriority.ROUTINE,
   );
   const [notes, setNotes] = useState("");
-  const [showOrderMore, setShowOrderMore] = useState(false);
+  const [orderOpen, setOrderOpen] = useState(false);
 
   const myOrders = useMemo(
     () =>
-      (labs.data ?? []).filter((o) => o.consultationId === consultationId),
+      sortByCreatedAtDesc(
+        (labs.data ?? []).filter((o) => o.consultationId === consultationId),
+      ),
     [labs.data, consultationId],
   );
 
@@ -153,12 +164,12 @@ export function DoctorLabOrdersPanel({
     [myOrders],
   );
 
-  // Results first when they exist (or encounter is waiting review)
-  const showResultsFirst = ready.length > 0 || preferResults;
-
   useEffect(() => {
-    if (ready.length > 0) setShowOrderMore(false);
-  }, [ready.length]);
+    // Open order form when there is nothing to review yet.
+    if (ready.length === 0 && waiting.length === 0 && !isFinalized) {
+      setOrderOpen(true);
+    }
+  }, [ready.length, waiting.length, isFinalized]);
 
   if (!consultationId) {
     return (
@@ -177,167 +188,164 @@ export function DoctorLabOrdersPanel({
     );
   }
 
-  const orderForm = !isFinalized ? (
-    <div className="space-y-3">
-      <p className="text-xs font-medium text-slate-600">
-        Select tests to send to laboratory
-      </p>
-      {tests.isLoading ? <LoadingBlock label="Loading tests" /> : null}
-      {tests.isSuccess && (tests.data?.length ?? 0) === 0 ? (
-        <p className="text-sm text-amber-800">
-          No lab tests in catalog. Ask admin to add tests.
-        </p>
-      ) : null}
-      <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-slate-100 p-2 text-sm">
-        {tests.data?.map((t) => (
-          <li key={t.id}>
-            <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-slate-50">
-              <input
-                type="checkbox"
-                className="h-4 w-4"
-                checked={selected.includes(t.id)}
-                onChange={() => toggle(t.id)}
-              />
-              <span className="flex-1">
-                {t.name}
-                <span className="ml-1 text-xs text-slate-500">{t.code}</span>
-              </span>
-            </label>
-          </li>
-        ))}
-      </ul>
-      <div className="grid gap-2 sm:grid-cols-2">
-        <div>
-          <Label className="mb-1 block text-xs">Priority</Label>
-          <select
-            className="h-10 w-full rounded-md border border-slate-200 px-2 text-sm"
-            value={priority}
-            onChange={(e) =>
-              setPriority(e.target.value as EncounterPriority)
-            }
-          >
-            {Object.values(EncounterPriority).map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <Label className="mb-1 block text-xs">Clinical notes</Label>
-          <Input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional"
-          />
-        </div>
-      </div>
-      <Button
-        type="button"
-        disabled={!selected.length || create.isPending}
-        onClick={() =>
-          create.mutate(
-            {
-              labTestIds: selected,
-              priority,
-              clinicalNotes: notes || undefined,
-            },
-            {
-              onSuccess: () => {
-                setSelected([]);
-                setNotes("");
-                setShowOrderMore(false);
-                onSentToLab();
-              },
-            },
-          )
-        }
-      >
-        {create.isPending
-          ? "Sending…"
-          : `Send lab order (${selected.length})`}
-      </Button>
-    </div>
-  ) : null;
-
   return (
     <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-800">Laboratory</h2>
-        {ready.length > 0 ? (
-          <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
-            {ready.length} result{ready.length === 1 ? "" : "s"} ready
-          </span>
-        ) : waiting.length > 0 ? (
-          <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950">
-            {waiting.length} waiting at lab
-          </span>
-        ) : null}
+        <div className="flex flex-wrap gap-1.5">
+          {ready.length > 0 ? (
+            <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+              {ready.length} result{ready.length === 1 ? "" : "s"} ready
+            </span>
+          ) : null}
+          {waiting.length > 0 ? (
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950">
+              {waiting.length} pending
+            </span>
+          ) : null}
+        </div>
       </div>
 
-      {/* PRIMARY: results when ready */}
-      {ready.length > 0 ? (
-        <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-900">
-            Results ready for review
-          </h3>
-          {ready.map((order) => (
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Results from lab
+        </h3>
+        {ready.length > 0 ? (
+          ready.map((order) => (
             <ReadyResultCard key={order.id} order={order} />
-          ))}
-        </section>
-      ) : null}
+          ))
+        ) : (
+          <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+            No verified results back yet for this visit.
+          </p>
+        )}
+      </section>
 
-      {/* Waiting at lab (compact) */}
-      {waiting.length > 0 ? (
-        <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Waiting at lab
-          </h3>
-          {waiting.map((order) => (
+      <section className="space-y-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Pending at lab
+        </h3>
+        {waiting.length > 0 ? (
+          waiting.map((order) => (
             <WaitingOrderCard key={order.id} order={order} />
-          ))}
-        </section>
-      ) : null}
+          ))
+        ) : (
+          <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+            Nothing pending at lab right now.
+          </p>
+        )}
+      </section>
 
-      {ready.length === 0 && waiting.length === 0 && !showResultsFirst ? (
-        <p className="text-sm text-slate-500">No lab orders for this visit yet.</p>
-      ) : null}
-
-      {/* Order form: top only when no results yet; otherwise collapsed at bottom */}
       {!isFinalized ? (
-        showResultsFirst ? (
-          <div className="border-t border-slate-100 pt-3">
-            {!showOrderMore ? (
+        <section className="space-y-2 border-t border-slate-100 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Order tests
+            </h3>
+            <Button
+              type="button"
+              size="sm"
+              variant={orderOpen ? "secondary" : "outline"}
+              onClick={() => setOrderOpen((v) => !v)}
+            >
+              {orderOpen ? "Hide order form" : "Order more tests"}
+            </Button>
+          </div>
+          {orderOpen ? (
+            <div className="space-y-3">
+              <p className="text-xs font-medium text-slate-600">
+                Tap tests to order
+              </p>
+              {tests.isLoading ? (
+                <LoadingBlock label="Loading tests" />
+              ) : null}
+              {tests.isSuccess && (tests.data?.length ?? 0) === 0 ? (
+                <p className="text-sm text-amber-800">
+                  No lab tests in catalog. Ask admin to add tests.
+                </p>
+              ) : null}
+              <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-slate-100 p-2">
+                {tests.data?.map((t) => {
+                  const on = selected.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggle(t.id)}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 text-left text-xs font-medium transition-colors",
+                        on
+                          ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100",
+                      )}
+                      title={
+                        t.category ? `${t.category} · ${t.code}` : t.code
+                      }
+                    >
+                      {t.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <Label className="mb-1 block text-xs">Priority</Label>
+                  <select
+                    className="h-10 w-full rounded-md border border-slate-200 px-2 text-sm"
+                    value={priority}
+                    onChange={(e) =>
+                      setPriority(e.target.value as EncounterPriority)
+                    }
+                  >
+                    {Object.values(EncounterPriority).map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label className="mb-1 block text-xs">Clinical notes</Label>
+                  <Input
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+              </div>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowOrderMore(true)}
+                disabled={!selected.length || create.isPending}
+                onClick={() =>
+                  create.mutate(
+                    {
+                      labTestIds: selected,
+                      priority,
+                      clinicalNotes: notes || undefined,
+                    },
+                    {
+                      onSuccess: () => {
+                        setSelected([]);
+                        setNotes("");
+                        setOrderOpen(false);
+                        onSentToLab();
+                      },
+                    },
+                  )
+                }
               >
-                Order more tests
+                {create.isPending
+                  ? "Sending…"
+                  : `Send lab order (${selected.length})`}
               </Button>
-            ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-medium text-slate-600">
-                    New lab order
-                  </p>
-                  <button
-                    type="button"
-                    className="text-xs text-slate-500 underline"
-                    onClick={() => setShowOrderMore(false)}
-                  >
-                    Hide
-                  </button>
-                </div>
-                {orderForm}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="border-t border-slate-100 pt-3">{orderForm}</div>
-        )
-      ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : (
+        <p className="text-sm text-slate-500">
+          Consultation finalized — new lab orders are closed.
+        </p>
+      )}
     </div>
   );
 }

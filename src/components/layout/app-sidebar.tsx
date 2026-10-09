@@ -27,11 +27,11 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <aside className="flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-100">
-      <div className="border-b border-slate-800 px-4 py-4">
+      <div className="shrink-0 border-b border-slate-800 px-4 py-4">
         <p className="text-sm font-semibold tracking-wide">{APP_NAME}</p>
         <p className="mt-1 text-xs text-slate-400">Clinical workstation</p>
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
         <ul className="space-y-0.5">
           {items.map((item) => {
             const active =
@@ -62,7 +62,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
           })}
         </ul>
       </nav>
-      <div className="border-t border-slate-800 px-4 py-3 text-xs text-slate-400">
+      <div className="shrink-0 border-t border-slate-800 px-4 py-3 text-xs text-slate-400">
         <p className="font-medium text-slate-200">
           {user.firstName} {user.lastName}
         </p>

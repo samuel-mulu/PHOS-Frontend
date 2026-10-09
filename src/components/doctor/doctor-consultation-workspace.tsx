@@ -8,11 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FormDraftBanner } from "@/components/shared/form-draft-banner";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
+import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
 import { LoadingBlock, ErrorState } from "@/components/shared/state-blocks";
-import { useFormDraft } from "@/lib/drafts/use-form-draft";
-import { useEncounter } from "@/features/encounters/hooks";
+import {
+  useEncounter,
+  useRouteEncounter,
+} from "@/features/encounters/hooks";
 import {
   consultationSchema,
   diagnosisSchema,
@@ -25,10 +27,6 @@ import {
   useFinalizeConsultation,
   useSaveConsultation,
 } from "@/features/consultations/hooks";
-import {
-  useRequestBilling,
-  useRouteEncounter,
-} from "@/features/encounters/hooks";
 import { DoctorPatientChartPanel } from "@/components/doctor/doctor-patient-chart-panel";
 import {
   DoctorLabOrdersPanel,
@@ -79,7 +77,6 @@ export function DoctorConsultationWorkspace({
   const [orderSubTab, setOrderSubTab] = useState<"lab" | "rx">("lab");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [ensuringDraft, setEnsuringDraft] = useState(false);
-  const requestBilling = useRequestBilling(encounterId);
   const routePatient = useRouteEncounter(encounterId);
 
   const consultation = consultationQuery.data;
@@ -128,23 +125,12 @@ export function DoctorConsultationWorkspace({
     }
   }, [labCounts.ready, encounter.data?.status]);
 
-  const watchedValues = form.watch();
-  const { pendingDraft, clearDraft, dismissDraft } = useFormDraft(
-    `consultation:${encounterId}`,
-    watchedValues,
-    {
-      enabled:
-        consultationQuery.isSuccess && consultation?.status !== "FINALIZED",
-    },
-  );
-
   async function ensureConsultation(): Promise<string | null> {
     if (consultationId) return consultationId;
     setEnsuringDraft(true);
     try {
       const values = form.getValues();
       const saved = await save.mutateAsync(values);
-      clearDraft();
       return saved.id;
     } catch {
       toast.error("Save the notes first, then try again");
@@ -196,14 +182,6 @@ export function DoctorConsultationWorkspace({
         />
       </div>
 
-      {pendingDraft && !isFinalized ? (
-        <FormDraftBanner
-          savedAt={pendingDraft.savedAt}
-          onRestore={() => form.reset(pendingDraft.values)}
-          onDiscard={dismissDraft}
-        />
-      ) : null}
-
       {isFinalized ? (
         <div
           className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950"
@@ -226,7 +204,7 @@ export function DoctorConsultationWorkspace({
             </Button>
             <Link href="/doctor">
               <Button type="button" size="sm">
-                Back to doctor queue
+                Doctor queue
               </Button>
             </Link>
           </div>
@@ -235,15 +213,18 @@ export function DoctorConsultationWorkspace({
 
       {labCounts.ready > 0 && !isFinalized && workflowStep !== "orders" ? (
         <div
-          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-950"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-950"
           role="status"
         >
-          <span>Lab results ready — review on Orders → Laboratory.</span>
+          <span>
+            {labCounts.ready} lab result
+            {labCounts.ready === 1 ? "" : "s"} ready — open Orders → Laboratory.
+          </span>
           <Button
             type="button"
             size="sm"
             variant="outline"
-            className="border-emerald-300 bg-white"
+            className="border-red-300 bg-white"
             onClick={() => {
               setOrderSubTab("lab");
               void goToStep("orders");
@@ -284,19 +265,16 @@ export function DoctorConsultationWorkspace({
             onClick={() => void goToStep(id)}
           >
             {label}
-            {id === "orders" &&
-            (labCounts.ready > 0 || labCounts.waiting > 0) ? (
+            {id === "orders" && labCounts.ready > 0 ? (
               <span
                 className={cn(
                   "ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold",
                   workflowStep === "orders"
                     ? "bg-white/20 text-white"
-                    : labCounts.ready > 0
-                      ? "bg-emerald-600 text-white"
-                      : "bg-amber-500 text-white",
+                    : "bg-red-600 text-white",
                 )}
               >
-                {labCounts.ready > 0 ? labCounts.ready : labCounts.waiting}
+                {labCounts.ready}
               </span>
             ) : null}
           </button>
@@ -363,9 +341,7 @@ export function DoctorConsultationWorkspace({
             <div className="space-y-4">
               <form
                 className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-                onSubmit={form.handleSubmit((values) =>
-                  save.mutate(values, { onSuccess: () => clearDraft() }),
-                )}
+                onSubmit={form.handleSubmit((values) => save.mutate(values))}
               >
                 <h2 className="text-sm font-semibold text-slate-800">
                   Visit notes
@@ -468,10 +444,14 @@ export function DoctorConsultationWorkspace({
                         "ml-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold",
                         orderSubTab === "lab"
                           ? "bg-white/20 text-white"
-                          : "bg-emerald-600 text-white",
+                          : "bg-red-600 text-white",
                       )}
                     >
                       {labCounts.ready}
+                    </span>
+                  ) : labCounts.waiting > 0 && orderSubTab !== "lab" ? (
+                    <span className="ml-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                      {labCounts.waiting}
                     </span>
                   ) : null}
                 </button>
@@ -566,11 +546,11 @@ export function DoctorConsultationWorkspace({
           {workflowStep === "finish" ? (
             <FinishNextSteps
               consultationId={consultationId}
+              encounterId={encounterId}
               encounterStatus={encounterStatus}
               invoiceMeta={encounter.data.invoice}
               isFinalized={Boolean(isFinalized)}
               finalizePending={finalize.isPending}
-              billingPending={requestBilling.isPending}
               routePending={routePatient.isPending}
               onComplete={() =>
                 finalize.mutate(undefined, {
@@ -578,7 +558,6 @@ export function DoctorConsultationWorkspace({
                 })
               }
               onPharmacy={() => routePatient.mutate(QueueStation.PHARMACY)}
-              onFrontDesk={() => requestBilling.mutate()}
             />
           ) : null}
         </section>
@@ -604,29 +583,27 @@ function Panel({
   );
 }
 
-/** After notes/orders/lab — choose pharmacy or front desk; show money clearly. No imaging yet. */
+/** After notes/orders/lab — choose pharmacy or cashier charge; show money clearly. */
 function FinishNextSteps({
   consultationId,
+  encounterId,
   encounterStatus,
   invoiceMeta,
   isFinalized,
   finalizePending,
-  billingPending,
   routePending,
   onComplete,
   onPharmacy,
-  onFrontDesk,
 }: {
   consultationId?: string;
+  encounterId: string;
   encounterStatus: string;
   invoiceMeta?: { id: string; invoiceNumber: string; status: string } | null;
   isFinalized: boolean;
   finalizePending: boolean;
-  billingPending: boolean;
   routePending: boolean;
   onComplete: () => void;
   onPharmacy: () => void;
-  onFrontDesk: () => void;
 }) {
   const invoice = useInvoice(invoiceMeta?.id ?? null);
   const rxList = usePrescriptions();
@@ -648,29 +625,11 @@ function FinishNextSteps({
 
   const inv = invoice.data;
   const balance = inv ? inv.totalCents - inv.paidCents : null;
-  const busy = finalizePending || billingPending || routePending;
-
-  const suggested =
-    pendingLab.length > 0
-      ? "Lab still has open orders — patient may need lab first."
-      : activeRx.length > 0
-        ? "Medicines prescribed — usually send to pharmacy next."
-        : balance !== null && balance > 0
-          ? "Balance due — send to front desk / cashier."
-          : "No open pharmacy orders — front desk or complete is fine.";
+  const busy = finalizePending || routePending;
+  const atCashier = encounterStatus === "WAITING_PAYMENT";
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">
-          After lab results — where next?
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">{suggested}</p>
-        <p className="mt-1 text-xs text-slate-500">
-          Imaging / X-ray is not available in this build yet.
-        </p>
-      </div>
-
       {/* Money summary */}
       <div className="rounded-lg border border-teal-200 bg-teal-50/40 p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-800">Money this visit</h2>
@@ -756,8 +715,18 @@ function FinishNextSteps({
         </ul>
       </div>
 
+      {atCashier ? (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          Patient is at cashier. After payment they return to your queue
+          automatically — no cashier send-back step.
+        </div>
+      ) : null}
+
       {/* Destinations */}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-900">Pharmacy</h3>
           <p className="mt-1 text-xs text-slate-600">
@@ -770,7 +739,7 @@ function FinishNextSteps({
             <Button
               type="button"
               className="mt-3"
-              disabled={busy}
+              disabled={busy || atCashier}
               onClick={onPharmacy}
             >
               {routePending ? "Sending…" : "Send to pharmacy"}
@@ -778,29 +747,20 @@ function FinishNextSteps({
           ) : null}
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900">
-            Front desk / cashier
-          </h3>
-          <p className="mt-1 text-xs text-slate-600">
-            {balance !== null && balance > 0
-              ? `Collect ${formatCents(balance)} and close billing.`
-              : balance !== null && balance <= 0
-                ? "Invoice already paid — desk can still check them out."
-                : "Desk will bill and take payment."}
-          </p>
-          {!isFinalized ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-3"
-              disabled={busy}
-              onClick={onFrontDesk}
-            >
-              {billingPending ? "Sending…" : "Send to front desk"}
-            </Button>
-          ) : null}
-        </div>
+        {!isFinalized ? (
+          <PaymentRequestPanel
+            encounterId={encounterId}
+            returnStation="DOCTOR"
+            disabled={busy || atCashier}
+          />
+        ) : (
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-slate-900">Cashier</h3>
+            <p className="mt-1 text-xs text-slate-600">
+              Consultation finalized — desk handles remaining balance.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

@@ -14,6 +14,7 @@ import {
 } from "@/components/shared/data-table";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { QueueBoard } from "@/components/queues/queue-board";
+import { ExpandablePanel } from "@/components/shared/table-layout";
 import { usePrescriptions } from "@/features/prescriptions/hooks";
 import { QueueStation } from "@/types/encounter";
 
@@ -26,7 +27,7 @@ export function PharmacyDashboard() {
     const p = partial.data ?? [];
     return [...a, ...p].sort(
       (x, y) =>
-        new Date(x.createdAt).getTime() - new Date(y.createdAt).getTime(),
+        new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime(),
     );
   }, [active.data, partial.data]);
 
@@ -40,22 +41,17 @@ export function PharmacyDashboard() {
         <p className="text-sm text-slate-600">Dispense prescriptions (FEFO stock on backend).</p>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <QueueBoard
-          station={QueueStation.PHARMACY}
-          hrefPrefix="/pharmacy/prescriptions"
-          title="Pharmacy queue"
-          resolveHref={(entry) => {
-            const rx = rows.find((r) => r.encounterId === entry.encounterId);
-            return rx ? `/pharmacy/prescriptions/${rx.id}` : null;
-          }}
-        />
-      </div>
+      <QueueBoard
+        station={QueueStation.PHARMACY}
+        hrefPrefix="/pharmacy/prescriptions"
+        title="Pharmacy queue"
+        resolveHref={(entry) => {
+          const rx = rows.find((r) => r.encounterId === entry.encounterId);
+          return rx ? `/pharmacy/prescriptions/${rx.id}` : null;
+        }}
+      />
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-800">
-          Prescriptions to dispense
-        </h2>
+      <ExpandablePanel title="Prescriptions to dispense">
         {loading ? <LoadingBlock label="Loading prescriptions" /> : null}
         {error ? (
           <ErrorState message="Could not load prescriptions." />
@@ -72,7 +68,7 @@ export function PharmacyDashboard() {
                 <DataTableHeaderCell>Doctor</DataTableHeaderCell>
                 <DataTableHeaderCell>Status</DataTableHeaderCell>
                 <DataTableHeaderCell>Created</DataTableHeaderCell>
-                <DataTableHeaderCell> </DataTableHeaderCell>
+                <DataTableHeaderCell stickyRight>Actions</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <DataTableBody>
@@ -93,7 +89,7 @@ export function PharmacyDashboard() {
                   <DataTableCell className="text-xs">
                     {format(new Date(rx.createdAt), "dd MMM HH:mm")}
                   </DataTableCell>
-                  <DataTableCell>
+                  <DataTableCell stickyRight>
                     <Link href={`/pharmacy/prescriptions/${rx.id}`}>
                       <Button type="button" size="sm">
                         Dispense
@@ -105,7 +101,7 @@ export function PharmacyDashboard() {
             </DataTableBody>
           </DataTable>
         ) : null}
-      </div>
+      </ExpandablePanel>
     </div>
   );
 }

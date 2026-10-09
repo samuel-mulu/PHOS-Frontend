@@ -7,9 +7,12 @@ export type LabTest = {
   id: string;
   code: string;
   name: string;
+  category: string | null;
   unit: string | null;
   referenceRange: string | null;
   priceCents: number;
+  sortOrder: number;
+  active: boolean;
 };
 
 export type LabResult = {
@@ -56,6 +59,48 @@ export type ResultValueInput = {
 
 export async function fetchLabTests() {
   const { data } = await api.get<LabTest[]>("/lab/tests");
+  return data;
+}
+
+export async function fetchAdminLabTests() {
+  const { data } = await api.get<LabTest[]>("/lab/tests/admin");
+  return data;
+}
+
+export async function createLabTest(body: {
+  code: string;
+  name: string;
+  category?: string;
+  unit?: string;
+  referenceRange?: string;
+  priceCents: number;
+  sortOrder?: number;
+  active?: boolean;
+}) {
+  const { data } = await api.post<LabTest>("/lab/tests", body);
+  return data;
+}
+
+export async function updateLabTest(
+  id: string,
+  body: {
+    name?: string;
+    category?: string;
+    unit?: string;
+    referenceRange?: string;
+    priceCents?: number;
+    sortOrder?: number;
+    active?: boolean;
+  },
+) {
+  const { data } = await api.patch<LabTest>(`/lab/tests/${id}`, body);
+  return data;
+}
+
+export async function setLabTestActive(id: string, active: boolean) {
+  const { data } = await api.patch<LabTest>(`/lab/tests/${id}/status`, {
+    active,
+  });
   return data;
 }
 

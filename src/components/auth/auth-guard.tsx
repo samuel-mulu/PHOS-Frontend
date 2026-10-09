@@ -9,20 +9,42 @@ import { useCurrentUser, useSessionBootstrap } from "@/features/auth/hooks";
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   useSessionBootstrap();
   const router = useRouter();
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const refreshToken = useAuthStore((s) => s.refreshToken);
-  const { isLoading, isError } = useCurrentUser(Boolean(accessToken));
+  const { isLoading, isError, isSuccess } = useCurrentUser(
+    Boolean(accessToken),
+  );
 
   useEffect(() => {
+    // Wait for sessionStorage rehydrate before treating empty tokens as logged out.
+    if (!hasHydrated) return;
     if (!accessToken && !refreshToken) {
       router.replace("/login");
     }
-  }, [accessToken, refreshToken, router]);
+  }, [hasHydrated, accessToken, refreshToken, router]);
+
+  if (!hasHydrated) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-8">
+        <LoadingBlock label="Loading session" />
+      </div>
+    );
+  }
 
   if (!accessToken && !refreshToken) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-8">
         <LoadingBlock label="Redirecting to sign in" />
+      </div>
+    );
+  }
+
+  // Refresh-only restore (access expired, refresh still present).
+  if (!accessToken && refreshToken) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center p-8">
+        <LoadingBlock label="Restoring session" />
       </div>
     );
   }
@@ -35,7 +57,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (isError) {
+  if (isError || !isSuccess) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center p-8">
         <LoadingBlock label="Session expired" />

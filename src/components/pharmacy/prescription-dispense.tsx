@@ -1,11 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
+import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { usePrescription } from "@/features/prescriptions/hooks";
 import { useDispensePrescription } from "@/features/pharmacy/hooks";
@@ -50,9 +50,6 @@ export function PrescriptionDispense({
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <Link href="/pharmacy" className="text-sm text-teal-700 underline">
-        ← Pharmacy
-      </Link>
       <PatientIdentityBar
         patient={{
           patientNumber: patient.patientNumber,
@@ -122,8 +119,18 @@ export function PrescriptionDispense({
           {dispense.isPending ? "Dispensing…" : "Confirm dispense"}
         </Button>
       ) : (
-        <p className="text-sm text-slate-600">Prescription is fully dispensed or closed.</p>
+        <p className="text-sm text-slate-600">
+          Prescription is fully dispensed or closed.
+        </p>
       )}
+
+      {p.encounterId ? (
+        <PaymentRequestPanel
+          encounterId={p.encounterId}
+          returnStation="PHARMACY"
+          title="Charge & send to cashier"
+        />
+      ) : null}
     </div>
   );
 }

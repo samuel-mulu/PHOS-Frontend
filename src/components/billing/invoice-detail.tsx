@@ -44,15 +44,12 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href="/billing" className="text-sm text-teal-700 underline">
-          ← Billing
-        </Link>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         {canPay ? (
           <Link
             href={
               role === Role.FRONT_DESK || role === Role.RECEPTIONIST
-                ? `/front-desk?tab=cashier&invoiceId=${inv.id}`
+                ? `/front-desk?tab=payments&invoiceId=${inv.id}`
                 : `/cashier?invoiceId=${inv.id}`
             }
           >

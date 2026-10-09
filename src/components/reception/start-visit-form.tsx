@@ -28,11 +28,23 @@ import Link from "next/link";
 
 type InitialStation = typeof QueueStation.TRIAGE | typeof QueueStation.DOCTOR;
 
+/** How the desk opened this visit — not chosen manually. */
+export type VisitKind = "NEW" | "RETURNING" | "APPOINTMENT";
+
 const PAY_METHODS: PaymentMethod[] = [
   PaymentMethod.CASH,
   PaymentMethod.CARD,
   PaymentMethod.TELEBIRR,
 ];
+
+const VISIT_KIND_META: Record<
+  VisitKind,
+  { label: string; type: EncounterType }
+> = {
+  NEW: { label: "New patient", type: EncounterType.WALK_IN },
+  RETURNING: { label: "Returning patient", type: EncounterType.FOLLOW_UP },
+  APPOINTMENT: { label: "Appointment", type: EncounterType.APPOINTMENT },
+};
 
 export type StartVisitResult = {
   encounter: Encounter;
@@ -41,10 +53,13 @@ export type StartVisitResult = {
 
 export function StartVisitForm({
   patient,
+  visitKind,
   submitLabel = "Start visit",
   onSuccess,
 }: {
   patient: Patient;
+  /** Set by entry path: register → NEW, find/select → RETURNING, appointments → APPOINTMENT */
+  visitKind: VisitKind;
   submitLabel?: string;
   onSuccess?: (result: StartVisitResult) => void;
 }) {
@@ -54,9 +69,7 @@ export function StartVisitForm({
   const cashSession = useCurrentCashSession();
   const [facilityId, setFacilityId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
-  const [serviceId, setServiceId] = useState("");
-  const [extraFeeIds, setExtraFeeIds] = useState<string[]>([]);
-  const [type, setType] = useState<EncounterType>(EncounterType.WALK_IN);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<EncounterPriority>(
     EncounterPriority.ROUTINE,
   );
@@ -64,7 +77,7 @@ export function StartVisitForm({
   const [assignedDoctorId, setAssignedDoctorId] = useState("");
   const [initialStation, setInitialStation] =
     useState<InitialStation>(QueueStation.DOCTOR);
-  const [collectPayment, setCollectPayment] = useState(true);
+  const [collectPayment, setCollectPayment] = useState(false);
   const [payMethod, setPayMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [reference, setReference] = useState("");
   const [busy, setBusy] = useState(false);
@@ -75,13 +88,14 @@ export function StartVisitForm({
     () => (services.data ?? []).filter((s) => s.active),
     [services.data],
   );
-  const selectedFee = activeServices.find((s) => s.id === serviceId);
-  const extraFees = activeServices.filter(
-    (s) => s.id !== serviceId && extraFeeIds.includes(s.id),
+  const selectedFees = activeServices.filter((s) =>
+    selectedServiceIds.includes(s.id),
   );
-  const totalCents =
-    (selectedFee?.priceCents ?? 0) +
-    extraFees.reduce((sum, s) => sum + s.priceCents, 0);
+  const totalCents = selectedFees.reduce((sum, s) => sum + s.priceCents, 0);
+  const primaryServiceId = selectedServiceIds[0] || undefined;
+  const extraFees = selectedFees.slice(1);
+  const kindMeta = VISIT_KIND_META[visitKind];
+  const encounterType = kindMeta.type;
 
   useEffect(() => {
     if (facilities.data?.length === 1 && !facilityId) {
@@ -91,31 +105,34 @@ export function StartVisitForm({
 
   useEffect(() => {
     setDepartmentId("");
-    setServiceId("");
-    setExtraFeeIds([]);
+    setSelectedServiceIds([]);
   }, [facilityId]);
 
   useEffect(() => {
-    setServiceId("");
-    setExtraFeeIds([]);
+    setSelectedServiceIds([]);
   }, [departmentId]);
 
   useEffect(() => {
-    if (activeServices.length === 1 && !serviceId) {
-      setServiceId(activeServices[0].id);
+    if (departments.data?.length === 1 && !departmentId) {
+      setDepartmentId(departments.data[0].id);
     }
-  }, [activeServices, serviceId]);
+  }, [departments.data, departmentId]);
 
-  function toggleExtra(id: string) {
-    setExtraFeeIds((prev) =>
+  useEffect(() => {
+    if (totalCents > 0) setCollectPayment(true);
+  }, [totalCents]);
+
+  function toggleService(id: string) {
+    setSelectedServiceIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
   async function submit() {
-    if (!facilityId || !departmentId || !serviceId) return;
+    if (!facilityId || !departmentId) return;
     if (
       collectPayment &&
+      totalCents > 0 &&
       payMethod === PaymentMethod.CASH &&
       !cashSession.data?.id
     ) {
@@ -129,8 +146,8 @@ export function StartVisitForm({
         patientId: patient.id,
         facilityId,
         departmentId,
-        serviceId,
-        type,
+        serviceId: primaryServiceId,
+        type: encounterType,
         priority,
         reason: reason || undefined,
         initialStation,
@@ -191,7 +208,7 @@ export function StartVisitForm({
   }
 
   const canSubmit =
-    Boolean(facilityId && departmentId && serviceId) &&
+    Boolean(facilityId && departmentId) &&
     !busy &&
     (!collectPayment ||
       totalCents === 0 ||
@@ -200,12 +217,11 @@ export function StartVisitForm({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-medium text-slate-900">
-        {patient.firstName} {patient.lastName}{" "}
-        <span className="font-normal text-slate-500">
-          ({patient.patientNumber})
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="rounded-full bg-teal-800 px-3 py-1 text-xs font-semibold text-white">
+          {kindMeta.label}
         </span>
-      </p>
+      </div>
 
       <div>
         <Label className="mb-2 block text-xs">Send to</Label>
@@ -225,7 +241,7 @@ export function StartVisitForm({
         </div>
       </div>
 
-      <Field label="Assign doctor (by name)">
+      <Field label="Assign doctor">
         <select
           className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
           value={assignedDoctorId}
@@ -242,12 +258,7 @@ export function StartVisitForm({
           <p className="mt-1 text-xs text-amber-800">
             No active doctor users yet. Admin → Users to create a DOCTOR account.
           </p>
-        ) : (
-          <p className="mt-1 text-xs text-slate-500">
-            Patient appears on that doctor&apos;s queue. Lab results return to
-            the same doctor.
-          </p>
-        )}
+        ) : null}
       </Field>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -282,76 +293,49 @@ export function StartVisitForm({
         </Field>
       </div>
 
-      <Field label="Visit fee (from Admin)">
-        <select
-          className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
-          value={serviceId}
-          disabled={!departmentId}
-          onChange={(e) => {
-            setServiceId(e.target.value);
-            setExtraFeeIds((ids) => ids.filter((id) => id !== e.target.value));
-          }}
-        >
-          <option value="">Select fee…</option>
-          {activeServices.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name} — {formatCents(s.priceCents)}
-            </option>
-          ))}
-        </select>
+      <div>
+        <Label className="mb-2 block text-xs">Clinic services (optional)</Label>
         {!departmentId ? (
-          <p className="mt-1 text-xs text-slate-500">Pick a department first</p>
+          <p className="text-xs text-slate-500">Pick a department first</p>
         ) : activeServices.length === 0 ? (
-          <p className="mt-1 text-xs text-amber-800">
-            No fees yet. Admin → Facilities & services to add registration /
-            consultation / card fees.
+          <p className="text-xs text-amber-800">
+            No services yet. Admin → Facilities & services.
           </p>
-        ) : null}
-      </Field>
-
-      {activeServices.filter((s) => s.id !== serviceId).length > 0 &&
-      serviceId ? (
-        <div>
-          <Label className="mb-2 block text-xs">Also charge (optional)</Label>
-          <div className="flex flex-wrap gap-2">
-            {activeServices
-              .filter((s) => s.id !== serviceId)
-              .map((s) => {
-                const on = extraFeeIds.includes(s.id);
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
+        ) : (
+          <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-slate-100 p-2">
+            {activeServices.map((s) => {
+              const on = selectedServiceIds.includes(s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={cn(
+                    "rounded-md border px-3 py-1.5 text-left text-xs font-medium transition-colors",
+                    on
+                      ? "border-teal-700 bg-teal-800 text-white"
+                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
+                  )}
+                  onClick={() => toggleService(s.id)}
+                >
+                  <span className="block">{s.name}</span>
+                  <span
                     className={cn(
-                      "rounded-md border px-3 py-1.5 text-xs font-medium",
-                      on
-                        ? "border-teal-700 bg-teal-50 text-teal-900"
-                        : "border-slate-200 text-slate-700 hover:bg-slate-50",
+                      "text-[11px]",
+                      on ? "text-teal-100" : "text-slate-500",
                     )}
-                    onClick={() => toggleExtra(s.id)}
                   >
-                    {s.name} · {formatCents(s.priceCents)}
-                  </button>
-                );
-              })}
+                    {s.priceCents === 0
+                      ? "No fixed fee"
+                      : formatCents(s.priceCents)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
-      ) : null}
+        )}
+      </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Visit type">
-          <select
-            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
-            value={type}
-            onChange={(e) => setType(e.target.value as EncounterType)}
-          >
-            {Object.values(EncounterType).map((v) => (
-              <option key={v} value={v}>
-                {v.replaceAll("_", " ")}
-              </option>
-            ))}
-          </select>
-        </Field>
         <Field label="Priority">
           <select
             className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
@@ -376,12 +360,13 @@ export function StartVisitForm({
             type="checkbox"
             className="h-4 w-4"
             checked={collectPayment}
+            disabled={totalCents === 0}
             onChange={(e) => setCollectPayment(e.target.checked)}
           />
           Collect payment now
         </label>
 
-        {collectPayment ? (
+        {collectPayment && totalCents > 0 ? (
           <>
             <p className="text-lg font-semibold tabular-nums text-slate-900">
               {formatCents(totalCents)}

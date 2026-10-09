@@ -43,3 +43,10 @@ export async function updateAppointmentStatus(
   });
   return data;
 }
+
+export async function checkInAppointment(id: string, encounterId: string) {
+  const { data } = await api.post<Appointment>(`/appointments/${id}/check-in`, {
+    encounterId,
+  });
+  return data;
+}

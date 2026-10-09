@@ -5,18 +5,82 @@ import { toast } from "sonner";
 import { normalizeApiError } from "@/lib/api/errors";
 import type { LabOrderStatus } from "@/types/lab";
 import {
+  createLabOrder,
+  createLabTest,
   enterLabResults,
-  receiveLabOrder,
+  fetchAdminLabTests,
   fetchLabOrder,
   fetchLabOrders,
   fetchLabTests,
+  receiveLabOrder,
+  setLabTestActive,
+  updateLabTest,
   verifyLabOrder,
   type ResultValueInput,
 } from "./api";
-import { createLabOrder } from "./api";
 
 export function useLabTests() {
   return useQuery({ queryKey: ["lab", "tests"], queryFn: fetchLabTests });
+}
+
+export function useAdminLabTests() {
+  return useQuery({
+    queryKey: ["lab", "tests", "admin"],
+    queryFn: fetchAdminLabTests,
+  });
+}
+
+function invalidateLabCatalog(queryClient: ReturnType<typeof useQueryClient>) {
+  void queryClient.invalidateQueries({ queryKey: ["lab", "tests"] });
+}
+
+export function useCreateLabTest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createLabTest,
+    onSuccess: () => {
+      invalidateLabCatalog(queryClient);
+      toast.success("Lab test added");
+    },
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
+}
+
+export function useUpdateLabTest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      name?: string;
+      category?: string;
+      unit?: string;
+      referenceRange?: string;
+      priceCents?: number;
+      sortOrder?: number;
+      active?: boolean;
+    }) => updateLabTest(id, body),
+    onSuccess: () => {
+      invalidateLabCatalog(queryClient);
+      toast.success("Lab test updated");
+    },
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
+}
+
+export function useSetLabTestActive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      setLabTestActive(id, active),
+    onSuccess: (_d, vars) => {
+      invalidateLabCatalog(queryClient);
+      toast.success(vars.active ? "Test enabled" : "Test disabled");
+    },
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
 }
 
 export function useLabOrders(status?: LabOrderStatus) {

@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
+import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { labOrderStatusBadge } from "@/components/shared/status-badge";
 import {
@@ -53,6 +53,9 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
 
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [seededFor, setSeededFor] = useState<string | null>(null);
+  /** When on step 3, false = send view on top; true = full step 2 editor */
+  const [resultsEditMode, setResultsEditMode] = useState(false);
+  const resultsSectionRef = useRef<HTMLElement>(null);
 
   const o = order.data;
 
@@ -71,6 +74,12 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
     setDrafts(next);
     setSeededFor(key);
   }, [o, seededFor]);
+
+  useEffect(() => {
+    if (o?.status !== LabOrderStatus.RESULT_ENTERED) {
+      setResultsEditMode(false);
+    }
+  }, [o?.status, o?.id]);
 
   const filledCount = useMemo(() => {
     if (!o) return 0;
@@ -149,12 +158,28 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
   function saveResults() {
     const results = buildResults();
     if (!results) return;
+    const returningToSend = showSend && resultsEditMode;
     enter.mutate(results, {
       onSuccess: () => {
         setSeededFor(null);
         void order.refetch();
-        toast.success("Results saved — review them, then send to doctor");
+        if (returningToSend) {
+          setResultsEditMode(false);
+          toast.success("Results updated — review and send to doctor");
+        } else {
+          toast.success("Results saved — review them, then send to doctor");
+        }
       },
+    });
+  }
+
+  function openResultsEditor() {
+    setResultsEditMode(true);
+    requestAnimationFrame(() => {
+      resultsSectionRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     });
   }
 
@@ -173,12 +198,89 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
     { label: "3. Send to doctor", hint: "After results are saved" },
   ];
 
+  const sendViewOnTop = showSend && !resultsEditMode;
+  const showResultsSection = !sendViewOnTop;
+
+  const step3SendSection =
+    showSend || isDone ? (
+      <section
+        className={cn(
+          "rounded-lg border bg-white p-4 shadow-sm",
+          showSend ? "border-red-200 ring-1 ring-red-100" : "border-slate-200",
+        )}
+      >
+        <h2 className="text-sm font-semibold text-slate-900">
+          {isDone ? "Sent to doctor" : "Step 3 — Send to doctor"}
+        </h2>
+        <p className="mt-1 text-sm text-slate-600">
+          {isDone
+            ? "Patient is on the doctor’s Lab results ready queue."
+            : "Results are saved. Review the summary below, edit if needed, then send to the doctor."}
+        </p>
+
+        {showSend ? (
+          <ul className="mt-3 divide-y divide-slate-100 rounded-md border border-slate-200 bg-slate-50">
+            {o.items.map((item) => (
+              <li
+                key={item.id}
+                className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-sm"
+              >
+                <span className="font-medium text-slate-800">
+                  {item.labTest.code}
+                </span>
+                <span className="text-slate-900">
+                  {drafts[item.id]?.value || item.result?.value || "—"}
+                  {(item.labTest.unit || item.result?.unit) && (
+                    <span className="ml-1 text-xs text-slate-500">
+                      {item.labTest.unit ?? item.result?.unit}
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        {showSend ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button type="button" onClick={openResultsEditor}>
+              Edit results (Step 2)
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="border-red-300 text-red-900 hover:bg-red-50"
+              disabled={verify.isPending}
+              onClick={sendToDoctor}
+            >
+              {verify.isPending ? "Sending…" : "Send to doctor"}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-3"
+            onClick={() => router.push("/laboratory")}
+          >
+            Laboratory queue
+          </Button>
+        )}
+
+      </section>
+    ) : null;
+
+  const labPaymentSection =
+    canWork && !isDone && o.encounterId && (canEditResults || resultsReady) ? (
+      <PaymentRequestPanel
+        encounterId={o.encounterId}
+        returnStation="LAB"
+        title="Charge & send to cashier"
+      />
+    ) : null;
+
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <Link href="/laboratory" className="text-sm text-teal-700 underline">
-        ← Laboratory
-      </Link>
-
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PatientIdentityBar patient={o.patient} encounterStatus={o.status} />
         {isDone ? <PrintLabReport order={o} /> : null}
@@ -238,6 +340,8 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
         })}
       </ol>
 
+      {sendViewOnTop ? step3SendSection : null}
+
       {/* Step 1 */}
       {canReceive ? (
         <section className="rounded-lg border border-teal-200 bg-white p-4 shadow-sm">
@@ -267,7 +371,9 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
       ) : null}
 
       {/* Step 2 — RESULTS PRIMARY */}
+      {showResultsSection ? (
       <section
+        ref={resultsSectionRef}
         className={cn(
           "rounded-lg border bg-white p-4 shadow-sm",
           canEditResults && !isDone
@@ -290,11 +396,23 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
                   : "Read-only"}
             </p>
           </div>
-          {resultsReady && !isDone ? (
-            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
-              Saved — ready to send
-            </span>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {resultsEditMode && showSend ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setResultsEditMode(false)}
+              >
+                Back to send (Step 3)
+              </Button>
+            ) : null}
+            {resultsReady && !isDone && !resultsEditMode ? (
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
+                Saved — ready to send
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="space-y-3">
@@ -401,13 +519,19 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
             >
               {enter.isPending
                 ? "Saving…"
-                : resultsReady
-                  ? "Save result edits"
-                  : "Save results"}
+                : resultsEditMode && showSend
+                  ? "Save and return to send"
+                  : resultsReady
+                    ? "Save result edits"
+                    : "Save results"}
             </Button>
             {!allFilled ? (
               <span className="text-xs text-slate-500">
                 Fill all {o.items.length} tests to save
+              </span>
+            ) : resultsReady && resultsEditMode ? (
+              <span className="text-xs text-teal-700">
+                Save to return to Step 3 — Send to doctor
               </span>
             ) : resultsReady ? (
               <span className="text-xs text-teal-700">
@@ -421,76 +545,11 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           </div>
         ) : null}
       </section>
+      ) : null}
 
-      {/* Step 3 — SEND ONLY (split) */}
-      {(showSend || isDone) && (
-        <section
-          className={cn(
-            "rounded-lg border bg-white p-4 shadow-sm",
-            showSend
-              ? "border-red-200 ring-1 ring-red-100"
-              : "border-slate-200",
-          )}
-        >
-          <h2 className="text-sm font-semibold text-slate-900">
-            {isDone ? "Sent to doctor" : "Step 3 — Send to doctor"}
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            {isDone
-              ? "Patient is on the doctor’s Lab results ready queue."
-              : "Results are saved above. Review them, then send — the doctor will see the patient under Lab results ready."}
-          </p>
+      {!sendViewOnTop ? step3SendSection : null}
 
-          {/* Compact read-only result summary before send */}
-          {showSend ? (
-            <ul className="mt-3 divide-y divide-slate-100 rounded-md border border-slate-200 bg-slate-50">
-              {o.items.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-sm"
-                >
-                  <span className="font-medium text-slate-800">
-                    {item.labTest.code}
-                  </span>
-                  <span className="text-slate-900">
-                    {drafts[item.id]?.value || item.result?.value || "—"}
-                    {(item.labTest.unit || item.result?.unit) && (
-                      <span className="ml-1 text-xs text-slate-500">
-                        {item.labTest.unit ?? item.result?.unit}
-                      </span>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {showSend ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                className="bg-red-700 hover:bg-red-800"
-                disabled={verify.isPending}
-                onClick={sendToDoctor}
-              >
-                {verify.isPending ? "Sending…" : "Send to doctor"}
-              </Button>
-              <p className="w-full text-xs text-slate-500 sm:w-auto sm:self-center">
-                Need a change? Edit in step 2 and save again first.
-              </p>
-            </div>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              className="mt-3"
-              onClick={() => router.push("/laboratory")}
-            >
-              Back to New from doctor
-            </Button>
-          )}
-        </section>
-      )}
+      {labPaymentSection}
 
       {!canWork && !isDone ? (
         <p className="text-sm text-amber-800">

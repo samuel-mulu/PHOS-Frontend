@@ -19,6 +19,7 @@ import {
   LoadingBlock,
 } from "@/components/shared/state-blocks";
 import { QueryStaleBanner } from "@/components/shared/query-stale-banner";
+import { ExpandablePanel } from "@/components/shared/table-layout";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -127,80 +128,82 @@ export function NotificationCenter() {
       ) : null}
 
       {query.isSuccess && query.data.length > 0 ? (
-        <DataTable>
-          <DataTableHead>
-            <DataTableRow>
-              <DataTableHeaderCell>When</DataTableHeaderCell>
-              <DataTableHeaderCell>Priority</DataTableHeaderCell>
-              <DataTableHeaderCell>Category</DataTableHeaderCell>
-              <DataTableHeaderCell>Title</DataTableHeaderCell>
-              <DataTableHeaderCell>Message</DataTableHeaderCell>
-              <DataTableHeaderCell className="text-right">
-                Actions
-              </DataTableHeaderCell>
-            </DataTableRow>
-          </DataTableHead>
-          <DataTableBody>
-            {query.data.map((n) => {
-              const href = notificationHref(n);
-              const unread = !n.readAt;
-              const pri = priorityForNotification(n);
-              return (
-                <DataTableRow
-                  key={n.id}
-                  className={cn(unread && "bg-teal-50/50")}
-                >
-                  <DataTableCell className="whitespace-nowrap text-xs text-slate-600">
-                    {format(new Date(n.createdAt), "MMM d, HH:mm")}
-                  </DataTableCell>
-                  <DataTableCell className="text-xs">
-                    <span
-                      className={cn(
-                        "rounded px-1.5 py-0.5 font-medium",
-                        PRIORITY_STYLES[pri],
-                      )}
-                    >
-                      {priorityLabel(pri)}
-                    </span>
-                  </DataTableCell>
-                  <DataTableCell className="text-xs">
-                    {notificationCategory(n.type)}
-                  </DataTableCell>
-                  <DataTableCell className="font-medium text-slate-900">
-                    {n.title}
-                  </DataTableCell>
-                  <DataTableCell className="max-w-md text-sm text-slate-600">
-                    {n.message}
-                  </DataTableCell>
-                  <DataTableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {href ? (
-                        <Link href={href}>
-                          <Button type="button" size="sm" variant="outline">
-                            Open
+        <ExpandablePanel title="Inbox">
+          <DataTable>
+            <DataTableHead>
+              <DataTableRow>
+                <DataTableHeaderCell>When</DataTableHeaderCell>
+                <DataTableHeaderCell>Priority</DataTableHeaderCell>
+                <DataTableHeaderCell>Category</DataTableHeaderCell>
+                <DataTableHeaderCell>Title</DataTableHeaderCell>
+                <DataTableHeaderCell>Message</DataTableHeaderCell>
+                <DataTableHeaderCell stickyRight className="text-right">
+                  Actions
+                </DataTableHeaderCell>
+              </DataTableRow>
+            </DataTableHead>
+            <DataTableBody>
+              {query.data.map((n) => {
+                const href = notificationHref(n);
+                const unread = !n.readAt;
+                const pri = priorityForNotification(n);
+                return (
+                  <DataTableRow
+                    key={n.id}
+                    className={cn(unread && "bg-teal-50/50")}
+                  >
+                    <DataTableCell className="whitespace-nowrap text-xs text-slate-600">
+                      {format(new Date(n.createdAt), "MMM d, HH:mm")}
+                    </DataTableCell>
+                    <DataTableCell className="text-xs">
+                      <span
+                        className={cn(
+                          "rounded px-1.5 py-0.5 font-medium",
+                          PRIORITY_STYLES[pri],
+                        )}
+                      >
+                        {priorityLabel(pri)}
+                      </span>
+                    </DataTableCell>
+                    <DataTableCell className="text-xs">
+                      {notificationCategory(n.type)}
+                    </DataTableCell>
+                    <DataTableCell className="font-medium text-slate-900">
+                      {n.title}
+                    </DataTableCell>
+                    <DataTableCell className="max-w-md text-sm text-slate-600">
+                      {n.message}
+                    </DataTableCell>
+                    <DataTableCell stickyRight className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {href ? (
+                          <Link href={href}>
+                            <Button type="button" size="sm" variant="outline">
+                              Open
+                            </Button>
+                          </Link>
+                        ) : null}
+                        {unread ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={markRead.isPending}
+                            onClick={() => markRead.mutate(n.id)}
+                          >
+                            Mark read
                           </Button>
-                        </Link>
-                      ) : null}
-                      {unread ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          disabled={markRead.isPending}
-                          onClick={() => markRead.mutate(n.id)}
-                        >
-                          Mark read
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-slate-400">Read</span>
-                      )}
-                    </div>
-                  </DataTableCell>
-                </DataTableRow>
-              );
-            })}
-          </DataTableBody>
-        </DataTable>
+                        ) : (
+                          <span className="text-xs text-slate-400">Read</span>
+                        )}
+                      </div>
+                    </DataTableCell>
+                  </DataTableRow>
+                );
+              })}
+            </DataTableBody>
+          </DataTable>
+        </ExpandablePanel>
       ) : null}
     </div>
   );

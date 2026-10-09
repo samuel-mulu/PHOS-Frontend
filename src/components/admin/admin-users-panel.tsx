@@ -18,6 +18,7 @@ import {
   LoadingBlock,
 } from "@/components/shared/state-blocks";
 import { QueryStaleBanner } from "@/components/shared/query-stale-banner";
+import { ExpandablePanel } from "@/components/shared/table-layout";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import {
   useCreateUser,
@@ -69,24 +70,26 @@ export function AdminUsersPanel() {
     });
   }
 
+  const searchBar = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="max-w-md flex-1">
+        <Label htmlFor="user-search">Search users</Label>
+        <Input
+          id="user-search"
+          className="mt-1"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Name or email"
+        />
+      </div>
+      <Button type="button" onClick={() => setShowCreate((v) => !v)}>
+        {showCreate ? "Cancel" : "New user"}
+      </Button>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-md flex-1">
-          <Label htmlFor="user-search">Search users</Label>
-          <Input
-            id="user-search"
-            className="mt-1"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Name or email"
-          />
-        </div>
-        <Button type="button" onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? "Cancel" : "New user"}
-        </Button>
-      </div>
-
       {showCreate ? (
         <form
           className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2"
@@ -291,73 +294,82 @@ export function AdminUsersPanel() {
         </form>
       ) : null}
 
-      <QueryStaleBanner query={query} />
+      <ExpandablePanel title="Users" toolbar={searchBar}>
+        <QueryStaleBanner query={query} />
 
-      {query.isLoading ? <LoadingBlock label="Loading users" /> : null}
-      {query.isError ? (
-        <ErrorState
-          message="Could not load users."
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
+        {query.isLoading ? <LoadingBlock label="Loading users" /> : null}
+        {query.isError ? (
+          <ErrorState
+            message="Could not load users."
+            onRetry={() => void query.refetch()}
+          />
+        ) : null}
 
-      {query.isSuccess && query.data.length === 0 ? (
-        <EmptyState title="No users" description="Create a user to get started." />
-      ) : null}
+        {query.isSuccess && query.data.length === 0 ? (
+          <EmptyState
+            title="No users"
+            description="Create a user to get started."
+          />
+        ) : null}
 
-      {query.isSuccess && query.data.length > 0 ? (
-        <DataTable>
-          <DataTableHead>
-            <DataTableRow>
-              <DataTableHeaderCell>Name</DataTableHeaderCell>
-              <DataTableHeaderCell>Email</DataTableHeaderCell>
-              <DataTableHeaderCell>Role</DataTableHeaderCell>
-              <DataTableHeaderCell>Status</DataTableHeaderCell>
-              <DataTableHeaderCell className="text-right">Actions</DataTableHeaderCell>
-            </DataTableRow>
-          </DataTableHead>
-          <DataTableBody>
-            {query.data.map((user) => (
-              <DataTableRow key={user.id}>
-                <DataTableCell>
-                  {user.firstName} {user.lastName}
-                </DataTableCell>
-                <DataTableCell>{user.email}</DataTableCell>
-                <DataTableCell>{user.role.replaceAll("_", " ")}</DataTableCell>
-                <DataTableCell>
-                  <select
-                    className="rounded border border-slate-300 bg-white px-2 py-1 text-xs"
-                    value={user.status}
-                    disabled={updateStatus.isPending}
-                    onChange={(e) =>
-                      updateStatus.mutate({
-                        id: user.id,
-                        status: e.target.value as UserStatus,
-                      })
-                    }
-                  >
-                    {STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </DataTableCell>
-                <DataTableCell className="text-right">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => openEdit(user)}
-                  >
-                    Edit
-                  </Button>
-                </DataTableCell>
+        {query.isSuccess && query.data.length > 0 ? (
+          <DataTable>
+            <DataTableHead>
+              <DataTableRow>
+                <DataTableHeaderCell>Name</DataTableHeaderCell>
+                <DataTableHeaderCell>Email</DataTableHeaderCell>
+                <DataTableHeaderCell>Role</DataTableHeaderCell>
+                <DataTableHeaderCell>Status</DataTableHeaderCell>
+                <DataTableHeaderCell stickyRight className="text-right">
+                  Actions
+                </DataTableHeaderCell>
               </DataTableRow>
-            ))}
-          </DataTableBody>
-        </DataTable>
-      ) : null}
+            </DataTableHead>
+            <DataTableBody>
+              {query.data.map((user) => (
+                <DataTableRow key={user.id}>
+                  <DataTableCell>
+                    {user.firstName} {user.lastName}
+                  </DataTableCell>
+                  <DataTableCell>{user.email}</DataTableCell>
+                  <DataTableCell>
+                    {user.role.replaceAll("_", " ")}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <select
+                      className="rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                      value={user.status}
+                      disabled={updateStatus.isPending}
+                      onChange={(e) =>
+                        updateStatus.mutate({
+                          id: user.id,
+                          status: e.target.value as UserStatus,
+                        })
+                      }
+                    >
+                      {STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </DataTableCell>
+                  <DataTableCell stickyRight className="text-right">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => openEdit(user)}
+                    >
+                      Edit
+                    </Button>
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          </DataTable>
+        ) : null}
+      </ExpandablePanel>
     </div>
   );
 }

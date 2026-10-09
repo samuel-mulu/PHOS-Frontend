@@ -3,27 +3,39 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
-import { useQuery } from "@tanstack/react-query";
 import { ReceptionWorkspace } from "@/components/reception/reception-workspace";
 import { BillingWorkspace } from "@/components/billing/billing-workspace";
 import { CashierWorkspace } from "@/components/cashier/cashier-workspace";
 import { AppointmentsPanel } from "@/components/front-desk/appointments-panel";
+import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
 import type { Encounter } from "@/features/encounters/api";
-import { fetchEncounters } from "@/features/encounters/api";
 import { useQueue } from "@/features/queues/hooks";
 import { useAppointments } from "@/features/appointments/hooks";
 import { QueueStation } from "@/types/encounter";
 import { AppointmentStatus } from "@/types/appointment";
 import { cn } from "@/lib/utils";
 
-type Tab = "reception" | "appointments" | "billing" | "cashier";
+type Tab = "reception" | "appointments" | "payments" | "report";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "reception", label: "Reception" },
   { id: "appointments", label: "Appointments" },
-  { id: "billing", label: "Billing" },
-  { id: "cashier", label: "Cashier" },
+  { id: "payments", label: "Payments" },
+  { id: "report", label: "Report" },
 ];
+
+function resolveTab(raw: string | null): Tab {
+  if (raw === "billing" || raw === "cashier") return "payments";
+  if (
+    raw === "reception" ||
+    raw === "appointments" ||
+    raw === "payments" ||
+    raw === "report"
+  ) {
+    return raw;
+  }
+  return "reception";
+}
 
 function RedBadge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -36,20 +48,21 @@ function RedBadge({ count }: { count: number }) {
 
 export function FrontDeskWorkspace() {
   const searchParams = useSearchParams();
-  const tabParam = searchParams.get("tab") as Tab | null;
-  const [tab, setTab] = useState<Tab>(
-    tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : "reception",
+  const tabParam = searchParams.get("tab");
+  const [tab, setTab] = useState<Tab>(() => resolveTab(tabParam));
+  const [paymentsFocus, setPaymentsFocus] = useState<"collect" | "bill">(
+    () =>
+      searchParams.get("invoiceId") || searchParams.get("encounterId")
+        ? searchParams.get("invoiceId")
+          ? "collect"
+          : "bill"
+        : "collect",
   );
 
   const triageQueue = useQueue(QueueStation.TRIAGE, 8_000);
   const cashierQueue = useQueue(QueueStation.CASHIER, 8_000);
   const today = format(new Date(), "yyyy-MM-dd");
   const appointments = useAppointments({ from: today, to: today });
-  const encounters = useQuery({
-    queryKey: ["encounters", "front-desk-billing-badge"],
-    queryFn: () => fetchEncounters(),
-    refetchInterval: 20_000,
-  });
 
   const triageWaiting = triageQueue.data?.length ?? 0;
   const cashierWaiting = cashierQueue.data?.length ?? 0;
@@ -63,17 +76,14 @@ export function FrontDeskWorkspace() {
     ).length;
   }, [appointments.data]);
 
-  const billingAttention = useMemo(() => {
-    return (encounters.data ?? []).filter(
-      (e) => e.status === "WAITING_PAYMENT",
-    ).length;
-  }, [encounters.data]);
+  useEffect(() => {
+    setTab(resolveTab(tabParam));
+  }, [tabParam]);
 
   useEffect(() => {
-    if (tabParam && TABS.some((t) => t.id === tabParam)) {
-      setTab(tabParam);
-    }
-  }, [tabParam]);
+    if (searchParams.get("invoiceId")) setPaymentsFocus("collect");
+    else if (searchParams.get("encounterId")) setPaymentsFocus("bill");
+  }, [searchParams]);
 
   const onTab = useCallback((next: Tab, params?: Record<string, string>) => {
     setTab(next);
@@ -90,14 +100,16 @@ export function FrontDeskWorkspace() {
 
   const goBillVisit = useCallback(
     (encounter: Encounter) => {
-      onTab("billing", { encounterId: encounter.id, invoiceId: "" });
+      setPaymentsFocus("bill");
+      onTab("payments", { encounterId: encounter.id, invoiceId: "" });
     },
     [onTab],
   );
 
   const goPayInvoice = useCallback(
     (invoiceId: string) => {
-      onTab("cashier", { invoiceId, encounterId: "" });
+      setPaymentsFocus("collect");
+      onTab("payments", { invoiceId, encounterId: "" });
     },
     [onTab],
   );
@@ -108,10 +120,8 @@ export function FrontDeskWorkspace() {
         return triageWaiting;
       case "appointments":
         return appointmentsToday;
-      case "billing":
-        return Math.min(billingAttention, 99);
-      case "cashier":
-        return cashierWaiting;
+      case "payments":
+        return Math.min(cashierWaiting, 99);
       default:
         return 0;
     }
@@ -119,21 +129,14 @@ export function FrontDeskWorkspace() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-900">Front desk</h1>
-        <p className="text-sm text-slate-600">
-          Reception → Billing → Cashier. Red badges update live.
-        </p>
-      </div>
-
       <nav
-        className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
+        className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 px-1 pb-2"
         aria-label="Front desk"
       >
         {TABS.map((t) => {
           const badge = badgeFor(t.id);
           const emphasize =
-            (t.id === "cashier" || t.id === "reception") && badge > 0;
+            (t.id === "payments" || t.id === "reception") && badge > 0;
           return (
             <button
               key={t.id}
@@ -160,24 +163,56 @@ export function FrontDeskWorkspace() {
           embedded
           initialPatientId={searchParams.get("patientId") ?? undefined}
           onVisitStarted={goBillVisit}
-          onGoCashier={() => onTab("cashier")}
-          cashierWaiting={cashierWaiting}
         />
       ) : null}
       {tab === "appointments" ? <AppointmentsPanel /> : null}
-      {tab === "billing" ? (
-        <BillingWorkspace
-          embedded
-          highlightEncounterId={searchParams.get("encounterId") ?? undefined}
-          onReadyForPayment={goPayInvoice}
-        />
+      {tab === "payments" ? (
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium",
+                paymentsFocus === "collect"
+                  ? "bg-teal-800 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+              )}
+              onClick={() => setPaymentsFocus("collect")}
+            >
+              Collect payment
+              <RedBadge count={cashierWaiting} />
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "rounded-md px-3 py-1.5 text-xs font-medium",
+                paymentsFocus === "bill"
+                  ? "bg-teal-800 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+              )}
+              onClick={() => setPaymentsFocus("bill")}
+            >
+              Create / issue invoice
+            </button>
+          </div>
+
+          {paymentsFocus === "collect" ? (
+            <CashierWorkspace
+              embedded
+              onInvoiceFullyPaid={() => onTab("payments")}
+            />
+          ) : (
+            <BillingWorkspace
+              embedded
+              highlightEncounterId={
+                searchParams.get("encounterId") ?? undefined
+              }
+              onReadyForPayment={goPayInvoice}
+            />
+          )}
+        </div>
       ) : null}
-      {tab === "cashier" ? (
-        <CashierWorkspace
-          embedded
-          onInvoiceFullyPaid={() => onTab("cashier")}
-        />
-      ) : null}
+      {tab === "report" ? <PaymentsReportPanel /> : null}
     </div>
   );
 }

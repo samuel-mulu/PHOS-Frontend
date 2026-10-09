@@ -36,8 +36,25 @@ import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { QueueStation } from "@/types/encounter";
 import { invoiceStatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
+import { sortQueueNewestFirst } from "@/lib/queues/sort";
+import { ExpandablePanel } from "@/components/shared/table-layout";
+import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
+import { toast } from "sonner";
 
-type CashierTab = "waiting" | "collect" | "load";
+function returnStationLabel(
+  station: string | null | undefined,
+): string | null {
+  if (!station) return null;
+  const map: Record<string, string> = {
+    DOCTOR: "Doctor",
+    LAB: "Lab",
+    PHARMACY: "Pharmacy",
+    TRIAGE: "Triage",
+  };
+  return map[station] ?? station;
+}
+
+type CashierTab = "waiting" | "collect" | "load" | "report";
 
 const PRIMARY_METHODS: PaymentMethod[] = [
   PaymentMethod.CASH,
@@ -126,9 +143,12 @@ export function CashierWorkspace({
     prevWaiting.current = waitingCount;
   }, [waitingCount, loadId]);
 
-  const queueBase = embedded ? "/front-desk?tab=cashier" : "/cashier";
+  const queueBase = embedded ? "/front-desk?tab=payments" : "/cashier";
 
-  const waitingItems = useMemo(() => queue.data ?? [], [queue.data]);
+  const waitingItems = useMemo(
+    () => sortQueueNewestFirst(queue.data ?? []),
+    [queue.data],
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -168,33 +188,42 @@ export function CashierWorkspace({
           badge={0}
           muted
         />
+        {!embedded ? (
+          <TabButton
+            active={tab === "report"}
+            onClick={() => setTab("report")}
+            label="Report"
+            badge={0}
+            muted
+          />
+        ) : null}
       </nav>
 
       {tab === "waiting" ? (
-        <section
-          className={cn(
-            "rounded-lg border bg-white p-4 shadow-sm",
+        <ExpandablePanel
+          className={
             waitingCount > 0
               ? "border-red-200 ring-1 ring-red-100"
-              : "border-slate-200",
-          )}
-        >
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              : undefined
+          }
+          title={
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">
+              <h2 className="text-sm font-semibold text-slate-900">
                 Waiting to pay
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs font-normal text-slate-500">
                 Call → Start → Collect payment
               </p>
             </div>
-            {waitingCount > 0 ? (
+          }
+          toolbar={
+            waitingCount > 0 ? (
               <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
                 {waitingCount} waiting
               </span>
-            ) : null}
-          </div>
-
+            ) : undefined
+          }
+        >
           {queue.isLoading ? (
             <LoadingBlock label="Loading cashier queue" />
           ) : null}
@@ -207,7 +236,7 @@ export function CashierWorkspace({
           {queue.isSuccess && waitingItems.length === 0 ? (
             <EmptyState
               title="No one waiting"
-              description="When a doctor or desk sends a patient for payment, they appear here."
+              description="When a doctor or lab sends a patient for payment, they appear here. After you collect, they return to that station automatically."
             />
           ) : null}
           {waitingItems.length > 0 ? (
@@ -217,8 +246,9 @@ export function CashierWorkspace({
                   <DataTableHeaderCell>Patient</DataTableHeaderCell>
                   <DataTableHeaderCell>Visit</DataTableHeaderCell>
                   <DataTableHeaderCell>Waiting</DataTableHeaderCell>
+                  <DataTableHeaderCell>Return after pay</DataTableHeaderCell>
                   <DataTableHeaderCell>Status</DataTableHeaderCell>
-                  <DataTableHeaderCell> </DataTableHeaderCell>
+                  <DataTableHeaderCell stickyRight>Actions</DataTableHeaderCell>
                 </tr>
               </DataTableHead>
               <DataTableBody>
@@ -227,6 +257,9 @@ export function CashierWorkspace({
                   const href = withQuery(queueBase, {
                     encounterId: entry.encounterId,
                   });
+                  const returnTo = returnStationLabel(
+                    entry.encounter.paymentReturnStation,
+                  );
                   return (
                     <DataTableRow
                       key={entry.id}
@@ -246,10 +279,19 @@ export function CashierWorkspace({
                       <DataTableCell>
                         {formatWaitingSince(entry.enteredAt)}
                       </DataTableCell>
+                      <DataTableCell>
+                        {returnTo ? (
+                          <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900">
+                            Return to {returnTo}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </DataTableCell>
                       <DataTableCell className="text-xs">
                         {entry.status.replaceAll("_", " ")}
                       </DataTableCell>
-                      <DataTableCell className="text-right">
+                      <DataTableCell stickyRight className="text-right">
                         {entry.status === "WAITING" ? (
                           <Button
                             type="button"
@@ -307,7 +349,7 @@ export function CashierWorkspace({
               </DataTableBody>
             </DataTable>
           ) : null}
-        </section>
+        </ExpandablePanel>
       ) : null}
 
       {tab === "collect" ? (
@@ -333,7 +375,19 @@ export function CashierWorkspace({
               status={invoice.data.status}
               cashSessionId={session.data?.id}
               payments={invoice.data.payments}
-              onFullyPaid={(id) => {
+              returnStation={
+                waitingItems.find((e) => e.encounterId === encounterFromQueue)
+                  ?.encounter.paymentReturnStation ??
+                encounterQuery.data?.paymentReturnStation ??
+                null
+              }
+              onFullyPaid={(id, returnStation) => {
+                const dest = returnStationLabel(returnStation);
+                toast.success(
+                  dest
+                    ? `Paid — patient sent back to ${dest}`
+                    : "Paid in full",
+                );
                 onInvoiceFullyPaid?.(id);
                 setTab("waiting");
               }}
@@ -387,6 +441,8 @@ export function CashierWorkspace({
           </div>
         </section>
       ) : null}
+
+      {!embedded && tab === "report" ? <PaymentsReportPanel /> : null}
     </div>
   );
 }
@@ -463,6 +519,7 @@ function PaymentPanel({
   status,
   cashSessionId,
   payments,
+  returnStation,
   onFullyPaid,
   onBackToQueue,
 }: {
@@ -474,7 +531,8 @@ function PaymentPanel({
   paidCents: number;
   status: string;
   cashSessionId?: string;
-  onFullyPaid?: (invoiceId: string) => void;
+  returnStation?: string | null;
+  onFullyPaid?: (invoiceId: string, returnStation?: string | null) => void;
   onBackToQueue?: () => void;
   payments: Array<{
     id: string;
@@ -564,6 +622,16 @@ function PaymentPanel({
           ) : null}
         </div>
       </div>
+
+      {returnStationLabel(returnStation) ? (
+        <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-950 ring-1 ring-sky-100">
+          After payment, patient returns to{" "}
+          <span className="font-semibold">
+            {returnStationLabel(returnStation)}
+          </span>{" "}
+          automatically — no send-back step.
+        </p>
+      ) : null}
 
       {payments.length > 0 ? (
         <ul className="space-y-1 border-t border-slate-100 pt-3 text-sm text-slate-700">
@@ -713,10 +781,13 @@ function PaymentPanel({
                       });
                       if (inv.status === "PAID") {
                         setPaidDialogOpen(true);
+                        const dest = returnStationLabel(returnStation);
                         announceClinic(
-                          `Payment complete for ${patientName}. Invoice paid in full.`,
+                          dest
+                            ? `Payment complete for ${patientName}. Please return to ${dest}.`
+                            : `Payment complete for ${patientName}. Invoice paid in full.`,
                         );
-                        onFullyPaid?.(invoiceId);
+                        onFullyPaid?.(invoiceId, returnStation);
                       }
                     },
                   },

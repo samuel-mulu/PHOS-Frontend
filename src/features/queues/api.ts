@@ -24,13 +24,15 @@ export type QueueEntry = {
     status: string;
     reason: string | null;
     assignedDoctorId?: string | null;
+    paymentReturnStation?: "TRIAGE" | "DOCTOR" | "LAB" | "PHARMACY" | "CASHIER" | null;
     assignedDoctor?: {
       id: string;
       firstName: string;
       lastName: string;
     } | null;
     patient: Patient;
-    service: { name: string };
+    service?: { name: string } | null;
+    type: string;
   };
 };
 

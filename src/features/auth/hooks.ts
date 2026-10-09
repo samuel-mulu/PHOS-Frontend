@@ -2,16 +2,16 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { normalizeApiError } from "@/lib/api/errors";
+import { refreshAccessToken } from "@/lib/api/client";
 import { getRoleHomePath } from "@/types/role";
 import { useAuthStore } from "@/stores/auth-store";
 import {
   fetchCurrentUser,
   loginRequest,
   logoutRequest,
-  refreshRequest,
 } from "./api";
 import type { LoginFormValues } from "./schemas";
 
@@ -19,71 +19,68 @@ export const currentUserQueryKey = ["users", "me"] as const;
 
 export function useCurrentUser(enabled = true) {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
 
   return useQuery({
     queryKey: currentUserQueryKey,
     queryFn: fetchCurrentUser,
-    enabled: enabled && Boolean(accessToken),
+    enabled: enabled && hasHydrated && Boolean(accessToken),
+    retry: false,
   });
 }
 
+/**
+ * Restores session after hard refresh / remount.
+ * Uses the shared single-flight refresh so it never races the axios interceptor
+ * (double refresh would revoke the first token under rotation).
+ */
 export function useSessionBootstrap() {
-  const { accessToken, refreshToken, setSession, clearSession } =
-    useAuthStore();
+  const hasHydrated = useAuthStore((s) => s.hasHydrated);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
   const queryClient = useQueryClient();
+  const bootingRef = useRef(false);
 
   useEffect(() => {
+    if (!hasHydrated) return;
+
     let cancelled = false;
 
     async function bootstrap() {
-      if (accessToken) {
-        try {
-          await queryClient.fetchQuery({
-            queryKey: currentUserQueryKey,
-            queryFn: fetchCurrentUser,
-          });
-        } catch {
-          if (refreshToken) {
-            try {
-              const data = await refreshRequest(refreshToken);
-              if (!cancelled) {
-                setSession({
-                  accessToken: data.accessToken,
-                  refreshToken: data.refreshToken,
-                  user: data.user,
-                });
-                await queryClient.fetchQuery({
-                  queryKey: currentUserQueryKey,
-                  queryFn: fetchCurrentUser,
-                });
-              }
-            } catch {
-              if (!cancelled) clearSession();
-            }
-          } else if (!cancelled) {
-            clearSession();
-          }
-        }
-        return;
-      }
+      if (bootingRef.current) return;
+      bootingRef.current = true;
 
-      if (refreshToken) {
-        try {
-          const data = await refreshRequest(refreshToken);
-          if (!cancelled) {
-            setSession({
-              accessToken: data.accessToken,
-              refreshToken: data.refreshToken,
-              user: data.user,
-            });
+      try {
+        const state = useAuthStore.getState();
+
+        if (state.accessToken) {
+          try {
             await queryClient.fetchQuery({
               queryKey: currentUserQueryKey,
               queryFn: fetchCurrentUser,
             });
+          } catch {
+            // Interceptor already attempted single-flight refresh on 401.
+            // If session is gone after that, AuthGuard will redirect.
           }
-        } catch {
-          if (!cancelled) clearSession();
+          return;
         }
+
+        if (state.refreshToken) {
+          const token = await refreshAccessToken();
+          if (!token || cancelled) return;
+
+          try {
+            await queryClient.fetchQuery({
+              queryKey: currentUserQueryKey,
+              queryFn: fetchCurrentUser,
+            });
+          } catch {
+            /* AuthGuard handles expired UI */
+          }
+        }
+      } finally {
+        bootingRef.current = false;
       }
     }
 
@@ -91,13 +88,7 @@ export function useSessionBootstrap() {
     return () => {
       cancelled = true;
     };
-  }, [
-    accessToken,
-    refreshToken,
-    setSession,
-    clearSession,
-    queryClient,
-  ]);
+  }, [hasHydrated, accessToken, refreshToken, queryClient]);
 }
 
 export function useLogin() {

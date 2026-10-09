@@ -25,6 +25,11 @@ import { QueueStation } from "@/types/encounter";
 import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
 import { formatWaitingSince } from "@/lib/format/wait-time";
 import { cn } from "@/lib/utils";
+import {
+  sortByCreatedAtDesc,
+  sortQueueNewestFirst,
+} from "@/lib/queues/sort";
+import { ExpandablePanel } from "@/components/shared/table-layout";
 import type { LabOrder } from "@/features/laboratory/api";
 
 type LabTab = "new" | "results" | "send" | "done";
@@ -68,7 +73,7 @@ export function LabDashboard() {
   const updateEntry = useUpdateQueueEntry();
 
   const groups = useMemo(() => {
-    const all = orders.data ?? [];
+    const all = sortByCreatedAtDesc(orders.data ?? []);
     return {
       new: all.filter((o) => o.status === LabOrderStatus.ORDERED),
       results: all.filter(
@@ -95,7 +100,7 @@ export function LabDashboard() {
     return map;
   }, [orders.data]);
 
-  const queueItems = queue.data ?? [];
+  const queueItems = sortQueueNewestFirst(queue.data ?? []);
   const newCount = groups.new.length;
   const resultsCount = groups.results.length;
   const sendCount = groups.send.length;
@@ -164,20 +169,23 @@ export function LabDashboard() {
       </nav>
 
       {tab === "new" && queueItems.length > 0 ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between gap-2">
+        <ExpandablePanel
+          title={
             <div>
-              <h2 className="text-sm font-semibold text-slate-800">
+              <h2 className="text-sm font-semibold text-slate-900">
                 Waiting at lab station
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs font-normal text-slate-500">
                 Call the patient, then open their order
               </p>
             </div>
+          }
+          toolbar={
             <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
               {queueItems.length} waiting
             </span>
-          </div>
+          }
+        >
           <DataTable>
             <DataTableHead>
               <tr>
@@ -261,20 +269,18 @@ export function LabDashboard() {
               })}
             </DataTableBody>
           </DataTable>
-        </section>
+        </ExpandablePanel>
       ) : null}
 
-      <section
+      <ExpandablePanel
         className={cn(
-          "rounded-lg border bg-white p-4 shadow-sm",
           tab === "send" && sendCount > 0
             ? "border-red-200 ring-1 ring-red-100"
-            : "border-slate-200",
+            : undefined,
         )}
-      >
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        title={
           <div>
-            <h2 className="text-sm font-semibold text-slate-800">
+            <h2 className="text-sm font-semibold text-slate-900">
               {tab === "new"
                 ? "New from doctor"
                 : tab === "results"
@@ -283,7 +289,7 @@ export function LabDashboard() {
                     ? "Results ready — send to doctor"
                     : "Already sent to doctor"}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs font-normal text-slate-500">
               {tab === "new"
                 ? "Open → receive sample → enter results"
                 : tab === "results"
@@ -293,7 +299,9 @@ export function LabDashboard() {
                     : "Verified returns (read-only)"}
             </p>
           </div>
-          {tabRows.length > 0 && tab !== "done" ? (
+        }
+        toolbar={
+          tabRows.length > 0 && tab !== "done" ? (
             <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
               {tabRows.length}{" "}
               {tab === "new"
@@ -302,9 +310,9 @@ export function LabDashboard() {
                   ? "to enter"
                   : "to send"}
             </span>
-          ) : null}
-        </div>
-
+          ) : undefined
+        }
+      >
         {tabRows.length === 0 ? (
           <EmptyState
             title={
@@ -329,7 +337,7 @@ export function LabDashboard() {
         ) : (
           <OrdersTable rows={tabRows} highlightSend={tab === "send"} />
         )}
-      </section>
+      </ExpandablePanel>
     </div>
   );
 }
@@ -386,7 +394,7 @@ function OrdersTable({
           <DataTableHeaderCell>Tests</DataTableHeaderCell>
           <DataTableHeaderCell>Priority</DataTableHeaderCell>
           <DataTableHeaderCell>Status</DataTableHeaderCell>
-          <DataTableHeaderCell> </DataTableHeaderCell>
+          <DataTableHeaderCell stickyRight>Actions</DataTableHeaderCell>
         </tr>
       </DataTableHead>
       <DataTableBody>
@@ -430,7 +438,7 @@ function OrdersTable({
               </span>
             </DataTableCell>
             <DataTableCell>{labOrderStatusBadge(o.status)}</DataTableCell>
-            <DataTableCell className="text-right">
+            <DataTableCell stickyRight className="text-right">
               <Link href={`/laboratory/orders/${o.id}`}>
                 <Button
                   type="button"

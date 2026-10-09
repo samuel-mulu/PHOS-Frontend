@@ -14,6 +14,7 @@ import {
   DataTableHeaderCell,
   DataTableRow,
 } from "@/components/shared/data-table";
+import { ExpandablePanel } from "@/components/shared/table-layout";
 import {
   EmptyState,
   ErrorState,
@@ -26,16 +27,30 @@ import { useCurrentUser } from "@/features/auth/hooks";
 
 export function PatientSearchList({
   onSelectPatient,
+  onScheduleAppointment,
   hideRegisterLink = false,
+  selectLabel = "Select",
+  maximize = false,
+  expandable = false,
+  title = "Patients",
+  headerAction,
 }: {
   onSelectPatient?: (patient: import("@/types/patient").Patient) => void;
+  onScheduleAppointment?: (patient: import("@/types/patient").Patient) => void;
   hideRegisterLink?: boolean;
+  selectLabel?: string;
+  maximize?: boolean;
+  /** Show full-screen expand control for this table. */
+  expandable?: boolean;
+  title?: string;
+  headerAction?: React.ReactNode;
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const debouncedSearch = useDebouncedValue(search, 350);
   const { data: user } = useCurrentUser();
-  const limit = 20;
+  const limit = maximize || expandable ? 30 : 20;
+  const showActions = Boolean(onSelectPatient || onScheduleAppointment);
 
   const query = usePatientsList({
     search: debouncedSearch || undefined,
@@ -47,28 +62,39 @@ export function PatientSearchList({
     ? Math.max(1, Math.ceil(query.data.total / query.data.limit))
     : 1;
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            className="pl-9"
-            placeholder="Search by number, name, phone, ID…"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-          />
-        </div>
+  const searchBar = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div
+        className={
+          maximize || expandable
+            ? "relative w-full flex-1"
+            : "relative max-w-md flex-1"
+        }
+      >
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          className="pl-9"
+          placeholder="Search by number, name, phone, ID…"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {headerAction}
         {!hideRegisterLink && user && canRegisterPatient(user.role) ? (
           <Link href="/patients/new">
             <Button type="button">Register patient</Button>
           </Link>
         ) : null}
       </div>
+    </div>
+  );
 
+  const tableBlock = (
+    <>
       {query.isLoading ? <LoadingBlock label="Searching patients" /> : null}
       {query.isError ? (
         <ErrorState
@@ -83,7 +109,13 @@ export function PatientSearchList({
 
       {query.isSuccess && query.data.items.length > 0 ? (
         <>
-          <DataTable>
+          <DataTable
+            maxHeightClassName={
+              maximize || expandable
+                ? "max-h-[min(40rem,70vh)]"
+                : undefined
+            }
+          >
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell>Number</DataTableHeaderCell>
@@ -91,8 +123,8 @@ export function PatientSearchList({
                 <DataTableHeaderCell>Sex</DataTableHeaderCell>
                 <DataTableHeaderCell>Phone</DataTableHeaderCell>
                 <DataTableHeaderCell>DOB</DataTableHeaderCell>
-                {onSelectPatient ? (
-                  <DataTableHeaderCell> </DataTableHeaderCell>
+                {showActions ? (
+                  <DataTableHeaderCell stickyRight>Actions</DataTableHeaderCell>
                 ) : null}
               </tr>
             </DataTableHead>
@@ -119,16 +151,29 @@ export function PatientSearchList({
                       ? format(new Date(p.dateOfBirth), "dd MMM yyyy")
                       : "—"}
                   </DataTableCell>
-                  {onSelectPatient ? (
-                    <DataTableCell>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onSelectPatient(p)}
-                      >
-                        Select
-                      </Button>
+                  {showActions ? (
+                    <DataTableCell stickyRight>
+                      <div className="flex flex-nowrap gap-1.5">
+                        {onSelectPatient ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => onSelectPatient(p)}
+                          >
+                            {selectLabel}
+                          </Button>
+                        ) : null}
+                        {onScheduleAppointment ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onScheduleAppointment(p)}
+                          >
+                            Add appointment
+                          </Button>
+                        ) : null}
+                      </div>
                     </DataTableCell>
                   ) : null}
                 </DataTableRow>
@@ -162,6 +207,21 @@ export function PatientSearchList({
           </div>
         </>
       ) : null}
+    </>
+  );
+
+  if (expandable) {
+    return (
+      <ExpandablePanel title={title} toolbar={searchBar}>
+        {tableBlock}
+      </ExpandablePanel>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {searchBar}
+      {tableBlock}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
+import { ExpandablePanel } from "@/components/shared/table-layout";
 import {
   useAdjustStock,
   useExpiring,
@@ -80,38 +81,43 @@ function StockTab() {
   if (!stock.data?.length) return <EmptyState title="No medicines" />;
 
   return (
-    <DataTable>
-      <DataTableHead>
-        <tr>
-          <DataTableHeaderCell>Medicine</DataTableHeaderCell>
-          <DataTableHeaderCell>On hand</DataTableHeaderCell>
-          <DataTableHeaderCell>Reorder</DataTableHeaderCell>
-          <DataTableHeaderCell>Batches</DataTableHeaderCell>
-        </tr>
-      </DataTableHead>
-      <DataTableBody>
-        {stock.data.map((m) => {
-          const onHand = m.batches.reduce((s, b) => s + b.quantityRemaining, 0);
-          return (
-            <DataTableRow key={m.id}>
-              <DataTableCell>
-                {m.code} — {m.name}
-              </DataTableCell>
-              <DataTableCell>{onHand}</DataTableCell>
-              <DataTableCell>{m.reorderLevel}</DataTableCell>
-              <DataTableCell className="text-xs">
-                {m.batches.map((b) => (
-                  <div key={b.id}>
-                    {b.batchNumber}: {b.quantityRemaining} (exp{" "}
-                    {format(new Date(b.expiryDate), "yyyy-MM-dd")})
-                  </div>
-                ))}
-              </DataTableCell>
-            </DataTableRow>
-          );
-        })}
-      </DataTableBody>
-    </DataTable>
+    <ExpandablePanel title="Stock levels">
+      <DataTable>
+        <DataTableHead>
+          <tr>
+            <DataTableHeaderCell>Medicine</DataTableHeaderCell>
+            <DataTableHeaderCell>On hand</DataTableHeaderCell>
+            <DataTableHeaderCell>Reorder</DataTableHeaderCell>
+            <DataTableHeaderCell>Batches</DataTableHeaderCell>
+          </tr>
+        </DataTableHead>
+        <DataTableBody>
+          {stock.data.map((m) => {
+            const onHand = m.batches.reduce(
+              (s, b) => s + b.quantityRemaining,
+              0,
+            );
+            return (
+              <DataTableRow key={m.id}>
+                <DataTableCell>
+                  {m.code} — {m.name}
+                </DataTableCell>
+                <DataTableCell>{onHand}</DataTableCell>
+                <DataTableCell>{m.reorderLevel}</DataTableCell>
+                <DataTableCell className="text-xs">
+                  {m.batches.map((b) => (
+                    <div key={b.id}>
+                      {b.batchNumber}: {b.quantityRemaining} (exp{" "}
+                      {format(new Date(b.expiryDate), "yyyy-MM-dd")})
+                    </div>
+                  ))}
+                </DataTableCell>
+              </DataTableRow>
+            );
+          })}
+        </DataTableBody>
+      </DataTable>
+    </ExpandablePanel>
   );
 }
 
@@ -135,28 +141,30 @@ function ExpiringTab() {
   if (exp.isLoading) return <LoadingBlock />;
   if (!exp.data?.length) return <EmptyState title="Nothing expiring soon" />;
   return (
-    <DataTable>
-      <DataTableHead>
-        <tr>
-          <DataTableHeaderCell>Medicine</DataTableHeaderCell>
-          <DataTableHeaderCell>Batch</DataTableHeaderCell>
-          <DataTableHeaderCell>Qty</DataTableHeaderCell>
-          <DataTableHeaderCell>Expiry</DataTableHeaderCell>
-        </tr>
-      </DataTableHead>
-      <DataTableBody>
-        {exp.data.map((b) => (
-          <DataTableRow key={b.id}>
-            <DataTableCell>{b.medicine.name}</DataTableCell>
-            <DataTableCell>{b.batchNumber}</DataTableCell>
-            <DataTableCell>{b.quantityRemaining}</DataTableCell>
-            <DataTableCell>
-              {format(new Date(b.expiryDate), "dd MMM yyyy")}
-            </DataTableCell>
-          </DataTableRow>
-        ))}
-      </DataTableBody>
-    </DataTable>
+    <ExpandablePanel title="Expiring batches">
+      <DataTable>
+        <DataTableHead>
+          <tr>
+            <DataTableHeaderCell>Medicine</DataTableHeaderCell>
+            <DataTableHeaderCell>Batch</DataTableHeaderCell>
+            <DataTableHeaderCell>Qty</DataTableHeaderCell>
+            <DataTableHeaderCell>Expiry</DataTableHeaderCell>
+          </tr>
+        </DataTableHead>
+        <DataTableBody>
+          {exp.data.map((b) => (
+            <DataTableRow key={b.id}>
+              <DataTableCell>{b.medicine.name}</DataTableCell>
+              <DataTableCell>{b.batchNumber}</DataTableCell>
+              <DataTableCell>{b.quantityRemaining}</DataTableCell>
+              <DataTableCell>
+                {format(new Date(b.expiryDate), "dd MMM yyyy")}
+              </DataTableCell>
+            </DataTableRow>
+          ))}
+        </DataTableBody>
+      </DataTable>
+    </ExpandablePanel>
   );
 }
 

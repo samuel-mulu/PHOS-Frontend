@@ -8,13 +8,15 @@ export type Encounter = {
   patientId: string;
   facilityId: string;
   departmentId: string;
-  serviceId: string;
+  serviceId: string | null;
   status: string;
   type: EncounterType;
   priority: EncounterPriority;
   reason: string | null;
   startedAt: string;
   assignedDoctorId?: string | null;
+  /** After mid-visit payment, patient returns to this station. */
+  paymentReturnStation?: "TRIAGE" | "DOCTOR" | "LAB" | "PHARMACY" | "CASHIER" | null;
   assignedDoctor?: {
     id: string;
     firstName: string;
@@ -58,7 +60,8 @@ export type CreateEncounterInput = {
   patientId: string;
   facilityId: string;
   departmentId: string;
-  serviceId: string;
+  /** Optional — visit may start with no fee. */
+  serviceId?: string;
   type?: EncounterType;
   priority?: EncounterPriority;
   reason?: string;
@@ -90,6 +93,25 @@ export async function requestBilling(encounterId: string) {
   const { data } = await api.post<{ success: boolean; encounterId: string }>(
     `/encounters/${encounterId}/billing-request`,
   );
+  return data;
+}
+
+export type PaymentRequestInput = {
+  description: string;
+  amountCents: number;
+  returnStation: "DOCTOR" | "LAB" | "PHARMACY" | "TRIAGE";
+};
+
+export async function requestPayment(
+  encounterId: string,
+  input: PaymentRequestInput,
+) {
+  const { data } = await api.post<{
+    success: boolean;
+    encounterId: string;
+    invoiceId: string;
+    returnStation: "DOCTOR" | "LAB" | "PHARMACY" | "TRIAGE";
+  }>(`/encounters/${encounterId}/payment-request`, input);
   return data;
 }
 

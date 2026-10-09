@@ -12,31 +12,50 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+/** Single-flight refresh so bootstrap + interceptor never rotate twice. */
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken, setSession, clearSession } = useAuthStore.getState();
-  if (!refreshToken) {
-    clearSession();
-    return null;
-  }
+/**
+ * Rotate refresh token once. Always writes new tokens to the store on success
+ * (even if a React effect was cancelled) so Strict Mode remounts don't lose
+ * the rotated token and then clear the session.
+ */
+export async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
 
-  try {
-    const { data } = await axios.post<AuthTokensResponse>(
-      `${env.NEXT_PUBLIC_API_URL}/auth/refresh`,
-      { refreshToken },
-      { withCredentials: true },
-    );
-    setSession({
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      user: data.user,
-    });
-    return data.accessToken;
-  } catch {
-    clearSession();
-    return null;
-  }
+  refreshPromise = (async () => {
+    const { refreshToken, setSession, clearSession } = useAuthStore.getState();
+    if (!refreshToken) {
+      clearSession();
+      return null;
+    }
+
+    try {
+      const { data } = await axios.post<AuthTokensResponse>(
+        `${env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+        { refreshToken },
+        { withCredentials: true },
+      );
+      // Persist immediately — must not depend on React effect cancellation.
+      setSession({
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        user: data.user,
+      });
+      return data.accessToken;
+    } catch (error) {
+      const normalized = normalizeApiError(error);
+      // Only wipe local session on definitive auth rejection, not network blips.
+      if (normalized.statusCode === 401 || normalized.statusCode === 403) {
+        clearSession();
+      }
+      return null;
+    }
+  })().finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
 }
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -82,10 +101,7 @@ api.interceptors.response.use(
     }
 
     original._retry = true;
-    refreshPromise ??= refreshAccessToken().finally(() => {
-      refreshPromise = null;
-    });
-    const token = await refreshPromise;
+    const token = await refreshAccessToken();
     if (!token) return Promise.reject(normalizeApiError(error));
 
     original.headers.Authorization = `Bearer ${token}`;

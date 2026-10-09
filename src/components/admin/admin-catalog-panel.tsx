@@ -233,10 +233,10 @@ export function AdminCatalogPanel() {
         </Card>
 
         <Card className="p-4">
-          <Label htmlFor="sel-dept">Visit fees (for front desk)</Label>
+          <Label htmlFor="sel-dept">Clinic services (Hiwet)</Label>
           <p className="mt-1 text-xs text-slate-500">
-            Create fees here (registration, consultation, patient card). Front
-            desk picks them from the start-visit dropdown.
+            Add or edit medical services and prices. Front desk can start a
+            visit with no fee, or pick one or more services to charge.
           </p>
           <select
             id="sel-dept"
@@ -287,13 +287,22 @@ export function AdminCatalogPanel() {
                 });
               }}
             >
-              <p className="text-xs font-medium text-slate-600">New fee</p>
-              <div className="flex flex-wrap gap-1">
+              <p className="text-xs font-medium text-slate-600">New service</p>
+              <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto">
                 {(
                   [
+                    ["EMERG", "Emergency Care Services", "500"],
+                    ["OPD", "Outpatient Services (Pediatric & Adult Care)", "300"],
+                    ["MCH", "Maternal & Child Health (MCH) Services", "350"],
+                    ["PNC", "Delivery & Postnatal Care (PNC)", "1500"],
+                    ["FP", "Family Planning & Reproductive Health", "250"],
+                    ["MINOR_SURG", "Minor Surgical Procedures", "800"],
+                    ["CLINIC_LAB", "Comprehensive Laboratory Services", "0"],
+                    ["USG", "Ultrasound & Diagnostic Imaging", "600"],
+                    ["WOUND", "Wound Care & Injection Services", "150"],
+                    ["REFERRAL", "Referral & Follow-Up Care", "200"],
+                    ["CONSULT", "General Consultation", "300"],
                     ["REG", "Registration fee", "50"],
-                    ["CONSULT", "Consultation", "200"],
-                    ["CARD", "Patient card", "20"],
                   ] as const
                 ).map(([code, name, price]) => (
                   <button
@@ -309,7 +318,7 @@ export function AdminCatalogPanel() {
                       })
                     }
                   >
-                    + {name}
+                    + {name.split(" (")[0]}
                   </button>
                 ))}
               </div>
@@ -322,7 +331,7 @@ export function AdminCatalogPanel() {
                 }
               />
               <Input
-                placeholder="Fee name"
+                placeholder="Service name"
                 required
                 value={svcForm.name}
                 onChange={(e) =>
@@ -330,7 +339,7 @@ export function AdminCatalogPanel() {
                 }
               />
               <Input
-                placeholder="Price (ETB)"
+                placeholder="Price (ETB) — 0 = no fixed fee"
                 required
                 inputMode="decimal"
                 value={svcForm.priceEtb}
@@ -347,7 +356,7 @@ export function AdminCatalogPanel() {
                 }
               />
               <Button type="submit" size="sm" disabled={serviceCreate.isPending}>
-                Add fee
+                Add service
               </Button>
             </form>
           ) : null}

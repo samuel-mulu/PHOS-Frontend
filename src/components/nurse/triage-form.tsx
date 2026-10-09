@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
+import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
 import { LoadingBlock } from "@/components/shared/state-blocks";
 import { useEncounter } from "@/features/encounters/hooks";
 import { useRecordTriage, useTriage } from "@/features/triage/hooks";
@@ -118,6 +119,13 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
           Submitting sends the patient to the doctor queue (backend workflow).
         </p>
       </form>
+
+      <PaymentRequestPanel
+        encounterId={encounterId}
+        returnStation="TRIAGE"
+        title="Charge & send to cashier"
+        disabled={encounter.data.status === "WAITING_PAYMENT"}
+      />
     </div>
   );
 }

@@ -1,10 +1,8 @@
 "use client";
 
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format, startOfDay, endOfDay, addDays } from "date-fns";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   DataTable,
   DataTableBody,
@@ -13,140 +11,223 @@ import {
   DataTableHeaderCell,
   DataTableRow,
 } from "@/components/shared/data-table";
+import { ExpandablePanel } from "@/components/shared/table-layout";
+import { OverlayPortal } from "@/components/shared/overlay-portal";
 import { EmptyState, LoadingBlock } from "@/components/shared/state-blocks";
-import { PatientSearchList } from "@/components/patients/patient-search-list";
+import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
+import { StartVisitForm } from "@/components/reception/start-visit-form";
 import {
   useAppointments,
-  useCreateAppointment,
+  useCheckInAppointment,
   useUpdateAppointmentStatus,
 } from "@/features/appointments/hooks";
+import type { Appointment } from "@/features/appointments/api";
 import { AppointmentStatus } from "@/types/appointment";
-import type { Patient } from "@/types/patient";
+import { announceClinic } from "@/lib/voice/announce";
+import { cn } from "@/lib/utils";
+
+type ApptFilter = "today" | "all";
 
 export function AppointmentsPanel() {
+  const [filter, setFilter] = useState<ApptFilter>("today");
   const today = useMemo(() => new Date(), []);
-  const from = startOfDay(today).toISOString();
-  const to = endOfDay(today).toISOString();
-  const list = useAppointments({ from, to });
-  const create = useCreateAppointment();
+
+  const range = useMemo(() => {
+    if (filter === "today") {
+      return {
+        from: startOfDay(today).toISOString(),
+        to: endOfDay(today).toISOString(),
+      };
+    }
+    return {
+      from: startOfDay(addDays(today, -7)).toISOString(),
+      to: endOfDay(addDays(today, 90)).toISOString(),
+    };
+  }, [filter, today]);
+
+  const list = useAppointments(range);
   const updateStatus = useUpdateAppointmentStatus();
+  const checkIn = useCheckInAppointment();
+  const [checkInAppt, setCheckInAppt] = useState<Appointment | null>(null);
 
-  const [patient, setPatient] = useState<Patient | null>(null);
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [notes, setNotes] = useState("");
+  const rows = list.data ?? [];
 
-  function schedule() {
-    if (!patient || !scheduledAt) return;
-    create.mutate(
-      {
-        patientId: patient.id,
-        scheduledAt: new Date(scheduledAt).toISOString(),
-        notes: notes || undefined,
-      },
-      {
-        onSuccess: () => {
-          setPatient(null);
-          setScheduledAt("");
-          setNotes("");
-        },
-      },
-    );
-  }
+  const filterBar = (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-xs text-slate-500">
+        Schedule from Reception → Find returning patient → Add appointment.
+      </p>
+      <div className="flex gap-1.5 rounded-md border border-slate-200 bg-white p-1">
+        {(
+          [
+            ["today", "Today"],
+            ["all", "All"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(
+              "rounded px-3 py-1.5 text-xs font-medium",
+              filter === id
+                ? "bg-teal-800 text-white"
+                : "text-slate-600 hover:bg-slate-50",
+            )}
+            onClick={() => setFilter(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">
-          Schedule appointment
-        </h2>
-        <PatientSearchList onSelectPatient={setPatient} />
-        {patient ? (
-          <p className="text-sm text-slate-700">
-            Patient:{" "}
-            <span className="font-medium">
-              {[patient.firstName, patient.lastName].filter(Boolean).join(" ")}{" "}
-              ({patient.patientNumber})
-            </span>
-          </p>
-        ) : null}
-        <div className="space-y-2">
-          <Label htmlFor="appt-when">Date & time</Label>
-          <Input
-            id="appt-when"
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="appt-notes">Notes</Label>
-          <Input
-            id="appt-notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional"
-          />
-        </div>
-        <Button
-          type="button"
-          disabled={!patient || !scheduledAt || create.isPending}
-          onClick={schedule}
-        >
-          Save appointment
-        </Button>
-      </div>
-
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-800">
-          Today&apos;s appointments
-        </h2>
+    <div className="mx-auto max-w-7xl space-y-4">
+      <ExpandablePanel title="Appointments" toolbar={filterBar}>
         {list.isLoading ? <LoadingBlock label="Loading appointments" /> : null}
-        {list.isSuccess && list.data.length === 0 ? (
-          <EmptyState title="No appointments today" />
+        {list.isSuccess && rows.length === 0 ? (
+          <EmptyState
+            title={
+              filter === "today"
+                ? "No appointments today"
+                : "No appointments in range"
+            }
+          />
         ) : null}
-        {list.data?.length ? (
+        {rows.length > 0 ? (
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell>Time</DataTableHeaderCell>
+                <DataTableHeaderCell>
+                  {filter === "today" ? "Time" : "When"}
+                </DataTableHeaderCell>
                 <DataTableHeaderCell>Patient</DataTableHeaderCell>
+                <DataTableHeaderCell>Number</DataTableHeaderCell>
                 <DataTableHeaderCell>Status</DataTableHeaderCell>
-                <DataTableHeaderCell>Actions</DataTableHeaderCell>
+                <DataTableHeaderCell>Notes</DataTableHeaderCell>
+                <DataTableHeaderCell stickyRight>Actions</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <DataTableBody>
-              {list.data.map((a) => (
+              {rows.map((a) => (
                 <DataTableRow key={a.id}>
                   <DataTableCell>
-                    {format(new Date(a.scheduledAt), "HH:mm")}
+                    {filter === "today"
+                      ? format(new Date(a.scheduledAt), "HH:mm")
+                      : format(new Date(a.scheduledAt), "dd MMM yyyy HH:mm")}
                   </DataTableCell>
                   <DataTableCell>
                     {a.patient.firstName} {a.patient.lastName}
                   </DataTableCell>
-                  <DataTableCell>{a.status.replaceAll("_", " ")}</DataTableCell>
+                  <DataTableCell className="text-teal-800">
+                    {a.patient.patientNumber}
+                  </DataTableCell>
                   <DataTableCell>
-                    {a.status === AppointmentStatus.SCHEDULED ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          updateStatus.mutate({
-                            id: a.id,
-                            status: AppointmentStatus.NO_SHOW,
-                          })
-                        }
-                      >
-                        No show
-                      </Button>
-                    ) : null}
+                    {a.status.replaceAll("_", " ")}
+                  </DataTableCell>
+                  <DataTableCell className="max-w-[12rem] truncate text-slate-600">
+                    {a.notes ?? "—"}
+                  </DataTableCell>
+                  <DataTableCell stickyRight>
+                    <div className="flex flex-nowrap gap-1.5">
+                      {a.status === AppointmentStatus.SCHEDULED ? (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => setCheckInAppt(a)}
+                          >
+                            Start visit
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              updateStatus.mutate({
+                                id: a.id,
+                                status: AppointmentStatus.NO_SHOW,
+                              })
+                            }
+                          >
+                            No show
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
                   </DataTableCell>
                 </DataTableRow>
               ))}
             </DataTableBody>
           </DataTable>
         ) : null}
-      </div>
+      </ExpandablePanel>
+
+      {checkInAppt ? (
+        <OverlayPortal>
+          <div className="fixed inset-0 z-[80] flex items-stretch justify-center p-2 sm:p-4">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/40"
+              aria-label="Close"
+              onClick={() => setCheckInAppt(null)}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="appt-visit-dialog-title"
+              className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200 px-5 py-3">
+                <h3
+                  id="appt-visit-dialog-title"
+                  className="text-lg font-semibold text-slate-900"
+                >
+                  Appointment — bill & start
+                </h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCheckInAppt(null)}
+                >
+                  Close
+                </Button>
+              </div>
+              <div className="flex-1 space-y-4 overflow-y-auto p-5">
+                <PatientIdentityBar patient={checkInAppt.patient} />
+                {checkInAppt.notes ? (
+                  <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                    Appointment notes: {checkInAppt.notes}
+                  </p>
+                ) : null}
+                <StartVisitForm
+                  patient={checkInAppt.patient}
+                  visitKind="APPOINTMENT"
+                  submitLabel="Start visit"
+                  onSuccess={({ encounter, paid }) => {
+                    const appt = checkInAppt;
+                    checkIn.mutate(
+                      { id: appt.id, encounterId: encounter.id },
+                      {
+                        onSuccess: () => {
+                          setCheckInAppt(null);
+                          announceClinic(
+                            paid
+                              ? `${appt.patient.firstName} ${appt.patient.lastName}, payment received. Please proceed.`
+                              : `${appt.patient.firstName} ${appt.patient.lastName}, please proceed.`,
+                          );
+                        },
+                      },
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </OverlayPortal>
+      ) : null}
     </div>
   );
 }

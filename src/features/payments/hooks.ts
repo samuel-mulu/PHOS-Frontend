@@ -26,6 +26,7 @@ export function useCreatePayment(invoiceId: string) {
       void queryClient.invalidateQueries({ queryKey: ["cash-session"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters"] });
       void queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
       toast.success("Payment recorded");
     },
     onError: (e) => {
@@ -46,6 +47,7 @@ export function useCreateRefund(paymentId: string, invoiceId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
       void queryClient.invalidateQueries({ queryKey: ["cash-session"] });
+      void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
       toast.success("Refund recorded");
     },
     onError: (e) => {

@@ -9,8 +9,10 @@ import {
   fetchEncounter,
   fetchEncounters,
   requestBilling,
+  requestPayment,
   routeEncounter,
   type CreateEncounterInput,
+  type PaymentRequestInput,
 } from "./api";
 
 export function useEncounter(id: string) {
@@ -40,6 +42,32 @@ export function useRequestBilling(encounterId: string) {
         queryKey: ["encounters", encounterId],
       });
       toast.success("Patient sent to cashier");
+    },
+    onError: (error) => toast.error(normalizeApiError(error).message),
+  });
+}
+
+export function usePaymentRequest(encounterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PaymentRequestInput) =>
+      requestPayment(encounterId, input),
+    onSuccess: (_data, vars) => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing"] });
+      void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["encounters", encounterId],
+      });
+      const destLabels: Record<string, string> = {
+        DOCTOR: "doctor",
+        LAB: "lab",
+        PHARMACY: "pharmacy",
+        TRIAGE: "triage",
+      };
+      const dest = destLabels[vars.returnStation] ?? vars.returnStation;
+      toast.success(`Sent to cashier — returns to ${dest} after pay`);
     },
     onError: (error) => toast.error(normalizeApiError(error).message),
   });
