@@ -139,6 +139,7 @@ export async function createLabOrder(
     labTestIds: string[];
     priority?: EncounterPriority;
     clinicalNotes?: string;
+    billFirst?: boolean;
   },
 ) {
   const { data } = await api.post<LabOrder>(

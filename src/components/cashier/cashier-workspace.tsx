@@ -36,7 +36,7 @@ import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { QueueStation } from "@/types/encounter";
 import { invoiceStatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
-import { sortQueueNewestFirst } from "@/lib/queues/sort";
+import { sortByEnteredAtDesc } from "@/lib/queues/sort";
 import { ExpandablePanel } from "@/components/shared/table-layout";
 import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
 import { toast } from "sonner";
@@ -146,7 +146,7 @@ export function CashierWorkspace({
   const queueBase = embedded ? "/front-desk?tab=payments" : "/cashier";
 
   const waitingItems = useMemo(
-    () => sortQueueNewestFirst(queue.data ?? []),
+    () => sortByEnteredAtDesc(queue.data ?? []),
     [queue.data],
   );
 

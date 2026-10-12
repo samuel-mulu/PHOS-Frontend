@@ -32,6 +32,7 @@ import {
   DoctorLabOrdersPanel,
   useDoctorLabOrderCounts,
 } from "@/components/doctor/doctor-lab-orders-panel";
+import { DoctorUltrasoundPanel } from "@/components/doctor/doctor-ultrasound-panel";
 import { labOrderStatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format/money";
@@ -74,7 +75,9 @@ export function DoctorConsultationWorkspace({
   const consultationQuery = useConsultation(encounterId);
   const save = useSaveConsultation(encounterId);
   const [workflowStep, setWorkflowStep] = useState<Step>("notes");
-  const [orderSubTab, setOrderSubTab] = useState<"lab" | "rx">("lab");
+  const [orderSubTab, setOrderSubTab] = useState<"lab" | "rx" | "ultrasound">(
+    "lab",
+  );
   const [historyOpen, setHistoryOpen] = useState(false);
   const [ensuringDraft, setEnsuringDraft] = useState(false);
   const routePatient = useRouteEncounter(encounterId);
@@ -467,6 +470,18 @@ export function DoctorConsultationWorkspace({
                 >
                   Medicines
                 </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-medium",
+                    orderSubTab === "ultrasound"
+                      ? "bg-teal-800 text-white"
+                      : "bg-slate-100 text-slate-700",
+                  )}
+                  onClick={() => setOrderSubTab("ultrasound")}
+                >
+                  Ultrasound
+                </button>
               </div>
               {orderSubTab === "lab" ? (
                 <DoctorLabOrdersPanel
@@ -476,8 +491,18 @@ export function DoctorConsultationWorkspace({
                     labCounts.ready > 0 ||
                     encounter.data?.status === "WAITING_REVIEW"
                   }
+                  encounterStatus={encounter.data?.status}
+                  paymentReturnStation={encounter.data?.paymentReturnStation}
                   onNeedDraft={() => void ensureConsultation()}
                   onSentToLab={() => routePatient.mutate(QueueStation.LAB)}
+                />
+              ) : orderSubTab === "ultrasound" ? (
+                <DoctorUltrasoundPanel
+                  encounterId={encounterId}
+                  isFinalized={isFinalized}
+                  encounterStatus={encounter.data?.status}
+                  paymentReturnStation={encounter.data?.paymentReturnStation}
+                  disabled={ensuringDraft}
                 />
               ) : (
                 <PrescriptionTab
@@ -548,6 +573,7 @@ export function DoctorConsultationWorkspace({
               consultationId={consultationId}
               encounterId={encounterId}
               encounterStatus={encounterStatus}
+              paymentReturnStation={encounter.data.paymentReturnStation}
               invoiceMeta={encounter.data.invoice}
               isFinalized={Boolean(isFinalized)}
               finalizePending={finalize.isPending}
@@ -588,6 +614,7 @@ function FinishNextSteps({
   consultationId,
   encounterId,
   encounterStatus,
+  paymentReturnStation,
   invoiceMeta,
   isFinalized,
   finalizePending,
@@ -598,6 +625,7 @@ function FinishNextSteps({
   consultationId?: string;
   encounterId: string;
   encounterStatus: string;
+  paymentReturnStation?: string | null;
   invoiceMeta?: { id: string; invoiceNumber: string; status: string } | null;
   isFinalized: boolean;
   finalizePending: boolean;
@@ -720,8 +748,9 @@ function FinishNextSteps({
           className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
           role="status"
         >
-          Patient is at cashier. After payment they return to your queue
-          automatically — no cashier send-back step.
+          {paymentReturnStation === "LAB"
+            ? "Patient is at cashier for lab payment. After pay they go to lab. Results return to your queue when ready."
+            : "Patient is at cashier. After payment they return to your queue automatically — no cashier send-back step."}
         </div>
       ) : null}
 

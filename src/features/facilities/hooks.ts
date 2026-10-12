@@ -25,6 +25,13 @@ export function useServices(departmentId?: string) {
   });
 }
 
+export function useAllServices() {
+  return useQuery({
+    queryKey: ["services", "all"],
+    queryFn: () => fetchServices(),
+  });
+}
+
 export function useWorkspaceContext(departmentId: string | null | undefined) {
   const facilities = useFacilities();
   const departments = useDepartments();

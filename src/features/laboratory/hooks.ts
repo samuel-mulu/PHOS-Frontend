@@ -144,9 +144,16 @@ export function useCreateLabOrder(consultationId: string) {
   return useMutation({
     mutationFn: (body: Parameters<typeof createLabOrder>[1]) =>
       createLabOrder(consultationId, body),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       void queryClient.invalidateQueries({ queryKey: ["lab", "orders"] });
-      toast.success("Lab order created");
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing"] });
+      toast.success(
+        vars.billFirst
+          ? "Sent to cashier — after pay goes to lab"
+          : "Lab order created",
+      );
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

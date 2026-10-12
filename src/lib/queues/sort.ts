@@ -22,3 +22,13 @@ export function sortByCreatedAtDesc<T extends { createdAt: string }>(
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 }
+
+/** Latest arrival first (cashier: newest payment request on top). */
+export function sortByEnteredAtDesc<T extends { enteredAt: string }>(
+  items: T[],
+): T[] {
+  return [...items].sort(
+    (a, b) =>
+      new Date(b.enteredAt).getTime() - new Date(a.enteredAt).getTime(),
+  );
+}
