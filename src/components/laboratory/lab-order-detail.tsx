@@ -4,9 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
 import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
@@ -18,10 +15,12 @@ import {
   useVerifyLabOrder,
 } from "@/features/laboratory/hooks";
 import { useCurrentUser } from "@/features/auth/hooks";
-import { LabOrderStatus, LabResultFlag } from "@/types/lab";
+import { LabOrderStatus } from "@/types/lab";
 import { Role } from "@/types/role";
 import type { ResultValueInput } from "@/features/laboratory/api";
 import { PrintLabReport } from "@/components/print/print-lab-report";
+import { LabPaper, labItemsToPaperLines } from "@/components/laboratory/lab-paper";
+import { uniquePanelLabels } from "@/lib/lab/panels";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -219,26 +218,12 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
         </p>
 
         {showSend ? (
-          <ul className="mt-3 divide-y divide-slate-100 rounded-md border border-slate-200 bg-slate-50">
-            {o.items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 px-3 py-2 text-sm"
-              >
-                <span className="font-medium text-slate-800">
-                  {item.labTest.code}
-                </span>
-                <span className="text-slate-900">
-                  {drafts[item.id]?.value || item.result?.value || "—"}
-                  {(item.labTest.unit || item.result?.unit) && (
-                    <span className="ml-1 text-xs text-slate-500">
-                      {item.labTest.unit ?? item.result?.unit}
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-3">
+            <LabPaper
+              mode="view"
+              lines={labItemsToPaperLines(o.items, drafts)}
+            />
+          </div>
         ) : null}
 
         {showSend ? (
@@ -299,8 +284,8 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
             : ""}
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          {o.items.length} test{o.items.length === 1 ? "" : "s"} from doctor:{" "}
-          {o.items.map((i) => i.labTest.code).join(", ")}
+          {o.items.length} line{o.items.length === 1 ? "" : "s"} from doctor:{" "}
+          {uniquePanelLabels(o.items.map((i) => i.labTest))}
         </p>
         {o.clinicalNotes ? (
           <p className="mt-2 rounded bg-amber-50 p-2 text-amber-950 ring-1 ring-amber-100">
@@ -415,100 +400,26 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           </div>
         </div>
 
-        <div className="space-y-3">
-          {o.items.map((item) => {
-            const draft = drafts[item.id] ?? {
-              value: "",
-              flag: "",
-              notes: "",
-            };
-            return (
-              <div
-                key={item.id}
-                className="rounded-md border border-slate-200 bg-slate-50/60 p-3"
-              >
-                <p className="font-medium text-slate-900">
-                  {item.labTest.code} — {item.labTest.name}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Unit: {item.labTest.unit ?? "—"} · Ref:{" "}
-                  {item.labTest.referenceRange ?? "—"}
-                </p>
-
-                {isDone && item.result ? (
-                  <div className="mt-2 rounded-md bg-white p-3 text-sm ring-1 ring-slate-100">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                      Result
-                    </p>
-                    <p className="mt-1 text-lg font-semibold text-slate-900">
-                      {item.result.value}
-                      {item.result.unit ? (
-                        <span className="ml-1 text-sm font-normal text-slate-600">
-                          {item.result.unit}
-                        </span>
-                      ) : null}
-                    </p>
-                    {item.result.flag ? (
-                      <p className="mt-1 text-xs text-slate-600">
-                        Flag: {item.result.flag}
-                      </p>
-                    ) : null}
-                    {item.result.notes ? (
-                      <p className="mt-1 text-slate-600">{item.result.notes}</p>
-                    ) : null}
-                  </div>
-                ) : canEditResults ? (
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    <div>
-                      <Label className="text-xs">Value *</Label>
-                      <Input
-                        placeholder="Type or edit result"
-                        value={draft.value}
-                        onChange={(e) =>
-                          updateDraft(item.id, { value: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Flag</Label>
-                      <select
-                        className="h-10 w-full rounded-md border border-slate-200 bg-white px-2 text-sm"
-                        value={draft.flag}
-                        onChange={(e) =>
-                          updateDraft(item.id, { flag: e.target.value })
-                        }
-                      >
-                        <option value="">—</option>
-                        {Object.values(LabResultFlag).map((f) => (
-                          <option key={f} value={f}>
-                            {f}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Label className="text-xs">Notes</Label>
-                      <Textarea
-                        rows={2}
-                        placeholder="Optional"
-                        value={draft.notes}
-                        onChange={(e) =>
-                          updateDraft(item.id, { notes: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-sm text-slate-500">
-                    {canReceive
-                      ? "Mark sample received above first."
-                      : "Waiting for lab staff."}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {canEditResults && !isDone ? (
+          <LabPaper
+            mode="edit"
+            lines={labItemsToPaperLines(o.items)}
+            drafts={drafts}
+            onChange={updateDraft}
+          />
+        ) : (
+          <LabPaper
+            mode="view"
+            lines={labItemsToPaperLines(o.items, isDone ? undefined : drafts)}
+          />
+        )}
+        {!canEditResults && !isDone ? (
+          <p className="mt-2 text-sm text-slate-500">
+            {canReceive
+              ? "Mark sample received above first."
+              : "Waiting for lab staff."}
+          </p>
+        ) : null}
 
         {canEditResults && !isDone ? (
           <div className="mt-4 flex flex-wrap items-center gap-2">

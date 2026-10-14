@@ -15,7 +15,6 @@ import { useDoctors } from "@/features/users/use-doctors";
 import { createEncounter, type Encounter } from "@/features/encounters/api";
 import { createInvoice, issueInvoice } from "@/features/billing/api";
 import { createPayment } from "@/features/payments/api";
-import { useCurrentCashSession } from "@/features/cash-sessions/hooks";
 import { EncounterPriority, EncounterType, QueueStation } from "@/types/encounter";
 import { PaymentMethod } from "@/types/finance";
 import type { Patient } from "@/types/patient";
@@ -24,7 +23,6 @@ import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { newIdempotencyKey } from "@/lib/idempotency";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 
 type InitialStation = typeof QueueStation.TRIAGE | typeof QueueStation.DOCTOR;
 
@@ -66,7 +64,6 @@ export function StartVisitForm({
   const queryClient = useQueryClient();
   const facilities = useFacilities();
   const doctors = useDoctors();
-  const cashSession = useCurrentCashSession();
   const [facilityId, setFacilityId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
@@ -130,15 +127,6 @@ export function StartVisitForm({
 
   async function submit() {
     if (!facilityId || !departmentId) return;
-    if (
-      collectPayment &&
-      totalCents > 0 &&
-      payMethod === PaymentMethod.CASH &&
-      !cashSession.data?.id
-    ) {
-      toast.error("Open a cash session first, or pay by Card / Telebirr");
-      return;
-    }
 
     setBusy(true);
     try {
@@ -171,10 +159,6 @@ export function StartVisitForm({
           amountCents: issued.totalCents,
           method: payMethod,
           referenceNumber: reference || undefined,
-          cashSessionId:
-            payMethod === PaymentMethod.CASH
-              ? cashSession.data?.id
-              : undefined,
         });
         paid = true;
         toast.success(
@@ -193,7 +177,7 @@ export function StartVisitForm({
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters"] });
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      void queryClient.invalidateQueries({ queryKey: ["cash-session"] });
+      void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
       onSuccess?.({ encounter, paid });
     } catch (e) {
       const msg = isAxiosError(e)
@@ -207,13 +191,7 @@ export function StartVisitForm({
     }
   }
 
-  const canSubmit =
-    Boolean(facilityId && departmentId) &&
-    !busy &&
-    (!collectPayment ||
-      totalCents === 0 ||
-      payMethod !== PaymentMethod.CASH ||
-      Boolean(cashSession.data?.id));
+  const canSubmit = Boolean(facilityId && departmentId) && !busy;
 
   return (
     <div className="space-y-4">
@@ -396,15 +374,6 @@ export function StartVisitForm({
                   placeholder="POS / Telebirr ref"
                 />
               </Field>
-            ) : null}
-            {payMethod === PaymentMethod.CASH && !cashSession.data ? (
-              <p className="text-xs text-amber-800">
-                No cash session.{" "}
-                <Link href="/reconciliation" className="underline">
-                  Open session
-                </Link>{" "}
-                or use Card / Telebirr.
-              </p>
             ) : null}
           </>
         ) : null}

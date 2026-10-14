@@ -12,6 +12,7 @@ import {
 } from "@/components/shared/data-table";
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { usePatientChart } from "@/features/patients/hooks";
+import { uniquePanelLabels } from "@/lib/lab/panels";
 import { PatientQrBadge } from "./patient-qr-badge";
 
 export function PatientProfile({ patientId }: { patientId: string }) {
@@ -137,7 +138,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
                   </DataTableCell>
                   <DataTableCell>{o.status.replaceAll("_", " ")}</DataTableCell>
                   <DataTableCell>
-                    {o.items.map((i) => i.labTest.name).join(", ")}
+                    {uniquePanelLabels(o.items.map((i) => i.labTest))}
                   </DataTableCell>
                 </DataTableRow>
               ))}

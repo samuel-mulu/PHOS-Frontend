@@ -84,8 +84,17 @@ export async function fetchEncounter(id: string) {
 export async function fetchEncounters(params?: {
   status?: string;
   patientId?: string;
+  assignedDoctorId?: string;
+  open?: boolean;
 }) {
-  const { data } = await api.get<Encounter[]>("/encounters", { params });
+  const { data } = await api.get<Encounter[]>("/encounters", {
+    params: {
+      status: params?.status,
+      patientId: params?.patientId,
+      assignedDoctorId: params?.assignedDoctorId,
+      open: params?.open ? "true" : undefined,
+    },
+  });
   return data;
 }
 

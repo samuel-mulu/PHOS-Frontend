@@ -53,6 +53,43 @@ export function invoiceStatusBadge(status: string) {
   }
 }
 
+/** Desk-friendly location for an open visit (read-only tracking). */
+export function visitLocationLabel(
+  status: string,
+  paymentReturnStation?: string | null,
+): string {
+  switch (status) {
+    case "REGISTERED":
+      return "Registered";
+    case "WAITING_TRIAGE":
+      return "Waiting triage";
+    case "IN_TRIAGE":
+      return "In triage";
+    case "WAITING_DOCTOR":
+      return "Waiting for doctor";
+    case "IN_CONSULTATION":
+      return "With doctor";
+    case "WAITING_LAB":
+      return "In lab";
+    case "WAITING_REVIEW":
+      return "Lab result at doctor";
+    case "WAITING_PHARMACY":
+      return "Pharmacy";
+    case "WAITING_PAYMENT":
+      if (paymentReturnStation === "LAB") return "At cashier (lab)";
+      if (paymentReturnStation === "DOCTOR") return "At cashier (doctor)";
+      if (paymentReturnStation === "TRIAGE") return "At cashier (triage)";
+      if (paymentReturnStation === "PHARMACY") return "At cashier (pharmacy)";
+      return "At cashier";
+    case "COMPLETED":
+      return "Completed";
+    case "CANCELLED":
+      return "Cancelled";
+    default:
+      return status.replaceAll("_", " ");
+  }
+}
+
 export function encounterStatusBadge(status: string) {
   const normalized = status.toUpperCase();
   const label = status.replaceAll("_", " ");

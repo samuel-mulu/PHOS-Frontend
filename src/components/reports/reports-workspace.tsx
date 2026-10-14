@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { QueryStaleBanner } from "@/components/shared/query-stale-banner";
 import {
   EmptyState,
@@ -10,6 +11,7 @@ import { Card } from "@/components/ui/card";
 import { useOperationalSnapshot } from "@/features/reports/hooks";
 import { Button } from "@/components/ui/button";
 import { HmisReportPanel } from "@/components/reports/hmis-report-panel";
+import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
@@ -67,44 +69,55 @@ function downloadOperationalCsv(data: import("@/features/reports/api").Operation
 }
 
 export function ReportsWorkspace() {
-  const query = useOperationalSnapshot();
+  const search = useSearchParams();
+  const view = search.get("view");
+  const isHfr = view === "hfr";
+  const isFull = view === "full";
+  const query = useOperationalSnapshot(isHfr);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">Reports</h1>
+        <div className="space-y-2">
+          <h1 className="text-lg font-semibold text-slate-900">
+            {isHfr ? "Health facility report" : "HMIS clinic report"}
+          </h1>
           <p className="text-sm text-slate-600">
-            Operational counts and HMIS/ministry period reports from the backend.
+            {isHfr
+              ? "Operational counts for this facility (HFR)."
+              : "Live aggregations from doctor diagnoses and lab results."}
           </p>
+          <HmisClinicNav />
         </div>
-        {query.data ? (
+        {isHfr && query.data ? (
           <Button type="button" variant="outline" onClick={() => downloadOperationalCsv(query.data!)}>
             Export CSV
           </Button>
         ) : null}
       </div>
 
-      <HmisReportPanel />
+      {!isHfr ? <HmisReportPanel full={isFull} /> : null}
 
-      <QueryStaleBanner query={query} />
+      {isHfr ? <QueryStaleBanner query={query} /> : null}
 
-      {query.isLoading ? <LoadingBlock label="Loading report data" /> : null}
-      {query.isError ? (
+      {isHfr && query.isLoading ? (
+        <LoadingBlock label="Loading report data" />
+      ) : null}
+      {isHfr && query.isError ? (
         <ErrorState
           message="Could not load report data."
           onRetry={() => void query.refetch()}
         />
       ) : null}
 
-      {query.isSuccess && query.data.encountersTotal === 0 ? (
+      {isHfr && query.isSuccess && query.data.encountersTotal === 0 ? (
         <EmptyState
           title="No activity yet"
           description="Counts will appear as patients, visits, and orders are recorded."
         />
       ) : null}
 
-      {query.isSuccess ? (
+      {isHfr && query.isSuccess ? (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Patients (registered)" value={query.data.patientsTotal} />

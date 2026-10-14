@@ -23,11 +23,24 @@ export function useEncounter(id: string) {
   });
 }
 
-export function useEncounters(params?: { status?: string; patientId?: string }) {
+export function useEncounters(params?: {
+  status?: string;
+  patientId?: string;
+  assignedDoctorId?: string;
+  open?: boolean;
+}) {
   return useQuery({
-    queryKey: ["encounters", "list", params?.status ?? "all", params?.patientId ?? ""],
+    queryKey: [
+      "encounters",
+      "list",
+      params?.status ?? "all",
+      params?.patientId ?? "",
+      params?.assignedDoctorId ?? "",
+      params?.open ? "open" : "any",
+    ],
     queryFn: () => fetchEncounters(params),
-    refetchInterval: params?.status === "WAITING_REVIEW" ? 8_000 : 20_000,
+    refetchInterval:
+      params?.open || params?.status === "WAITING_REVIEW" ? 8_000 : 20_000,
   });
 }
 

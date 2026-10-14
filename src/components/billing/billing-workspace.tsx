@@ -81,7 +81,7 @@ export function BillingWorkspace({
     });
   }
 
-  function goCollect(invoiceId: string, invoiceNumber?: string) {
+  function goCollect(encounterId: string, invoiceNumber?: string) {
     void queryClient.invalidateQueries({ queryKey: ["encounters"] });
     void queryClient.invalidateQueries({ queryKey: ["invoices"] });
     toast.success(
@@ -90,9 +90,9 @@ export function BillingWorkspace({
         : "Ready to collect payment",
     );
     if (embedded && onReadyForPayment) {
-      onReadyForPayment(invoiceId);
+      onReadyForPayment(encounterId);
     } else {
-      window.location.href = `/cashier?invoiceId=${invoiceId}`;
+      window.location.href = `/cashier?encounterId=${encounterId}`;
     }
   }
 
@@ -124,7 +124,7 @@ export function BillingWorkspace({
 
       if (invoice.status === "PAID") {
         toast.message(`${invoice.invoiceNumber} is already paid`);
-        goCollect(invoice.id, invoice.invoiceNumber);
+        goCollect(encId, invoice.invoiceNumber);
         return;
       }
 
@@ -134,18 +134,18 @@ export function BillingWorkspace({
       }
 
       if (["ISSUED", "PARTIALLY_PAID"].includes(invoice.status)) {
-        goCollect(invoice.id, invoice.invoiceNumber);
+        goCollect(encId, invoice.invoiceNumber);
         return;
       }
 
       // DRAFT (or unknown): issue, then collect
       try {
         const issued = await issueInvoice(invoice.id);
-        goCollect(issued.id, issued.invoiceNumber);
+        goCollect(encId, issued.invoiceNumber);
       } catch (e) {
         if (isAxiosError(e) && e.response?.status === 409) {
           // Already issued between checks — still go to cashier
-          goCollect(invoice.id, invoice.invoiceNumber);
+          goCollect(encId, invoice.invoiceNumber);
           return;
         }
         throw e;
@@ -217,7 +217,7 @@ export function BillingWorkspace({
               onReadyForPayment ? (
                 <Button
                   type="button"
-                  onClick={() => onReadyForPayment(highlight.data.invoice!.id)}
+                  onClick={() => onReadyForPayment(highlightEncounterId!)}
                 >
                   Collect payment
                 </Button>

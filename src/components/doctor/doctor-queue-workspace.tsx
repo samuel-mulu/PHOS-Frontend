@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { format, isToday, parseISO } from "date-fns";
 import { formatWaitingSince } from "@/lib/format/wait-time";
 import type { QueueEntry } from "@/features/queues/api";
@@ -37,8 +37,9 @@ import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
 import { cn } from "@/lib/utils";
 import { sortQueueNewestFirst } from "@/lib/queues/sort";
 import { ExpandablePanel } from "@/components/shared/table-layout";
+import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
 
-type DoctorTab = "waiting" | "lab" | "done";
+type DoctorTab = "waiting" | "inLab" | "lab" | "done";
 
 function isLabReturn(entry: QueueEntry) {
   return entry.encounter.status === "WAITING_REVIEW";
@@ -47,13 +48,6 @@ function isLabReturn(entry: QueueEntry) {
 function isAtLab(entry: QueueEntry) {
   return entry.encounter.status === "WAITING_LAB";
 }
-
-const LEFT_DOCTOR = new Set([
-  "WAITING_LAB",
-  "WAITING_PHARMACY",
-  "WAITING_PAYMENT",
-  "COMPLETED",
-]);
 
 function nextStopLabel(status: string): string {
   switch (status) {
@@ -230,32 +224,32 @@ export function DoctorQueueWorkspace() {
     [mineToday],
   );
 
-  const completedTodayCount = useMemo(
-    () => mineToday.filter((e) => LEFT_DOCTOR.has(e.status)).length,
+  const waitingForLab = useMemo(
+    () =>
+      mineToday
+        .filter((e) => e.status === "WAITING_LAB")
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+        ),
     [mineToday],
   );
 
   const recentlyCompleted = useMemo(
     () =>
       mineToday
-        .filter((e) => LEFT_DOCTOR.has(e.status))
+        .filter((e) => e.status === "COMPLETED")
         .slice()
         .sort(
           (a, b) =>
             new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
         )
-        .slice(0, 12),
+        .slice(0, 20),
     [mineToday],
   );
 
-  // When a new lab return arrives, open the Lab results ready tab
-  const prevLabCount = useRef(0);
-  useEffect(() => {
-    if (labReadyCount > prevLabCount.current) {
-      setTab("lab");
-    }
-    prevLabCount.current = labReadyCount;
-  }, [labReadyCount]);
+  const completedTodayCount = recentlyCompleted.length;
 
   const orderByEncounter = useMemo(() => {
     const map = new Map<string, LabOrder>();
@@ -282,12 +276,13 @@ export function DoctorQueueWorkspace() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <div>
+      <div className="space-y-2">
         <h1 className="text-xl font-semibold text-slate-900">Doctor</h1>
         <p className="text-sm text-slate-600">
-          Switch tabs to see waiting patients or lab results sent back to you.
-          Red badges update live.
+          Waiting for consultation is the default. Switch tabs at the top —
+          they stay with Full screen.
         </p>
+        <HmisClinicNav />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -309,8 +304,8 @@ export function DoctorQueueWorkspace() {
           label="In lab"
           value={inLabCount}
           tone="violet"
-          active={tab === "lab"}
-          onClick={() => setTab("lab")}
+          active={tab === "inLab"}
+          onClick={() => setTab("inLab")}
         />
         <SummaryCard
           label="Completed"
@@ -321,67 +316,48 @@ export function DoctorQueueWorkspace() {
         />
       </div>
 
-      {labReadyCount > 0 ? (
-        <button
-          type="button"
-          onClick={() => setTab("lab")}
-          className="flex w-full flex-wrap items-center justify-between gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-left text-sm text-red-950"
-        >
-          <span>
-            <strong>{labReadyCount}</strong> lab result
-            {labReadyCount === 1 ? "" : "s"} ready for review
-          </span>
-          <span className="font-semibold text-red-800">Open →</span>
-        </button>
-      ) : null}
-
-      <nav
-        className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
-        aria-label="Doctor queues"
+      <ExpandablePanel
+        className={
+          tab === "lab" && labReadyCount > 0
+            ? "border-red-200 ring-1 ring-red-100"
+            : undefined
+        }
+        title={
+          <nav
+            className="flex flex-wrap gap-2"
+            aria-label="Doctor queues"
+          >
+            <TabButton
+              active={tab === "waiting"}
+              onClick={() => setTab("waiting")}
+              label="Waiting for consultation"
+              badge={waitingQueue.length}
+            />
+            <TabButton
+              active={tab === "inLab"}
+              onClick={() => setTab("inLab")}
+              label="Waiting for lab"
+              badge={waitingForLab.length}
+            />
+            <TabButton
+              active={tab === "lab"}
+              onClick={() => setTab("lab")}
+              label="Lab results ready"
+              badge={labReadyCount}
+              emphasize={labReadyCount > 0}
+            />
+            <TabButton
+              active={tab === "done"}
+              onClick={() => setTab("done")}
+              label="Completed today"
+              badge={recentlyCompleted.length}
+              muted
+            />
+          </nav>
+        }
       >
-        <TabButton
-          active={tab === "waiting"}
-          onClick={() => setTab("waiting")}
-          label="Waiting for consultation"
-          badge={waitingQueue.length}
-        />
-        <TabButton
-          active={tab === "lab"}
-          onClick={() => setTab("lab")}
-          label="Lab results ready"
-          badge={labReadyCount}
-          emphasize={labReadyCount > 0}
-        />
-        <TabButton
-          active={tab === "done"}
-          onClick={() => setTab("done")}
-          label="Completed today"
-          badge={recentlyCompleted.length}
-          muted
-        />
-      </nav>
-
-      {tab === "waiting" ? (
-        <ExpandablePanel
-          title={
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Waiting for consultation
-              </h2>
-              <p className="text-xs font-normal text-slate-500">
-                New visits assigned to you (or unassigned)
-              </p>
-            </div>
-          }
-          toolbar={
-            waitingQueue.length > 0 ? (
-              <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
-                {waitingQueue.length} waiting
-              </span>
-            ) : undefined
-          }
-        >
-          {waitingQueue.length === 0 ? (
+        {tab === "waiting" ? (
+          waitingQueue.length === 0 ? (
             <EmptyState
               title="No one waiting"
               description="When front desk assigns a patient to you, they appear here."
@@ -407,39 +383,51 @@ export function DoctorQueueWorkspace() {
                 updateEntry.mutate({ id: entry.id, status: "IN_SERVICE" })
               }
             />
-          )}
-        </ExpandablePanel>
-      ) : null}
+          )
+        ) : null}
 
-      {tab === "lab" ? (
-        <ExpandablePanel
-          className={
-            labReadyCount > 0
-              ? "border-red-200 ring-1 ring-red-100"
-              : undefined
-          }
-          title={
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Lab results ready
-              </h2>
-              <p className="text-xs font-normal text-slate-500">
-                Lab verified results and sent the patient back to you
-              </p>
-            </div>
-          }
-          toolbar={
-            labReadyCount > 0 ? (
-              <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
-                {labReadyCount} ready
-              </span>
-            ) : undefined
-          }
-        >
-          {labReadyCount === 0 ? (
+        {tab === "inLab" ? (
+          waitingForLab.length === 0 ? (
+            <EmptyState
+              title="No one at lab"
+              description="Patients you send to lab appear here until results come back."
+            />
+          ) : (
+            <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+              {waitingForLab.map((e) => (
+                <li
+                  key={e.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900">
+                      {e.patient
+                        ? `${e.patient.firstName} ${e.patient.lastName}`
+                        : e.encounterNumber}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {e.encounterNumber} · at lab
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {encounterStatusBadge(e.status)}
+                    <Link href={`/doctor/${e.id}`}>
+                      <Button type="button" size="sm" variant="outline">
+                        View
+                      </Button>
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : null}
+
+        {tab === "lab" ? (
+          labReadyCount === 0 ? (
             <EmptyState
               title="No lab returns yet"
-              description="After you send a patient to lab and lab verifies results, their name appears here with status."
+              description="After lab verifies results, the patient appears here."
             />
           ) : (
             <LabReadyTable
@@ -464,24 +452,11 @@ export function DoctorQueueWorkspace() {
                 updateEntry.mutate({ id: entry.id, status: "IN_SERVICE" })
               }
             />
-          )}
-        </ExpandablePanel>
-      ) : null}
+          )
+        ) : null}
 
-      {tab === "done" ? (
-        <ExpandablePanel
-          title={
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                Recently completed (today)
-              </h2>
-              <p className="text-xs font-normal text-slate-500">
-                Read-only reopen — patient already left your active queue
-              </p>
-            </div>
-          }
-        >
-          {encounters.isLoading ? (
+        {tab === "done" ? (
+          encounters.isLoading ? (
             <LoadingBlock label="Loading completed visits" />
           ) : recentlyCompleted.length === 0 ? (
             <EmptyState
@@ -517,9 +492,9 @@ export function DoctorQueueWorkspace() {
                 </li>
               ))}
             </ul>
-          )}
-        </ExpandablePanel>
-      ) : null}
+          )
+        ) : null}
+      </ExpandablePanel>
     </div>
   );
 }

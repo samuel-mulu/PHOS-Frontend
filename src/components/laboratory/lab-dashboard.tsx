@@ -31,6 +31,7 @@ import {
 } from "@/lib/queues/sort";
 import { ExpandablePanel } from "@/components/shared/table-layout";
 import type { LabOrder } from "@/features/laboratory/api";
+import { uniquePanelLabels } from "@/lib/lab/panels";
 
 type LabTab = "new" | "results" | "send" | "done";
 
@@ -421,7 +422,7 @@ function OrdersTable({
               </p>
             </DataTableCell>
             <DataTableCell className="text-xs">
-              {o.items.map((i) => i.labTest.code).join(", ")}
+              {uniquePanelLabels(o.items.map((i) => i.labTest))}
             </DataTableCell>
             <DataTableCell>
               <span

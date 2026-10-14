@@ -4,11 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { format } from "date-fns";
 import { ReceptionWorkspace } from "@/components/reception/reception-workspace";
-import { BillingWorkspace } from "@/components/billing/billing-workspace";
 import { CashierWorkspace } from "@/components/cashier/cashier-workspace";
 import { AppointmentsPanel } from "@/components/front-desk/appointments-panel";
 import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
-import type { Encounter } from "@/features/encounters/api";
 import { useQueue } from "@/features/queues/hooks";
 import { useAppointments } from "@/features/appointments/hooks";
 import { QueueStation } from "@/types/encounter";
@@ -50,14 +48,6 @@ export function FrontDeskWorkspace() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
   const [tab, setTab] = useState<Tab>(() => resolveTab(tabParam));
-  const [paymentsFocus, setPaymentsFocus] = useState<"collect" | "bill">(
-    () =>
-      searchParams.get("invoiceId") || searchParams.get("encounterId")
-        ? searchParams.get("invoiceId")
-          ? "collect"
-          : "bill"
-        : "collect",
-  );
 
   const triageQueue = useQueue(QueueStation.TRIAGE, 8_000);
   const cashierQueue = useQueue(QueueStation.CASHIER, 8_000);
@@ -80,39 +70,12 @@ export function FrontDeskWorkspace() {
     setTab(resolveTab(tabParam));
   }, [tabParam]);
 
-  useEffect(() => {
-    if (searchParams.get("invoiceId")) setPaymentsFocus("collect");
-    else if (searchParams.get("encounterId")) setPaymentsFocus("bill");
-  }, [searchParams]);
-
-  const onTab = useCallback((next: Tab, params?: Record<string, string>) => {
+  const onTab = useCallback((next: Tab) => {
     setTab(next);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", next);
-    if (params) {
-      for (const [k, v] of Object.entries(params)) {
-        if (v) url.searchParams.set(k, v);
-        else url.searchParams.delete(k);
-      }
-    }
     window.history.replaceState({}, "", url.toString());
   }, []);
-
-  const goBillVisit = useCallback(
-    (encounter: Encounter) => {
-      setPaymentsFocus("bill");
-      onTab("payments", { encounterId: encounter.id, invoiceId: "" });
-    },
-    [onTab],
-  );
-
-  const goPayInvoice = useCallback(
-    (invoiceId: string) => {
-      setPaymentsFocus("collect");
-      onTab("payments", { invoiceId, encounterId: "" });
-    },
-    [onTab],
-  );
 
   function badgeFor(id: Tab): number {
     switch (id) {
@@ -162,55 +125,14 @@ export function FrontDeskWorkspace() {
         <ReceptionWorkspace
           embedded
           initialPatientId={searchParams.get("patientId") ?? undefined}
-          onVisitStarted={goBillVisit}
         />
       ) : null}
       {tab === "appointments" ? <AppointmentsPanel /> : null}
       {tab === "payments" ? (
-        <div className="space-y-6">
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium",
-                paymentsFocus === "collect"
-                  ? "bg-teal-800 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-              )}
-              onClick={() => setPaymentsFocus("collect")}
-            >
-              Collect payment
-              <RedBadge count={cashierWaiting} />
-            </button>
-            <button
-              type="button"
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium",
-                paymentsFocus === "bill"
-                  ? "bg-teal-800 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
-              )}
-              onClick={() => setPaymentsFocus("bill")}
-            >
-              Create / issue invoice
-            </button>
-          </div>
-
-          {paymentsFocus === "collect" ? (
-            <CashierWorkspace
-              embedded
-              onInvoiceFullyPaid={() => onTab("payments")}
-            />
-          ) : (
-            <BillingWorkspace
-              embedded
-              highlightEncounterId={
-                searchParams.get("encounterId") ?? undefined
-              }
-              onReadyForPayment={goPayInvoice}
-            />
-          )}
-        </div>
+        <CashierWorkspace
+          embedded
+          onInvoiceFullyPaid={() => onTab("payments")}
+        />
       ) : null}
       {tab === "report" ? <PaymentsReportPanel /> : null}
     </div>

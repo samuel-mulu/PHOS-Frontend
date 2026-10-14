@@ -5,6 +5,10 @@ import { toast } from "sonner";
 import { PatientSearchList } from "@/components/patients/patient-search-list";
 import { QueueBoard } from "@/components/queues/queue-board";
 import {
+  DeskDoctorQueueTable,
+  useOpenVisitCount,
+} from "@/components/front-desk/desk-doctor-queue-table";
+import {
   StartVisitForm,
   type VisitKind,
 } from "@/components/reception/start-visit-form";
@@ -23,7 +27,7 @@ import { OverlayPortal } from "@/components/shared/overlay-portal";
 import { announceClinic } from "@/lib/voice/announce";
 import { cn } from "@/lib/utils";
 
-type ReceptionSubTab = "find" | "triage";
+type ReceptionSubTab = "find" | "triage" | "doctors";
 
 export function ReceptionWorkspace({
   embedded,
@@ -48,6 +52,7 @@ export function ReceptionWorkspace({
   const createAppt = useCreateAppointment();
   const triageQueue = useQueue(QueueStation.TRIAGE, 8_000);
   const triageWaiting = triageQueue.data?.length ?? 0;
+  const doctorQueueCount = useOpenVisitCount();
 
   const handoff = usePatient(initialPatientId ?? "");
   const [consumedHandoff, setConsumedHandoff] = useState(false);
@@ -129,6 +134,30 @@ export function ReceptionWorkspace({
             </span>
           ) : null}
         </button>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium",
+            subTab === "doctors"
+              ? "bg-teal-800 text-white"
+              : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+          )}
+          onClick={() => setSubTab("doctors")}
+        >
+          Doctor queue
+          {doctorQueueCount > 0 ? (
+            <span
+              className={cn(
+                "ml-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                subTab === "doctors"
+                  ? "bg-white/25 text-white"
+                  : "bg-teal-800 text-white",
+              )}
+            >
+              {doctorQueueCount}
+            </span>
+          ) : null}
+        </button>
       </nav>
 
       {subTab === "find" ? (
@@ -163,6 +192,8 @@ export function ReceptionWorkspace({
           expandable
         />
       ) : null}
+
+      {subTab === "doctors" ? <DeskDoctorQueueTable /> : null}
 
       {registerOpen ? (
         <OverlayPortal>

@@ -10,6 +10,7 @@ import { SimpleDialog } from "@/components/shared/simple-dialog";
 import { labOrderStatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format/money";
+import { formatWaitingSince } from "@/lib/format/wait-time";
 import type { LabOrder } from "@/features/laboratory/api";
 import {
   useCreateLabOrder,
@@ -19,6 +20,8 @@ import {
 import { EncounterPriority } from "@/types/encounter";
 import { LabOrderStatus } from "@/types/lab";
 import { sortByCreatedAtDesc } from "@/lib/queues/sort";
+import { LabPaper, labItemsToPaperLines } from "@/components/laboratory/lab-paper";
+import { groupByPanel, uniquePanelLabels } from "@/lib/lab/panels";
 
 const WAITING_STATUSES: LabOrderStatus[] = [
   LabOrderStatus.ORDERED,
@@ -44,50 +47,9 @@ function ReadyResultCard({ order }: { order: LabOrder }) {
         {labOrderStatusBadge(order.status)}
       </div>
 
-      <ul className="mt-3 space-y-2">
-        {order.items.map((item) => (
-          <li
-            key={item.id}
-            className="rounded-md border border-emerald-100 bg-white px-3 py-2.5"
-          >
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              {item.labTest.code} — {item.labTest.name}
-            </p>
-            <p className="mt-1 text-lg font-semibold text-slate-900">
-              {item.result?.value ?? "—"}
-              {item.result?.unit || item.labTest.unit ? (
-                <span className="ml-1 text-sm font-normal text-slate-600">
-                  {item.result?.unit ?? item.labTest.unit}
-                </span>
-              ) : null}
-            </p>
-            <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-600">
-              {item.result?.flag ? (
-                <span
-                  className={cn(
-                    "font-semibold",
-                    item.result.flag === "CRITICAL" ||
-                      item.result.flag === "ABNORMAL"
-                      ? "text-red-700"
-                      : item.result.flag === "HIGH" ||
-                          item.result.flag === "LOW"
-                        ? "text-amber-800"
-                        : "text-emerald-800",
-                  )}
-                >
-                  {item.result.flag}
-                </span>
-              ) : null}
-              {item.labTest.referenceRange ? (
-                <span>Ref: {item.labTest.referenceRange}</span>
-              ) : null}
-            </div>
-            {item.result?.notes ? (
-              <p className="mt-1 text-xs text-slate-600">{item.result.notes}</p>
-            ) : null}
-          </li>
-        ))}
-      </ul>
+      <div className="mt-3">
+        <LabPaper mode="view" lines={labItemsToPaperLines(order.items)} />
+      </div>
 
       {order.clinicalNotes ? (
         <p className="mt-2 text-xs text-slate-500">
@@ -121,10 +83,15 @@ function WaitingOrderCard({
             {order.orderNumber}
           </p>
           <p className="text-xs text-slate-500">
-            {order.items.map((i) => i.labTest.code).join(", ")} · Sent{" "}
+            {uniquePanelLabels(order.items.map((i) => i.labTest))} · Sent{" "}
             {format(new Date(order.createdAt), "dd MMM HH:mm")}
           </p>
           <p className="mt-0.5 text-xs text-amber-900">{statusHint}</p>
+          {awaitingPayment ? (
+            <p className="mt-0.5 text-xs font-semibold text-amber-950">
+              Pending {formatWaitingSince(order.createdAt)}
+            </p>
+          ) : null}
         </div>
         {labOrderStatusBadge(order.status)}
       </div>
@@ -179,12 +146,32 @@ export function DoctorLabOrdersPanel({
     () => myOrders.filter((o) => o.status === LabOrderStatus.VERIFIED),
     [myOrders],
   );
-  const cashierLabLines = useMemo(() => {
-    const catalog = tests.data ?? [];
-    return selected
-      .map((id) => catalog.find((t) => t.id === id))
-      .filter((t): t is NonNullable<typeof t> => Boolean(t));
-  }, [selected, tests.data]);
+  const catalog = tests.data ?? [];
+  const panels = useMemo(
+    () =>
+      groupByPanel(
+        catalog,
+        (t) => t.category,
+        (t) => t.sortOrder,
+      ),
+    [catalog],
+  );
+  const cashierLabLines = useMemo(
+    () =>
+      selected
+        .map((id) => catalog.find((t) => t.id === id))
+        .filter((t): t is NonNullable<typeof t> => Boolean(t)),
+    [selected, catalog],
+  );
+  const cashierLabGroups = useMemo(
+    () =>
+      groupByPanel(
+        cashierLabLines,
+        (t) => t.category,
+        (t) => t.sortOrder,
+      ),
+    [cashierLabLines],
+  );
   const cashierLabTotalCents = cashierLabLines.reduce(
     (sum, t) => sum + t.priceCents,
     0,
@@ -234,6 +221,14 @@ export function DoctorLabOrdersPanel({
     );
   }
 
+  function togglePanel(ids: string[]) {
+    setSelected((prev) => {
+      const allOn = ids.length > 0 && ids.every((id) => prev.includes(id));
+      if (allOn) return prev.filter((id) => !ids.includes(id));
+      return [...new Set([...prev, ...ids])];
+    });
+  }
+
   return (
     <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -262,27 +257,23 @@ export function DoctorLabOrdersPanel({
         </p>
       ) : null}
 
-      <section className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Results from lab
-        </h3>
-        {ready.length > 0 ? (
-          ready.map((order) => (
+      {ready.length > 0 ? (
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Results from lab
+          </h3>
+          {ready.map((order) => (
             <ReadyResultCard key={order.id} order={order} />
-          ))
-        ) : (
-          <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-            No verified results back yet for this visit.
-          </p>
-        )}
-      </section>
+          ))}
+        </section>
+      ) : null}
 
-      <section className="space-y-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-          Pending at lab
-        </h3>
-        {waiting.length > 0 ? (
-          waiting.map((order) => (
+      {waiting.length > 0 ? (
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Pending at lab
+          </h3>
+          {waiting.map((order) => (
             <WaitingOrderCard
               key={order.id}
               order={order}
@@ -290,65 +281,99 @@ export function DoctorLabOrdersPanel({
                 awaitingCashierLab && order.status === LabOrderStatus.ORDERED
               }
             />
-          ))
-        ) : (
-          <p className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
-            Nothing pending at lab right now.
-          </p>
-        )}
-      </section>
+          ))}
+        </section>
+      ) : null}
 
-      {!isFinalized ? (
-        <section className="space-y-2 border-t border-slate-100 pt-3">
+      {!isFinalized && !awaitingCashierLab ? (
+        <section
+          className={
+            ready.length > 0 || waiting.length > 0
+              ? "space-y-2 border-t border-slate-100 pt-3"
+              : "space-y-2"
+          }
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Order tests
             </h3>
-            <Button
-              type="button"
-              size="sm"
-              variant={orderOpen ? "secondary" : "outline"}
-              onClick={() => setOrderOpen((v) => !v)}
-            >
-              {orderOpen ? "Hide order form" : "Order more tests"}
-            </Button>
+            {ready.length > 0 || waiting.length > 0 ? (
+              <Button
+                type="button"
+                size="sm"
+                variant={orderOpen ? "secondary" : "outline"}
+                onClick={() => setOrderOpen((v) => !v)}
+              >
+                {orderOpen ? "Hide order form" : "Order more tests"}
+              </Button>
+            ) : null}
           </div>
           {orderOpen ? (
             <div className="space-y-3">
               <p className="text-xs font-medium text-slate-600">
-                Tap tests to order
+                Tap a panel to order its tests
               </p>
               {tests.isLoading ? (
                 <LoadingBlock label="Loading tests" />
               ) : null}
-              {tests.isSuccess && (tests.data?.length ?? 0) === 0 ? (
+              {tests.isSuccess && catalog.length === 0 ? (
                 <p className="text-sm text-amber-800">
                   No lab tests in catalog. Ask admin to add tests.
                 </p>
               ) : null}
-              <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-slate-100 p-2">
-                {tests.data?.map((t) => {
-                  const on = selected.includes(t.id);
+              <div className="flex flex-wrap gap-2">
+                {panels.map((panel) => {
+                  const ids = panel.items.map((t) => t.id);
+                  const selectedCount = ids.filter((id) =>
+                    selected.includes(id),
+                  ).length;
+                  const allOn =
+                    ids.length > 0 && selectedCount === ids.length;
+                  const someOn = selectedCount > 0 && !allOn;
                   return (
                     <button
-                      key={t.id}
+                      key={panel.category}
                       type="button"
-                      onClick={() => toggle(t.id)}
+                      onClick={() => togglePanel(ids)}
                       className={cn(
-                        "rounded-full border px-3 py-1.5 text-left text-xs font-medium transition-colors",
-                        on
+                        "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                        allOn
                           ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
-                          : "border-emerald-200 bg-emerald-50 text-emerald-950 hover:border-emerald-400 hover:bg-emerald-100",
+                          : someOn
+                            ? "border-emerald-500 bg-emerald-100 text-emerald-950"
+                            : "border-slate-200 bg-slate-50 text-slate-800 hover:border-emerald-400 hover:bg-emerald-50",
                       )}
-                      title={
-                        t.category ? `${t.category} · ${t.code}` : t.code
-                      }
                     >
-                      {t.name}
+                      {panel.label}
+                      {someOn ? ` (${selectedCount})` : null}
                     </button>
                   );
                 })}
               </div>
+              {cashierLabLines.length > 0 ? (
+                <ul className="max-h-36 space-y-1 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/80 p-2 text-xs">
+                  {cashierLabGroups.map((group) => (
+                    <li key={group.category}>
+                      <p className="font-semibold text-slate-600">
+                        {group.label}
+                      </p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {group.items.map((t) => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => toggle(t.id)}
+                            className="rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[11px] text-slate-800 hover:border-red-300 hover:text-red-800"
+                            title="Remove from order"
+                          >
+                            {t.name} ×
+                          </button>
+                        ))}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
                   <Label className="mb-1 block text-xs">Priority</Label>
@@ -441,18 +466,23 @@ export function DoctorLabOrdersPanel({
         <p className="text-slate-600">
           Patient pays this amount at cashier / front desk, then goes to lab.
         </p>
-        <ul className="mt-3 space-y-1.5">
-          {cashierLabLines.map((t) => (
-            <li
-              key={t.id}
-              className="flex items-center justify-between gap-3 text-sm"
-            >
-              <span>{t.name}</span>
-              <span className="shrink-0 font-medium tabular-nums">
-                {formatCents(t.priceCents)}
-              </span>
-            </li>
-          ))}
+        <ul className="mt-3 space-y-2">
+          {cashierLabGroups.map((group) => {
+            const total = group.items.reduce((sum, t) => sum + t.priceCents, 0);
+            return (
+              <li key={group.category} className="text-sm">
+                <div className="flex items-center justify-between gap-3 font-medium">
+                  <span>{group.label}</span>
+                  <span className="shrink-0 tabular-nums">
+                    {formatCents(total)}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500">
+                  {group.items.map((t) => t.name).join(", ")}
+                </p>
+              </li>
+            );
+          })}
         </ul>
         <p className="mt-4 text-base font-semibold text-slate-900">
           Total to collect: {formatCents(cashierLabTotalCents)}

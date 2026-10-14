@@ -12,11 +12,15 @@ import {
   type AdditionalInvoiceItem,
 } from "./api";
 
-export function useInvoice(id: string | null) {
+export function useInvoice(
+  id: string | null,
+  options?: { refetchInterval?: number | false },
+) {
   return useQuery({
     queryKey: ["invoices", id],
     queryFn: () => fetchInvoice(id!),
     enabled: Boolean(id),
+    refetchInterval: options?.refetchInterval,
   });
 }
 

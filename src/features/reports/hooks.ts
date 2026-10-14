@@ -3,10 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchOperationalSnapshot } from "./api";
 
-export function useOperationalSnapshot() {
+export function useOperationalSnapshot(enabled = true) {
   return useQuery({
     queryKey: ["reports", "operational-snapshot"],
     queryFn: fetchOperationalSnapshot,
     staleTime: 60_000,
+    enabled,
   });
 }

@@ -34,8 +34,8 @@
   "billing.deskFooter": "Full desk steps are on",
   "desk.flowTitle": "Desk flow",
   "desk.flow1": "Reception — register or find patient → Start visit → triage queue.",
-  "desk.flow2": "Billing — select visit → Create & issue invoice.",
-  "desk.flow3": "Cashier — record payment on issued invoice (open cash session for cash).",
+  "desk.flow2": "Doctor — send to cashier when the patient needs to pay.",
+  "desk.flow3": "Cashier — collect payment from the waiting list.",
   "desk.flowFooter": "Billing always ties to a visit (encounter), not the patient file alone.",
   "doctor.chartTitle": "Patient chart",
   "doctor.viewFullChart": "Full chart"

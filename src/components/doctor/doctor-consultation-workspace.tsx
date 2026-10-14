@@ -33,9 +33,10 @@ import {
   useDoctorLabOrderCounts,
 } from "@/components/doctor/doctor-lab-orders-panel";
 import { DoctorUltrasoundPanel } from "@/components/doctor/doctor-ultrasound-panel";
-import { labOrderStatusBadge } from "@/components/shared/status-badge";
+import { labOrderStatusBadge, StatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format/money";
+import { uniquePanelLabels } from "@/lib/lab/panels";
 import { DiagnosisType, QueueStation } from "@/types/encounter";
 import { useLabOrders } from "@/features/laboratory/hooks";
 import { useInvoice } from "@/features/billing/hooks";
@@ -46,6 +47,12 @@ import {
 } from "@/features/prescriptions/hooks";
 import { toast } from "sonner";
 import { LabOrderStatus } from "@/types/lab";
+import { format } from "date-fns";
+import {
+  useAppointments,
+  useCreateAppointment,
+} from "@/features/appointments/hooks";
+import { AppointmentStatus } from "@/types/appointment";
 
 type Step = "notes" | "orders" | "history" | "finish";
 
@@ -86,9 +93,7 @@ export function DoctorConsultationWorkspace({
   const consultationId = consultation?.id;
   const isFinalized = consultation?.status === "FINALIZED";
   const labCounts = useDoctorLabOrderCounts(consultationId);
-  const finalize = useFinalizeConsultation(consultationId ?? "", encounterId, {
-    redirect: false,
-  });
+  const finalize = useFinalizeConsultation(consultationId ?? "", encounterId);
 
   const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationSchema),
@@ -292,7 +297,7 @@ export function DoctorConsultationWorkspace({
               ? "2 · Review lab results. Add medicines if needed, then Finish."
               : "2 · Lab and medicines. Save Rx, or save & send to pharmacy."
             : workflowStep === "finish"
-              ? "3 · Send to pharmacy, front desk, or complete the visit."
+              ? "3 · Give a follow-up appointment, or complete this visit."
               : "Past visits and results (read-only) — also via History at the top."}
       </p>
 
@@ -329,9 +334,14 @@ export function DoctorConsultationWorkspace({
             )}
           </Panel>
           {consultationId ? (
-            <OrdersPanel consultationId={consultationId} />
+            <VisitSideCards
+              consultationId={consultationId}
+              invoiceId={encounter.data.invoice?.id}
+              encounterStatus={encounterStatus}
+              paymentReturnStation={encounter.data.paymentReturnStation}
+            />
           ) : (
-            <Panel title="Orders">
+            <Panel title="Laboratory">
               <p className="text-xs text-slate-500">
                 Save notes first to order lab or medicines.
               </p>
@@ -502,6 +512,7 @@ export function DoctorConsultationWorkspace({
                   isFinalized={isFinalized}
                   encounterStatus={encounter.data?.status}
                   paymentReturnStation={encounter.data?.paymentReturnStation}
+                  invoiceId={encounter.data?.invoice?.id}
                   disabled={ensuringDraft}
                 />
               ) : (
@@ -572,17 +583,15 @@ export function DoctorConsultationWorkspace({
             <FinishNextSteps
               consultationId={consultationId}
               encounterId={encounterId}
+              patientId={patient.id}
+              departmentId={encounter.data.departmentId}
+              serviceId={encounter.data.serviceId}
               encounterStatus={encounterStatus}
               paymentReturnStation={encounter.data.paymentReturnStation}
-              invoiceMeta={encounter.data.invoice}
               isFinalized={Boolean(isFinalized)}
               finalizePending={finalize.isPending}
               routePending={routePatient.isPending}
-              onComplete={() =>
-                finalize.mutate(undefined, {
-                  onSuccess: () => setWorkflowStep("finish"),
-                })
-              }
+              onComplete={() => finalize.mutate()}
               onPharmacy={() => routePatient.mutate(QueueStation.PHARMACY)}
             />
           ) : null}
@@ -609,13 +618,23 @@ function Panel({
   );
 }
 
-/** After notes/orders/lab — choose pharmacy or cashier charge; show money clearly. */
+function defaultFollowUpLocal() {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  d.setHours(9, 0, 0, 0);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** After notes/orders — pharmacy, cashier, then end: appointment or complete. */
 function FinishNextSteps({
   consultationId,
   encounterId,
+  patientId,
+  departmentId,
+  serviceId,
   encounterStatus,
   paymentReturnStation,
-  invoiceMeta,
   isFinalized,
   finalizePending,
   routePending,
@@ -624,125 +643,38 @@ function FinishNextSteps({
 }: {
   consultationId?: string;
   encounterId: string;
+  patientId: string;
+  departmentId: string;
+  serviceId?: string | null;
   encounterStatus: string;
   paymentReturnStation?: string | null;
-  invoiceMeta?: { id: string; invoiceNumber: string; status: string } | null;
   isFinalized: boolean;
   finalizePending: boolean;
   routePending: boolean;
   onComplete: () => void;
   onPharmacy: () => void;
 }) {
-  const invoice = useInvoice(invoiceMeta?.id ?? null);
   const rxList = usePrescriptions();
-  const labs = useLabOrders();
+  const createAppt = useCreateAppointment();
+  const appts = useAppointments();
+  const [scheduledAt, setScheduledAt] = useState(defaultFollowUpLocal);
+  const [scheduleNotes, setScheduleNotes] = useState("");
 
   const myRx =
     rxList.data?.filter((p) => p.consultationId === consultationId) ?? [];
   const activeRx = myRx.filter((p) =>
     ["ACTIVE", "PARTIAL"].includes(p.status),
   );
-  const myLabs =
-    labs.data?.filter((o) => o.consultationId === consultationId) ?? [];
-  const pendingLab = myLabs.filter(
-    (o) =>
-      o.status !== LabOrderStatus.VERIFIED &&
-      o.status !== LabOrderStatus.CANCELLED,
+  const followUps = (appts.data ?? []).filter(
+    (a) =>
+      a.patientId === patientId && a.status === AppointmentStatus.SCHEDULED,
   );
-  const readyLab = myLabs.filter((o) => o.status === LabOrderStatus.VERIFIED);
 
-  const inv = invoice.data;
-  const balance = inv ? inv.totalCents - inv.paidCents : null;
-  const busy = finalizePending || routePending;
+  const busy = finalizePending || routePending || createAppt.isPending;
   const atCashier = encounterStatus === "WAITING_PAYMENT";
 
   return (
     <div className="space-y-4">
-      {/* Money summary */}
-      <div className="rounded-lg border border-teal-200 bg-teal-50/40 p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">Money this visit</h2>
-        {!invoiceMeta ? (
-          <p className="mt-2 text-sm text-slate-600">
-            No invoice yet — front desk can create billing when the patient
-            arrives.
-          </p>
-        ) : invoice.isLoading ? (
-          <p className="mt-2 text-sm text-slate-500">Loading invoice…</p>
-        ) : inv ? (
-          <div className="mt-3 space-y-3">
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <p className="text-xs text-slate-500">
-                  {inv.invoiceNumber} · {inv.status}
-                </p>
-                <p className="mt-1 text-2xl font-semibold text-slate-900">
-                  {balance !== null && balance > 0
-                    ? formatCents(balance)
-                    : formatCents(0)}
-                </p>
-                <p className="text-xs text-slate-600">
-                  {balance !== null && balance > 0
-                    ? "Still to pay"
-                    : inv.status === "PAID" || (balance !== null && balance <= 0)
-                      ? "Paid in full"
-                      : "Balance"}
-                </p>
-              </div>
-              <div className="text-right text-xs text-slate-600">
-                <p>Total {formatCents(inv.totalCents)}</p>
-                <p>Paid {formatCents(inv.paidCents)}</p>
-              </div>
-            </div>
-            {inv.items.length > 0 ? (
-              <ul className="divide-y divide-teal-100/80 rounded-md border border-teal-100 bg-white text-sm">
-                {inv.items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-start justify-between gap-2 px-3 py-2"
-                  >
-                    <span className="text-slate-800">
-                      {item.description}
-                      <span className="ml-1 text-xs text-slate-500">
-                        ×{item.quantity}
-                      </span>
-                    </span>
-                    <span className="shrink-0 font-medium text-slate-900">
-                      {formatCents(item.totalCents)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        ) : (
-          <p className="mt-2 text-sm text-slate-600">
-            Invoice {invoiceMeta.invoiceNumber} · {invoiceMeta.status}
-          </p>
-        )}
-      </div>
-
-      {/* This visit checklist */}
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-slate-800">This visit</h2>
-        <ul className="mt-2 space-y-1.5 text-sm text-slate-700">
-          <li>
-            Lab:{" "}
-            {readyLab.length > 0
-              ? `${readyLab.length} result${readyLab.length === 1 ? "" : "s"} ready`
-              : "None ready"}
-            {pendingLab.length > 0
-              ? ` · ${pendingLab.length} still at lab`
-              : ""}
-          </li>
-          <li>
-            Medicines:{" "}
-            {activeRx.length > 0
-              ? `${activeRx.length} prescription${activeRx.length === 1 ? "" : "s"}`
-              : "None"}
-          </li>
-        </ul>
-      </div>
-
       {atCashier ? (
         <div
           className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
@@ -754,7 +686,6 @@ function FinishNextSteps({
         </div>
       ) : null}
 
-      {/* Destinations */}
       <div className="grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-900">Pharmacy</h3>
@@ -781,6 +712,7 @@ function FinishNextSteps({
             encounterId={encounterId}
             returnStation="DOCTOR"
             disabled={busy || atCashier}
+            title="Send to cashier"
           />
         ) : (
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -792,30 +724,97 @@ function FinishNextSteps({
         )}
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-900">
-          Or complete consultation
-        </h3>
-        <p className="mt-1 text-xs text-slate-600">
-          Removes patient from your queue. System picks lab (if open orders),
-          pharmacy (if medicines), or payment.
-        </p>
-        {consultationId && !isFinalized ? (
-          <Button
-            type="button"
-            variant="secondary"
-            className="mt-3"
-            disabled={busy}
-            onClick={onComplete}
-          >
-            {finalizePending ? "Completing…" : "Complete consultation"}
-          </Button>
-        ) : null}
-        {isFinalized ? (
-          <p className="mt-3 text-sm text-slate-700">
-            Already completed → {nextStopLabel(encounterStatus)}.
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-900">
+            Give appointment
+          </h3>
+          <p className="mt-1 text-xs text-slate-600">
+            Doctor books the follow-up. Front desk will see it on the
+            appointment list.
           </p>
-        ) : null}
+          {followUps.length > 0 ? (
+            <ul className="mt-3 space-y-1.5 text-sm text-slate-800">
+              {followUps.map((a) => (
+                <li key={a.id}>
+                  {format(new Date(a.scheduledAt), "dd MMM yyyy, HH:mm")}
+                  {a.notes ? (
+                    <span className="text-slate-500"> — {a.notes}</span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {!isFinalized ? (
+            <div className="mt-3 space-y-3">
+              <div>
+                <Label className="mb-1 block text-xs">Date & time</Label>
+                <Input
+                  type="datetime-local"
+                  value={scheduledAt}
+                  onChange={(e) => setScheduledAt(e.target.value)}
+                  disabled={busy}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs">Notes</Label>
+                <Input
+                  value={scheduleNotes}
+                  onChange={(e) => setScheduleNotes(e.target.value)}
+                  placeholder="Optional — reason for follow-up"
+                  disabled={busy}
+                />
+              </div>
+              <Button
+                type="button"
+                className="w-full"
+                disabled={!scheduledAt || busy}
+                onClick={() => {
+                  if (!scheduledAt) return;
+                  createAppt.mutate(
+                    {
+                      patientId,
+                      scheduledAt: new Date(scheduledAt).toISOString(),
+                      departmentId,
+                      serviceId: serviceId || undefined,
+                      notes: scheduleNotes || undefined,
+                    },
+                    {
+                      onSuccess: () => setScheduleNotes(""),
+                    },
+                  );
+                }}
+              >
+                {createAppt.isPending ? "Saving…" : "Save appointment"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-lg border-2 border-emerald-500 bg-emerald-50 p-4 shadow-sm">
+          <h3 className="text-base font-semibold text-emerald-950">
+            Complete consultation
+          </h3>
+          <p className="mt-1 text-sm text-emerald-900">
+            This visit is finished and archived. Patient leaves your queue.
+          </p>
+          {consultationId && !isFinalized ? (
+            <Button
+              type="button"
+              size="lg"
+              className="mt-4 w-full bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700"
+              disabled={busy}
+              onClick={onComplete}
+            >
+              {finalizePending ? "Completing…" : "Complete consultation"}
+            </Button>
+          ) : null}
+          {isFinalized ? (
+            <p className="mt-4 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">
+              Finished and archived → {nextStopLabel(encounterStatus)}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -1146,41 +1145,144 @@ function PrescriptionTab({
   );
 }
 
-function OrdersPanel({ consultationId }: { consultationId: string }) {
+function isLabInvoiceLine(description: string) {
+  return /^Lab order /i.test(description);
+}
+
+function VisitSideCards({
+  consultationId,
+  invoiceId,
+  encounterStatus,
+  paymentReturnStation,
+}: {
+  consultationId: string;
+  invoiceId?: string;
+  encounterStatus: string;
+  paymentReturnStation?: string | null;
+}) {
   const labs = useLabOrders();
   const rx = usePrescriptions();
+  const atCashier = encounterStatus === "WAITING_PAYMENT";
+  const invoice = useInvoice(invoiceId ?? null, {
+    refetchInterval: atCashier ? 8_000 : false,
+  });
+
   const labItems =
-    labs.data?.filter((o) => o.consultationId === consultationId) ?? [];
+    labs.data?.filter(
+      (o) =>
+        o.consultationId === consultationId &&
+        o.status !== LabOrderStatus.CANCELLED,
+    ) ?? [];
   const rxItems =
     rx.data?.filter((p) => p.consultationId === consultationId) ?? [];
+  const inv = invoice.data;
+  const invoicePaid =
+    inv?.status === "PAID" ||
+    (inv != null && inv.totalCents > 0 && inv.paidCents >= inv.totalCents);
+  const cashierItems =
+    inv?.items.filter((item) => !isLabInvoiceLine(item.description)) ?? [];
+  const atCashierLab = atCashier && paymentReturnStation === "LAB";
+  const atCashierOther = atCashier && paymentReturnStation !== "LAB";
 
   return (
-    <Panel title="This visit orders">
-      <p className="text-xs font-medium text-slate-700">Laboratory</p>
-      {labItems.length === 0 ? (
-        <p className="mb-2 text-xs text-slate-500">None</p>
-      ) : (
-        <ul className="mb-2 space-y-1.5 text-xs">
-          {labItems.map((o) => (
-            <li key={o.id} className="flex flex-wrap items-center gap-1.5">
-              <span className="font-medium text-slate-800">{o.orderNumber}</span>
-              {labOrderStatusBadge(o.status)}
-            </li>
-          ))}
-        </ul>
-      )}
-      <p className="text-xs font-medium text-slate-700">Medicines</p>
-      {rxItems.length === 0 ? (
-        <p className="text-xs text-slate-500">None</p>
-      ) : (
-        <ul className="text-xs">
-          {rxItems.map((p) => (
-            <li key={p.id}>
-              {p.prescriptionNumber} — {p.status}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Panel>
+    <>
+      <Panel title="Laboratory">
+        {labItems.length === 0 ? (
+          <p className="text-xs text-slate-500">None</p>
+        ) : (
+          <ul className="space-y-1.5 text-xs">
+            {labItems.map((o) => {
+              const billed = inv?.items.some((item) =>
+                item.description.includes(o.orderNumber),
+              );
+              const waitingPay =
+                atCashierLab && o.status === LabOrderStatus.ORDERED;
+              const paidViaCashier = Boolean(billed) && !waitingPay;
+              const names = uniquePanelLabels(
+                o.items.map((i) => i.labTest),
+              );
+              return (
+                <li key={o.id} className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-medium text-slate-800">
+                    {names || o.orderNumber}
+                  </span>
+                  {waitingPay ? (
+                    <StatusBadge label="At cashier" tone="amber" />
+                  ) : (
+                    <>
+                      {paidViaCashier ? (
+                        <StatusBadge label="Paid" tone="green" />
+                      ) : null}
+                      {labOrderStatusBadge(o.status)}
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
+      <Panel title="Medicines">
+        {rxItems.length === 0 ? (
+          <p className="text-xs text-slate-500">None</p>
+        ) : (
+          <ul className="text-xs">
+            {rxItems.map((p) => (
+              <li key={p.id}>
+                {p.prescriptionNumber} — {p.status}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      <Panel title="Cashier">
+        {cashierItems.length === 0 ? (
+          <p className="text-xs text-slate-500">None</p>
+        ) : (
+          <ul className="space-y-1.5 text-xs">
+            {cashierItems.map((item) => {
+              const state: "Paid" | "At cashier" | "Due" = invoicePaid
+                ? "Paid"
+                : atCashierLab
+                  ? "Paid"
+                  : atCashierOther
+                    ? item.type === "CONSULTATION" && (inv?.paidCents ?? 0) > 0
+                      ? "Paid"
+                      : "At cashier"
+                    : item.type === "CONSULTATION" && (inv?.paidCents ?? 0) > 0
+                      ? "Paid"
+                      : "Due";
+              return (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-start justify-between gap-1.5"
+                >
+                  <span className="text-slate-800">
+                    {item.description}
+                    {item.quantity > 1 ? (
+                      <span className="ml-1 text-slate-500">
+                        ×{item.quantity}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <span className="tabular-nums text-slate-600">
+                      {formatCents(item.totalCents)}
+                    </span>
+                    {state === "Paid" ? (
+                      <StatusBadge label="Paid" tone="green" />
+                    ) : state === "At cashier" ? (
+                      <StatusBadge label="At cashier" tone="amber" />
+                    ) : (
+                      <StatusBadge label="Due" tone="slate" />
+                    )}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
+    </>
   );
 }

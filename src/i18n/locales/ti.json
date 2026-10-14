@@ -34,8 +34,8 @@
   "billing.deskFooter": "Steps on",
   "desk.flowTitle": "Desk flow",
   "desk.flow1": "Reception → Start visit.",
-  "desk.flow2": "Billing → Issue invoice.",
-  "desk.flow3": "Cashier → Pay.",
+  "desk.flow2": "Doctor → Send to cashier.",
+  "desk.flow3": "Cashier → Collect payment.",
   "desk.flowFooter": "Billing ties to visit.",
   "doctor.chartTitle": "Patient chart",
   "doctor.viewFullChart": "Full chart"

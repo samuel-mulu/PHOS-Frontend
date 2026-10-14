@@ -18,7 +18,6 @@ export async function createPayment(body: {
   amountCents: number;
   method: PaymentMethod;
   referenceNumber?: string;
-  cashSessionId?: string;
 }) {
   const { data } = await api.post<Payment>("/payments", body);
   return data;

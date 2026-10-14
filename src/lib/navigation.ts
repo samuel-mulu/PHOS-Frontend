@@ -2,7 +2,6 @@ import {
   Activity,
   Bell,
   BarChart3,
-  ClipboardList,
   FlaskConical,
   LayoutDashboard,
   Package,
@@ -122,12 +121,6 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/cashier",
     label: "Cashier",
     icon: Wallet,
-    roles: [Role.CEO, Role.ADMIN],
-  },
-  {
-    href: "/reconciliation",
-    label: "Reconciliation",
-    icon: ClipboardList,
     roles: [Role.CEO, Role.ADMIN, Role.CASHIER, Role.FRONT_DESK],
   },
   {
@@ -146,7 +139,15 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/reports",
     label: "Reports",
     icon: BarChart3,
-    roles: [Role.CEO, Role.ADMIN, Role.REPORTING_OFFICER],
+    roles: [
+      Role.CEO,
+      Role.ADMIN,
+      Role.REPORTING_OFFICER,
+      Role.DOCTOR,
+      Role.NURSE,
+      Role.LAB_TECH,
+      Role.LAB_SUPERVISOR,
+    ],
   },
   {
     href: "/audit",
@@ -159,7 +160,15 @@ export const NAV_ITEMS: NavItem[] = [
 const PUBLIC_DASHBOARD_PATHS = ["/forbidden"];
 
 export function navItemsForRole(role: RoleType): NavItem[] {
-  return NAV_ITEMS.filter((item) => item.roles.includes(role));
+  return NAV_ITEMS.filter((item) => item.roles.includes(role)).map((item) => {
+    if (item.href !== "/reports") return item;
+    const clinical =
+      role === Role.DOCTOR ||
+      role === Role.NURSE ||
+      role === Role.LAB_TECH ||
+      role === Role.LAB_SUPERVISOR;
+    return clinical ? { ...item, label: "HMIS" } : item;
+  });
 }
 
 export function routeAccessRule(pathname: string): NavItem | null {

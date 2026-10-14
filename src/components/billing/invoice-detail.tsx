@@ -49,8 +49,8 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           <Link
             href={
               role === Role.FRONT_DESK || role === Role.RECEPTIONIST
-                ? `/front-desk?tab=payments&invoiceId=${inv.id}`
-                : `/cashier?invoiceId=${inv.id}`
+                ? `/front-desk?tab=payments&encounterId=${inv.encounter.id}`
+                : `/cashier?encounterId=${inv.encounter.id}`
             }
           >
             <Button type="button" size="sm">

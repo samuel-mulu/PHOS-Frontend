@@ -14,7 +14,6 @@ export function useCreatePayment(invoiceId: string) {
       amountCents: number;
       method: PaymentMethod;
       referenceNumber?: string;
-      cashSessionId?: string;
     }) =>
       createPayment({
         idempotencyKey: newIdempotencyKey(),
@@ -23,8 +22,8 @@ export function useCreatePayment(invoiceId: string) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
-      void queryClient.invalidateQueries({ queryKey: ["cash-session"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
       toast.success("Payment recorded");
@@ -46,7 +45,6 @@ export function useCreateRefund(paymentId: string, invoiceId: string) {
       }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
-      void queryClient.invalidateQueries({ queryKey: ["cash-session"] });
       void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
       toast.success("Refund recorded");
     },
