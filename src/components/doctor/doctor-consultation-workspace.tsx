@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
 import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
@@ -17,12 +16,9 @@ import {
 } from "@/features/encounters/hooks";
 import {
   consultationSchema,
-  diagnosisSchema,
   type ConsultationFormValues,
-  type DiagnosisFormValues,
 } from "@/features/consultations/schemas";
 import {
-  useAddDiagnosis,
   useConsultation,
   useFinalizeConsultation,
   useSaveConsultation,
@@ -37,7 +33,7 @@ import { labOrderStatusBadge, StatusBadge } from "@/components/shared/status-bad
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format/money";
 import { uniquePanelLabels } from "@/lib/lab/panels";
-import { DiagnosisType, QueueStation } from "@/types/encounter";
+import { QueueStation } from "@/types/encounter";
 import { useLabOrders } from "@/features/laboratory/hooks";
 import { useInvoice } from "@/features/billing/hooks";
 import {
@@ -53,6 +49,7 @@ import {
   useCreateAppointment,
 } from "@/features/appointments/hooks";
 import { AppointmentStatus } from "@/types/appointment";
+import { PrintVisitNote } from "@/components/print/print-visit-note";
 
 type Step = "notes" | "orders" | "history" | "finish";
 
@@ -94,7 +91,6 @@ export function DoctorConsultationWorkspace({
   const isFinalized = consultation?.status === "FINALIZED";
   const labCounts = useDoctorLabOrderCounts(consultationId);
   const finalize = useFinalizeConsultation(consultationId ?? "", encounterId);
-
   const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationSchema),
     defaultValues: {
@@ -117,10 +113,8 @@ export function DoctorConsultationWorkspace({
         plan: consultation.plan ?? "",
         notes: consultation.notes ?? "",
       });
-    } else if (encounter.data?.reason) {
-      form.setValue("chiefComplaint", encounter.data.reason);
     }
-  }, [consultation, encounter.data?.reason, form]);
+  }, [consultation, form]);
 
   // When lab returns results, open Orders → Laboratory once (results view)
   const didAutoOpenResults = useRef(false);
@@ -174,20 +168,24 @@ export function DoctorConsultationWorkspace({
           <PatientIdentityBar
             patient={patient}
             encounterNumber={encounter.data.encounterNumber}
+            visitNumber={encounter.data.visitNumber}
             encounterStatus={encounterStatus}
             assignedDoctor={encounter.data.assignedDoctor}
           />
         </div>
-        <DoctorPatientChartPanel
-          patientId={patient.id}
-          encounterId={encounterId}
-          compact
-          open={historyOpen}
-          onOpenChange={(open) => {
-            setHistoryOpen(open);
-            if (open) setWorkflowStep("history");
-          }}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <PrintVisitNote encounter={encounter.data} />
+          <DoctorPatientChartPanel
+            patientId={patient.id}
+            encounterId={encounterId}
+            compact
+            open={historyOpen}
+            onOpenChange={(open) => {
+              setHistoryOpen(open);
+              if (open) setWorkflowStep("history");
+            }}
+          />
+        </div>
       </div>
 
       {isFinalized ? (
@@ -351,90 +349,77 @@ export function DoctorConsultationWorkspace({
 
         <section className="space-y-4 lg:col-span-9">
           {workflowStep === "notes" ? (
-            <div className="space-y-4">
-              <form
-                className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
-                onSubmit={form.handleSubmit((values) => save.mutate(values))}
-              >
-                <h2 className="text-sm font-semibold text-slate-800">
-                  Visit notes
-                </h2>
-                <Field label="Chief complaint">
-                  <Textarea
-                    rows={2}
-                    disabled={isFinalized}
-                    {...form.register("chiefComplaint")}
-                  />
-                </Field>
-                <Field label="History (HPI)">
-                  <Textarea
-                    rows={3}
-                    disabled={isFinalized}
-                    {...form.register("historyPresentIllness")}
-                  />
-                </Field>
-                <Field label="Examination">
-                  <Textarea
-                    rows={3}
-                    disabled={isFinalized}
-                    {...form.register("physicalExam")}
-                  />
-                </Field>
-                <Field label="Assessment">
-                  <Textarea
-                    rows={2}
-                    disabled={isFinalized}
-                    {...form.register("assessment")}
-                  />
-                </Field>
-                <Field label="Plan / follow-up">
-                  <Textarea
-                    rows={2}
-                    disabled={isFinalized}
-                    {...form.register("plan")}
-                  />
-                </Field>
-                <Field label="Notes">
-                  <Textarea
-                    rows={2}
-                    disabled={isFinalized}
-                    {...form.register("notes")}
-                  />
-                </Field>
-                {!isFinalized ? (
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="submit" disabled={save.isPending}>
-                      {save.isPending ? "Saving…" : "Save notes"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => void goToStep("orders")}
-                    >
-                      Next: Orders
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setHistoryOpen(true);
-                        setWorkflowStep("history");
-                      }}
-                    >
-                      View history
-                    </Button>
-                  </div>
-                ) : null}
-              </form>
-
-              <DiagnosisTab
-                consultationId={consultationId}
-                encounterId={encounterId}
-                diagnoses={consultation?.diagnoses ?? []}
-                isFinalized={isFinalized}
-                onNeedDraft={() => void ensureConsultation()}
+            <form
+              className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+              onSubmit={form.handleSubmit((values) => save.mutate(values))}
+            >
+              <h2 className="text-sm font-semibold text-slate-800">
+                Visit notes
+              </h2>
+              <p className="text-xs text-slate-500">
+                Same sections as the printed visit note. Check which to include
+                when you print.
+              </p>
+              <Textarea
+                rows={3}
+                disabled={isFinalized}
+                placeholder="Vitals (BP, Temp, HR, Weight, Height, etc.)"
+                className="min-h-[4.5rem] resize-y"
+                {...form.register("physicalExam")}
               />
-            </div>
+              <Textarea
+                rows={4}
+                disabled={isFinalized}
+                placeholder="Medical Notes / Follow-up Plan / Recommendations"
+                className="min-h-[5.5rem] resize-y"
+                {...form.register("notes")}
+              />
+              <Textarea
+                rows={3}
+                disabled={isFinalized}
+                placeholder="Diagnosis"
+                className="min-h-[4.5rem] resize-y"
+                {...form.register("assessment")}
+              />
+              <Textarea
+                rows={3}
+                disabled={isFinalized}
+                placeholder="ultrasound"
+                className="min-h-[4.5rem] resize-y font-mono text-sm"
+                {...form.register("plan")}
+              />
+              <Textarea
+                rows={4}
+                disabled={isFinalized}
+                placeholder={"Prescription (Rx)\ne.g."}
+                className="min-h-[5.5rem] resize-y"
+                {...form.register("historyPresentIllness")}
+              />
+              {!isFinalized ? (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button type="submit" disabled={save.isPending}>
+                    {save.isPending ? "Saving…" : "Save notes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void goToStep("orders")}
+                  >
+                    Next: Orders
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setHistoryOpen(true);
+                      setWorkflowStep("history");
+                    }}
+                  >
+                    View history
+                  </Button>
+                </div>
+              ) : null}
+            </form>
           ) : null}
 
           {workflowStep === "orders" ? (
@@ -817,138 +802,6 @@ function FinishNextSteps({
         </div>
       </div>
     </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label className="mb-1 block text-xs">{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function DiagnosisTab({
-  consultationId,
-  encounterId,
-  diagnoses,
-  isFinalized,
-  onNeedDraft,
-}: {
-  consultationId?: string;
-  encounterId: string;
-  diagnoses: Array<{
-    id: string;
-    label: string;
-    type?: string;
-    isPrimary?: boolean;
-  }>;
-  isFinalized: boolean;
-  onNeedDraft: () => void;
-}) {
-  if (!consultationId) {
-    return (
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-slate-600">
-          Save notes above first, then add diagnoses.
-        </p>
-        <Button type="button" className="mt-2" onClick={onNeedDraft}>
-          Save notes
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-800">Diagnoses</h2>
-      {diagnoses.length > 0 ? (
-        <ul className="space-y-1 text-sm text-slate-700">
-          {diagnoses.map((d) => (
-            <li key={d.id}>
-              {d.isPrimary ? "★ " : ""}
-              {d.label}
-              {d.type ? ` (${d.type})` : ""}
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="text-sm text-slate-500">No diagnoses yet.</p>
-      )}
-      {!isFinalized ? (
-        <DiagnosisSection
-          consultationId={consultationId}
-          encounterId={encounterId}
-          diagnoses={diagnoses}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-function DiagnosisSection({
-  consultationId,
-  encounterId,
-  diagnoses,
-}: {
-  consultationId: string;
-  encounterId: string;
-  diagnoses: Array<{ id: string; label: string }>;
-}) {
-  const add = useAddDiagnosis(consultationId, encounterId);
-  const form = useForm<DiagnosisFormValues>({
-    resolver: zodResolver(diagnosisSchema),
-    defaultValues: {
-      label: "",
-      type: DiagnosisType.PROVISIONAL,
-      isPrimary: diagnoses.length === 0,
-    },
-  });
-
-  return (
-    <form
-      className="mt-2 flex flex-wrap gap-2 border-t border-slate-100 pt-3"
-      onSubmit={form.handleSubmit((values) => {
-        add.mutate(values, {
-          onSuccess: () =>
-            form.reset({
-              label: "",
-              type: DiagnosisType.PROVISIONAL,
-              isPrimary: false,
-            }),
-        });
-      })}
-    >
-      <Input
-        className="min-w-[200px] flex-1"
-        placeholder="Diagnosis label"
-        {...form.register("label")}
-      />
-      <select
-        className="h-10 rounded-md border border-slate-200 px-2 text-sm"
-        {...form.register("type")}
-      >
-        {Object.values(DiagnosisType).map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-      <label className="flex items-center gap-1 text-xs text-slate-600">
-        <input type="checkbox" {...form.register("isPrimary")} />
-        Primary
-      </label>
-      <Button type="submit" size="sm" disabled={add.isPending}>
-        Add
-      </Button>
-    </form>
   );
 }
 

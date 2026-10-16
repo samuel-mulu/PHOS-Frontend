@@ -130,6 +130,9 @@ export function DoctorPatientChartPanel({
                       className="rounded-md border border-slate-100 px-2 py-1.5"
                     >
                       <p className="font-medium text-slate-800">
+                        {enc.visitNumber != null
+                          ? `Visit ${enc.visitNumber} · `
+                          : ""}
                         {formatFullDate(enc.startedAt)}
                       </p>
                       <p className="text-slate-600">
@@ -368,6 +371,11 @@ function VisitHistoryCard({
       >
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
+            {encounter.visitNumber != null ? (
+              <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">
+                Visit {encounter.visitNumber}
+              </span>
+            ) : null}
             <p className="font-semibold text-slate-900">
               {formatFullDate(encounter.startedAt)}
             </p>
@@ -448,15 +456,17 @@ function VisitHistoryCard({
                   ))}
                 </ul>
               ) : null}
+              <ReadonlyBlock label="Vitals" value={consult.physicalExam} />
               <ReadonlyBlock
-                label="Chief complaint"
-                value={consult.chiefComplaint}
+                label="Medical notes / follow-up / recommendations"
+                value={consult.notes}
               />
-              <ReadonlyBlock label="HPI" value={consult.historyPresentIllness} />
-              <ReadonlyBlock label="Exam" value={consult.physicalExam} />
-              <ReadonlyBlock label="Assessment" value={consult.assessment} />
-              <ReadonlyBlock label="Plan" value={consult.plan} />
-              <ReadonlyBlock label="Notes" value={consult.notes} />
+              <ReadonlyBlock label="Diagnosis" value={consult.assessment} />
+              <ReadonlyBlock label="Ultrasound" value={consult.plan} />
+              <ReadonlyBlock
+                label="Prescription (Rx)"
+                value={consult.historyPresentIllness}
+              />
             </section>
           ) : (
             <p className="text-xs text-slate-500">No consultation notes.</p>

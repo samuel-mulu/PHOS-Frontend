@@ -38,8 +38,9 @@ import { cn } from "@/lib/utils";
 import { sortQueueNewestFirst } from "@/lib/queues/sort";
 import { ExpandablePanel } from "@/components/shared/table-layout";
 import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
+import { DoctorAppointmentsPanel } from "@/components/doctor/doctor-appointments-panel";
 
-type DoctorTab = "waiting" | "inLab" | "lab" | "done";
+type DoctorTab = "waiting" | "inLab" | "lab" | "done" | "appointments";
 
 function isLabReturn(entry: QueueEntry) {
   return entry.encounter.status === "WAITING_REVIEW";
@@ -353,9 +354,16 @@ export function DoctorQueueWorkspace() {
               badge={recentlyCompleted.length}
               muted
             />
+            <TabButton
+              active={tab === "appointments"}
+              onClick={() => setTab("appointments")}
+              label="Appointments"
+            />
           </nav>
         }
       >
+        {tab === "appointments" ? <DoctorAppointmentsPanel /> : null}
+
         {tab === "waiting" ? (
           waitingQueue.length === 0 ? (
             <EmptyState
@@ -406,6 +414,7 @@ export function DoctorQueueWorkspace() {
                         : e.encounterNumber}
                     </p>
                     <p className="text-xs text-slate-500">
+                      {e.visitNumber != null ? `Visit ${e.visitNumber} · ` : ""}
                       {e.encounterNumber} · at lab
                     </p>
                   </div>
@@ -478,6 +487,7 @@ export function DoctorQueueWorkspace() {
                     </p>
                     <p className="text-xs text-slate-500">
                       {format(new Date(e.startedAt), "HH:mm")} ·{" "}
+                      {e.visitNumber != null ? `Visit ${e.visitNumber} · ` : ""}
                       {e.encounterNumber} · now at {nextStopLabel(e.status)}
                     </p>
                   </div>
@@ -576,7 +586,14 @@ function LabReadyTable({
                 <StatusBadge label="From lab" tone="red" className="mt-1" />
               </DataTableCell>
               <DataTableCell>
-                <p>{entry.encounter.encounterNumber}</p>
+                {entry.encounter.visitNumber != null ? (
+                  <p className="font-semibold text-teal-800">
+                    Visit {entry.encounter.visitNumber}
+                  </p>
+                ) : null}
+                <p className="text-xs text-slate-500">
+                  {entry.encounter.encounterNumber}
+                </p>
                 <p className="text-xs text-slate-500">
                   {entry.encounter.service?.name ??
                     entry.encounter.type.replaceAll("_", " ")}
@@ -653,7 +670,12 @@ function LabReadyTable({
                 <StatusBadge label="From lab" tone="red" className="mt-1" />
               </DataTableCell>
               <DataTableCell>
-                <p>{enc.encounterNumber}</p>
+                {enc.visitNumber != null ? (
+                  <p className="font-semibold text-teal-800">
+                    Visit {enc.visitNumber}
+                  </p>
+                ) : null}
+                <p className="text-xs text-slate-500">{enc.encounterNumber}</p>
                 <p className="text-xs text-slate-500">
                   {enc.service?.name ?? enc.type}
                 </p>
@@ -729,7 +751,14 @@ function QueueTable({
                 <p className="text-xs text-slate-500">{p.patientNumber}</p>
               </DataTableCell>
               <DataTableCell>
-                <p>{entry.encounter.encounterNumber}</p>
+                {entry.encounter.visitNumber != null ? (
+                  <p className="font-semibold text-teal-800">
+                    Visit {entry.encounter.visitNumber}
+                  </p>
+                ) : null}
+                <p className="text-xs text-slate-500">
+                  {entry.encounter.encounterNumber}
+                </p>
                 <p className="text-xs text-slate-500">
                   {entry.encounter.service?.name ??
                     entry.encounter.type.replaceAll("_", " ")}

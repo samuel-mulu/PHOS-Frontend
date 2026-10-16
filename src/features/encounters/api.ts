@@ -5,6 +5,8 @@ import type { Patient } from "@/types/patient";
 export type Encounter = {
   id: string;
   encounterNumber: string;
+  /** 1-based visit index for this patient. */
+  visitNumber?: number;
   patientId: string;
   facilityId: string;
   departmentId: string;

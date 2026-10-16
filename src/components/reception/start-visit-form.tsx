@@ -162,15 +162,15 @@ export function StartVisitForm({
         });
         paid = true;
         toast.success(
-          `Paid ${formatCents(issued.totalCents)} · sent to ${
+          `Visit ${encounter.visitNumber ?? ""} paid ${formatCents(issued.totalCents)} · sent to ${
             initialStation === QueueStation.DOCTOR ? "doctor" : "triage"
-          }`,
+          }`.replace(/\s+/g, " ").trim(),
         );
       } else {
         toast.success(
-          `Visit started · sent to ${
+          `Visit ${encounter.visitNumber ?? ""} started · sent to ${
             initialStation === QueueStation.DOCTOR ? "doctor" : "triage"
-          }`,
+          }`.replace(/\s+/g, " ").trim(),
         );
       }
 

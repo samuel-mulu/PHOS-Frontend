@@ -135,7 +135,16 @@ export function DeskDoctorQueueTable() {
                       </p>
                     ) : null}
                   </DataTableCell>
-                  <DataTableCell>{enc.encounterNumber}</DataTableCell>
+                  <DataTableCell>
+                    {enc.visitNumber != null ? (
+                      <p className="font-semibold text-teal-800">
+                        Visit {enc.visitNumber}
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-slate-500">
+                      {enc.encounterNumber}
+                    </p>
+                  </DataTableCell>
                   <DataTableCell>
                     {enc.assignedDoctor
                       ? doctorName(enc.assignedDoctor)

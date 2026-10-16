@@ -17,6 +17,7 @@ export type PatientChartPerson = {
 export type PatientChartEncounter = {
   id: string;
   encounterNumber?: string;
+  visitNumber?: number;
   startedAt: string;
   closedAt?: string | null;
   type: string;

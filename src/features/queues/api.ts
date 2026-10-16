@@ -21,6 +21,7 @@ export type QueueEntry = {
   encounter: {
     id: string;
     encounterNumber: string;
+    visitNumber?: number;
     status: string;
     reason: string | null;
     assignedDoctorId?: string | null;
