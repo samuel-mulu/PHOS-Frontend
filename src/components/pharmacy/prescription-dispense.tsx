@@ -58,6 +58,7 @@ export function PrescriptionDispense({
           lastName: patient.lastName,
           sex: "UNKNOWN",
           dateOfBirth: null,
+          phone: null,
           allergies: null,
         }}
         encounterStatus={p.status}

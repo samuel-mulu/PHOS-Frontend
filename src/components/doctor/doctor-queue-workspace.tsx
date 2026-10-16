@@ -358,6 +358,7 @@ export function DoctorQueueWorkspace() {
               active={tab === "appointments"}
               onClick={() => setTab("appointments")}
               label="Appointments"
+              badge={0}
             />
           </nav>
         }
