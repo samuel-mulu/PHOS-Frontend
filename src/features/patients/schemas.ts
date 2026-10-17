@@ -25,7 +25,8 @@ export const createPatientSchema = z
     middleName: optionalText,
     lastName: z.string().trim().min(2, "Last name is required"),
     sex: z.enum([Sex.MALE, Sex.FEMALE, Sex.OTHER, Sex.UNKNOWN]),
-    birthInputMode: birthInputModeSchema.default("age"),
+    // Required (no .default) so RHF + zodResolver input/output types match.
+    birthInputMode: birthInputModeSchema,
     age: optionalText,
     dateOfBirth: optionalText,
     phone: optionalText,
