@@ -16,6 +16,7 @@ export type Encounter = {
   priority: EncounterPriority;
   reason: string | null;
   startedAt: string;
+  closedAt?: string | null;
   assignedDoctorId?: string | null;
   /** After mid-visit payment, patient returns to this station. */
   paymentReturnStation?: "TRIAGE" | "DOCTOR" | "LAB" | "PHARMACY" | "CASHIER" | null;
@@ -27,6 +28,13 @@ export type Encounter = {
   patient?: Patient;
   service?: { id: string; name: string; code: string };
   department?: { id: string; name: string; code: string };
+  /** Present on completed-today list responses. */
+  consultation?: {
+    chiefComplaint: string | null;
+    assessment: string | null;
+    finalizedAt: string | null;
+    diagnoses: Array<{ label: string; isPrimary: boolean }>;
+  } | null;
 };
 
 export type EncounterDetail = Encounter & {
@@ -88,6 +96,7 @@ export async function fetchEncounters(params?: {
   patientId?: string;
   assignedDoctorId?: string;
   open?: boolean;
+  completedToday?: boolean;
 }) {
   const { data } = await api.get<Encounter[]>("/encounters", {
     params: {
@@ -95,6 +104,7 @@ export async function fetchEncounters(params?: {
       patientId: params?.patientId,
       assignedDoctorId: params?.assignedDoctorId,
       open: params?.open ? "true" : undefined,
+      completedToday: params?.completedToday ? "true" : undefined,
     },
   });
   return data;

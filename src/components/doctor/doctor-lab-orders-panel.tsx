@@ -19,7 +19,10 @@ import {
 } from "@/features/laboratory/hooks";
 import { EncounterPriority } from "@/types/encounter";
 import { LabOrderStatus } from "@/types/lab";
-import { sortByCreatedAtDesc } from "@/lib/queues/sort";
+import { sortByCreatedAt } from "@/lib/queues/sort";
+import { useDateSort } from "@/lib/queues/use-date-sort";
+import { DateSortToggle } from "@/components/shared/date-sort-toggle";
+import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
 import { LabPaper, labItemsToPaperLines } from "@/components/laboratory/lab-paper";
 import { groupByPanel, uniquePanelLabels } from "@/lib/lab/panels";
 
@@ -120,7 +123,10 @@ export function DoctorLabOrdersPanel({
   const tests = useLabTests();
   const labs = useLabOrders();
   const create = useCreateLabOrder(consultationId ?? "");
+  const { direction, setDirection } = useDateSort("latest");
   const [selected, setSelected] = useState<string[]>([]);
+  /** Which panel list is open — tests start unchecked; doctor taps only what is needed. */
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [priority, setPriority] = useState<EncounterPriority>(
     EncounterPriority.ROUTINE,
   );
@@ -132,10 +138,11 @@ export function DoctorLabOrdersPanel({
 
   const myOrders = useMemo(
     () =>
-      sortByCreatedAtDesc(
+      sortByCreatedAt(
         (labs.data ?? []).filter((o) => o.consultationId === consultationId),
+        direction,
       ),
-    [labs.data, consultationId],
+    [labs.data, consultationId, direction],
   );
 
   const waiting = useMemo(
@@ -172,6 +179,10 @@ export function DoctorLabOrdersPanel({
       ),
     [cashierLabLines],
   );
+  const openPanel = useMemo(
+    () => panels.find((panel) => panel.category === openCategory) ?? null,
+    [panels, openCategory],
+  );
   const cashierLabTotalCents = cashierLabLines.reduce(
     (sum, t) => sum + t.priceCents,
     0,
@@ -189,6 +200,7 @@ export function DoctorLabOrdersPanel({
       {
         onSuccess: () => {
           setSelected([]);
+          setOpenCategory(null);
           setNotes("");
           setOrderOpen(false);
           setCashierLabOpen(false);
@@ -215,25 +227,29 @@ export function DoctorLabOrdersPanel({
     );
   }
 
-  function toggle(id: string) {
+  function toggleTest(id: string) {
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }
 
-  function togglePanel(ids: string[]) {
-    setSelected((prev) => {
-      const allOn = ids.length > 0 && ids.every((id) => prev.includes(id));
-      if (allOn) return prev.filter((id) => !ids.includes(id));
-      return [...new Set([...prev, ...ids])];
-    });
+  function selectAllInPanel(ids: string[]) {
+    setSelected((prev) => [...new Set([...prev, ...ids])]);
+  }
+
+  function clearPanelSelection(ids: string[]) {
+    setSelected((prev) => prev.filter((id) => !ids.includes(id)));
   }
 
   return (
     <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-800">Laboratory</h2>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <PrintFullLabActivity />
+          {(ready.length > 0 || waiting.length > 0) && (
+            <DateSortToggle value={direction} onChange={setDirection} />
+          )}
           {ready.length > 0 ? (
             <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
               {ready.length} result{ready.length === 1 ? "" : "s"} ready
@@ -310,8 +326,10 @@ export function DoctorLabOrdersPanel({
           </div>
           {orderOpen ? (
             <div className="space-y-3">
-              <p className="text-xs font-medium text-slate-600">
-                Tap a panel to order its tests
+              <p className="text-xs text-slate-600">
+                Open a panel, then tap only the tests you need (e.g. 3 of 10).
+                Use <span className="font-medium">Order all</span> only when you
+                want the full panel.
               </p>
               {tests.isLoading ? (
                 <LoadingBlock label="Loading tests" />
@@ -321,58 +339,111 @@ export function DoctorLabOrdersPanel({
                   No lab tests in catalog. Ask admin to add tests.
                 </p>
               ) : null}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {panels.map((panel) => {
                   const ids = panel.items.map((t) => t.id);
                   const selectedCount = ids.filter((id) =>
                     selected.includes(id),
                   ).length;
-                  const allOn =
-                    ids.length > 0 && selectedCount === ids.length;
-                  const someOn = selectedCount > 0 && !allOn;
+                  const isOpen = openCategory === panel.category;
                   return (
                     <button
                       key={panel.category}
                       type="button"
-                      onClick={() => togglePanel(ids)}
+                      onClick={() => setOpenCategory(panel.category)}
                       className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-                        allOn
-                          ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
-                          : someOn
-                            ? "border-emerald-500 bg-emerald-100 text-emerald-950"
-                            : "border-slate-200 bg-slate-50 text-slate-800 hover:border-emerald-400 hover:bg-emerald-50",
+                        "rounded border px-2.5 py-1 text-xs font-medium transition-colors",
+                        isOpen
+                          ? "border-teal-700 bg-teal-700 text-white"
+                          : selectedCount > 0
+                            ? "border-teal-500 bg-teal-50 text-teal-900"
+                            : "border-slate-300 bg-white text-slate-800 hover:border-teal-600 hover:text-teal-800",
                       )}
                     >
                       {panel.label}
-                      {someOn ? ` (${selectedCount})` : null}
+                      {selectedCount > 0 ? ` (${selectedCount})` : null}
                     </button>
                   );
                 })}
               </div>
-              {cashierLabLines.length > 0 ? (
-                <ul className="max-h-36 space-y-1 overflow-y-auto rounded-md border border-slate-100 bg-slate-50/80 p-2 text-xs">
-                  {cashierLabGroups.map((group) => (
-                    <li key={group.category}>
-                      <p className="font-semibold text-slate-600">
-                        {group.label}
+              {openPanel ? (
+                <div className="rounded border border-slate-200 bg-white">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {openPanel.label}
                       </p>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {group.items.map((t) => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => toggle(t.id)}
-                            className="rounded-full border border-emerald-200 bg-white px-2 py-0.5 text-[11px] text-slate-800 hover:border-red-300 hover:text-red-800"
-                            title="Remove from order"
-                          >
-                            {t.name} ×
-                          </button>
-                        ))}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                      <p className="text-[11px] text-slate-500">
+                        {
+                          openPanel.items.filter((t) => selected.includes(t.id))
+                            .length
+                        }{" "}
+                        selected · tap a test to add or remove
+                      </p>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px]"
+                        onClick={() =>
+                          selectAllInPanel(openPanel.items.map((t) => t.id))
+                        }
+                      >
+                        Order all
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-[11px]"
+                        disabled={
+                          !openPanel.items.some((t) => selected.includes(t.id))
+                        }
+                        onClick={() =>
+                          clearPanelSelection(openPanel.items.map((t) => t.id))
+                        }
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid max-h-56 grid-cols-2 gap-1.5 overflow-y-auto p-2 sm:grid-cols-3">
+                    {openPanel.items.map((t) => {
+                      const on = selected.includes(t.id);
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => toggleTest(t.id)}
+                          aria-pressed={on}
+                          className={cn(
+                            "rounded border px-2 py-2 text-left text-xs font-medium transition-colors",
+                            on
+                              ? "border-teal-700 bg-teal-700 text-white"
+                              : "border-slate-200 bg-slate-50 text-slate-800 hover:border-teal-500 hover:bg-teal-50",
+                          )}
+                        >
+                          {t.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded border border-dashed border-slate-200 bg-white px-3 py-6 text-center text-sm text-slate-500">
+                  Open a panel, then tap the tests you need.
+                </p>
+              )}
+              {selected.length > 0 ? (
+                <div className="rounded border border-teal-100 bg-teal-50/50 px-3 py-2 text-xs text-slate-700">
+                  <span className="font-semibold text-teal-900">
+                    {selected.length} test{selected.length === 1 ? "" : "s"} in
+                    order:
+                  </span>{" "}
+                  {cashierLabLines.map((t) => t.name).join(", ")}
+                </div>
               ) : null}
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
@@ -414,6 +485,7 @@ export function DoctorLabOrdersPanel({
                       {
                         onSuccess: () => {
                           setSelected([]);
+                          setOpenCategory(null);
                           setNotes("");
                           setOrderOpen(false);
                           onSentToLab();

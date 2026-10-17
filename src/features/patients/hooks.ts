@@ -12,6 +12,7 @@ import {
   fetchPatientChart,
   fetchPatients,
   lookupPatientByNumber,
+  updatePatient,
   type PatientListParams,
 } from "./api";
 import type { CreatePatientFormValues } from "./schemas";
@@ -89,6 +90,34 @@ export function useCreatePatient(options: UseCreatePatientOptions = {}) {
       if (redirectToProfile) {
         router.push(`/patients/${patient.id}`);
       }
+    },
+    onError: (error) => {
+      const duplicate = parseDuplicateConflict(error);
+      if (duplicate) return;
+      toast.error(normalizeApiError(error).message);
+    },
+  });
+}
+
+export type UseUpdatePatientOptions = {
+  onUpdated?: (patient: Patient) => void;
+};
+
+export function useUpdatePatient(
+  patientId: string,
+  options: UseUpdatePatientOptions = {},
+) {
+  const { onUpdated } = options;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (values: CreatePatientFormValues) =>
+      updatePatient(patientId, values),
+    onSuccess: (patient) => {
+      void queryClient.invalidateQueries({ queryKey: ["patients"] });
+      void queryClient.invalidateQueries({ queryKey: ["patients", patientId] });
+      toast.success("Patient updated");
+      onUpdated?.(patient);
     },
     onError: (error) => {
       const duplicate = parseDuplicateConflict(error);

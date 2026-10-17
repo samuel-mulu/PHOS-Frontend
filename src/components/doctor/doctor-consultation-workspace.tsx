@@ -361,41 +361,66 @@ export function DoctorConsultationWorkspace({
                 Same sections as the printed visit note. Check which to include
                 when you print.
               </p>
-              <Textarea
-                rows={3}
-                disabled={isFinalized}
-                placeholder="Vitals (BP, Temp, HR, Weight, Height, etc.)"
-                className="min-h-[4.5rem] resize-y"
-                {...form.register("physicalExam")}
-              />
-              <Textarea
-                rows={4}
-                disabled={isFinalized}
-                placeholder="Medical Notes / Follow-up Plan / Recommendations"
-                className="min-h-[5.5rem] resize-y"
-                {...form.register("notes")}
-              />
-              <Textarea
-                rows={3}
-                disabled={isFinalized}
-                placeholder="Diagnosis"
-                className="min-h-[4.5rem] resize-y"
-                {...form.register("assessment")}
-              />
-              <Textarea
-                rows={3}
-                disabled={isFinalized}
-                placeholder="ultrasound"
-                className="min-h-[4.5rem] resize-y font-mono text-sm"
-                {...form.register("plan")}
-              />
-              <Textarea
-                rows={4}
-                disabled={isFinalized}
-                placeholder={"Prescription (Rx)\ne.g."}
-                className="min-h-[5.5rem] resize-y"
-                {...form.register("historyPresentIllness")}
-              />
+              <div>
+                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                  Vitals
+                </Label>
+                <Textarea
+                  rows={3}
+                  disabled={isFinalized}
+                  placeholder="e.g. BP 120/80, Temp 36.5, HR 72, Weight 70kg, Height 170cm"
+                  className="min-h-[4.5rem] resize-y"
+                  {...form.register("physicalExam")}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                  Medical Notes / Follow-up Plan / Recommendations
+                </Label>
+                <Textarea
+                  rows={4}
+                  disabled={isFinalized}
+                  placeholder="e.g. follow-up in 2 weeks, rest, increase fluids…"
+                  className="min-h-[5.5rem] resize-y"
+                  {...form.register("notes")}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                  Diagnosis
+                </Label>
+                <Textarea
+                  rows={3}
+                  disabled={isFinalized}
+                  placeholder="e.g. Acute gastritis"
+                  className="min-h-[4.5rem] resize-y"
+                  {...form.register("assessment")}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                  Ultrasound
+                </Label>
+                <Textarea
+                  rows={3}
+                  disabled={isFinalized}
+                  placeholder="e.g. findings…"
+                  className="min-h-[4.5rem] resize-y font-mono text-sm"
+                  {...form.register("plan")}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                  Prescription (Rx)
+                </Label>
+                <Textarea
+                  rows={4}
+                  disabled={isFinalized}
+                  placeholder={"e.g.\nAmoxicillin 500mg — 1×3×7 days"}
+                  className="min-h-[5.5rem] resize-y"
+                  {...form.register("historyPresentIllness")}
+                />
+              </div>
               {!isFinalized ? (
                 <div className="flex flex-wrap gap-2 pt-1">
                   <Button type="submit" disabled={save.isPending}>
@@ -569,6 +594,7 @@ export function DoctorConsultationWorkspace({
             <FinishNextSteps
               consultationId={consultationId}
               encounterId={encounterId}
+              invoiceId={encounter.data.invoice?.id}
               patientId={patient.id}
               departmentId={encounter.data.departmentId}
               serviceId={encounter.data.serviceId}
@@ -616,6 +642,7 @@ function defaultFollowUpLocal() {
 function FinishNextSteps({
   consultationId,
   encounterId,
+  invoiceId,
   patientId,
   departmentId,
   serviceId,
@@ -629,6 +656,7 @@ function FinishNextSteps({
 }: {
   consultationId?: string;
   encounterId: string;
+  invoiceId?: string;
   patientId: string;
   departmentId: string;
   serviceId?: string | null;
@@ -643,6 +671,9 @@ function FinishNextSteps({
   const rxList = usePrescriptions();
   const createAppt = useCreateAppointment();
   const appts = useAppointments();
+  const invoice = useInvoice(invoiceId ?? null, {
+    refetchInterval: 8_000,
+  });
   const [scheduledAt, setScheduledAt] = useState(defaultFollowUpLocal);
   const [scheduleNotes, setScheduleNotes] = useState("");
 
@@ -656,6 +687,11 @@ function FinishNextSteps({
       a.patientId === patientId && a.status === AppointmentStatus.SCHEDULED,
   );
 
+  const inv = invoice.data;
+  const unpaidCents = inv
+    ? Math.max(0, inv.totalCents - inv.paidCents)
+    : 0;
+  const hasUnpaid = unpaidCents > 0;
   const busy = finalizePending || routePending || createAppt.isPending;
   const atCashier = encounterStatus === "WAITING_PAYMENT";
 
@@ -782,14 +818,22 @@ function FinishNextSteps({
             Complete consultation
           </h3>
           <p className="mt-1 text-sm text-emerald-900">
-            This visit is finished and archived. Patient leaves your queue.
+            {hasUnpaid
+              ? "Collect payment first. You cannot complete while the patient still owes money."
+              : "Payment settled (or no fee). Completing archives this visit and shows it under Completed today."}
           </p>
+          {hasUnpaid && !isFinalized ? (
+            <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+              Not paid — due {formatCents(unpaidCents)}. Use{" "}
+              <strong>Send to cashier</strong>, then complete after payment.
+            </p>
+          ) : null}
           {consultationId && !isFinalized ? (
             <Button
               type="button"
               size="lg"
-              className="mt-4 w-full bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700"
-              disabled={busy}
+              className="mt-4 w-full bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+              disabled={busy || hasUnpaid}
               onClick={onComplete}
             >
               {finalizePending ? "Completing…" : "Complete consultation"}

@@ -22,6 +22,9 @@ import {
 import { useEncounters } from "@/features/encounters/hooks";
 import { useDoctors } from "@/features/users/use-doctors";
 import { formatWaitingSince } from "@/lib/format/wait-time";
+import { sortByDateField } from "@/lib/queues/sort";
+import { useDateSort } from "@/lib/queues/use-date-sort";
+import { DateSortToggle } from "@/components/shared/date-sort-toggle";
 import { Label } from "@/components/ui/label";
 
 function doctorName(row: {
@@ -33,20 +36,24 @@ function doctorName(row: {
 
 export function DeskDoctorQueueTable() {
   const [doctorId, setDoctorId] = useState<string>("all");
+  const { direction, setDirection } = useDateSort("latest");
   const encounters = useEncounters({ open: true });
   const doctors = useDoctors();
 
   const rows = useMemo(() => {
     const all = encounters.data ?? [];
-    if (doctorId === "all") return all;
-    if (doctorId === "unassigned") {
-      return all.filter((e) => !e.assignedDoctorId);
-    }
-    return all.filter(
-      (e) =>
-        e.assignedDoctorId === doctorId || e.assignedDoctor?.id === doctorId,
-    );
-  }, [encounters.data, doctorId]);
+    const filtered =
+      doctorId === "all"
+        ? all
+        : doctorId === "unassigned"
+          ? all.filter((e) => !e.assignedDoctorId)
+          : all.filter(
+              (e) =>
+                e.assignedDoctorId === doctorId ||
+                e.assignedDoctor?.id === doctorId,
+            );
+    return sortByDateField(filtered, (e) => e.startedAt, direction);
+  }, [encounters.data, doctorId, direction]);
 
   return (
     <ExpandablePanel
@@ -63,6 +70,7 @@ export function DeskDoctorQueueTable() {
       }
       toolbar={
         <div className="flex flex-wrap items-center gap-2">
+          <DateSortToggle value={direction} onChange={setDirection} />
           <Label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
             Filter by doctor
           </Label>

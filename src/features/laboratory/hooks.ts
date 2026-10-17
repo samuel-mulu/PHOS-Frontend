@@ -105,7 +105,8 @@ export function useReceiveLabOrder(orderId: string) {
     mutationFn: () => receiveLabOrder(orderId),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["lab", "orders"] });
-      toast.success("Sample marked as received");
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      // Toast left to the order screen so it can describe the next step.
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import {
@@ -11,12 +12,19 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
+import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/features/auth/hooks";
 import { usePatientChart } from "@/features/patients/hooks";
+import { formatAge } from "@/lib/format/age";
+import { canEditPatient } from "@/lib/permissions";
 import { uniquePanelLabels } from "@/lib/lab/panels";
+import { PatientEditDialog } from "./patient-edit-dialog";
 import { PatientQrBadge } from "./patient-qr-badge";
 
 export function PatientProfile({ patientId }: { patientId: string }) {
   const { data, isLoading, isError, refetch } = usePatientChart(patientId);
+  const { data: user } = useCurrentUser();
+  const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) return <LoadingBlock label="Loading patient chart" />;
   if (isError || !data) {
@@ -29,6 +37,8 @@ export function PatientProfile({ patientId }: { patientId: string }) {
   const fullName = [p.firstName, p.middleName, p.lastName]
     .filter(Boolean)
     .join(" ");
+  const age = formatAge(p.dateOfBirth);
+  const canEdit = user ? canEditPatient(user.role) : false;
 
   return (
     <div className="space-y-6">
@@ -40,9 +50,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
           <h1 className="mt-1 text-2xl font-semibold text-slate-900">{fullName}</h1>
           <p className="mt-1 text-sm text-slate-600">
             {p.sex}
-            {p.dateOfBirth
-              ? ` · DOB ${format(new Date(p.dateOfBirth), "dd MMM yyyy")}`
-              : ""}
+            {age ? ` · ${age}` : ""}
             {p.phone ? ` · ${p.phone}` : ""}
           </p>
           {p.allergies ? (
@@ -50,9 +58,28 @@ export function PatientProfile({ patientId }: { patientId: string }) {
               Allergies: {p.allergies}
             </p>
           ) : null}
+          {canEdit ? (
+            <div className="mt-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+              >
+                Edit patient
+              </Button>
+            </div>
+          ) : null}
         </div>
         <PatientQrBadge patientNumber={p.patientNumber} />
       </div>
+
+      <PatientEditDialog
+        patient={p}
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        onUpdated={() => void refetch()}
+      />
 
       <section className="grid gap-4 md:grid-cols-2">
         <InfoCard title="Contact">

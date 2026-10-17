@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { format } from "date-fns";
 import { Search } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,10 +20,17 @@ import {
   ErrorState,
   LoadingBlock,
 } from "@/components/shared/state-blocks";
+import { formatAge } from "@/lib/format/age";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { usePatientsList } from "@/features/patients/hooks";
-import { canRegisterPatient } from "@/lib/permissions";
+import {
+  downloadPatientsXlsx,
+  fetchAllPatientsForExport,
+} from "@/features/patients/export";
+import { canEditPatient, canRegisterPatient } from "@/lib/permissions";
 import { useCurrentUser } from "@/features/auth/hooks";
+import type { Patient } from "@/types/patient";
+import { PatientEditDialog } from "./patient-edit-dialog";
 
 export function PatientSearchList({
   onSelectPatient,
@@ -35,8 +42,8 @@ export function PatientSearchList({
   title = "Patients",
   headerAction,
 }: {
-  onSelectPatient?: (patient: import("@/types/patient").Patient) => void;
-  onScheduleAppointment?: (patient: import("@/types/patient").Patient) => void;
+  onSelectPatient?: (patient: Patient) => void;
+  onScheduleAppointment?: (patient: Patient) => void;
   hideRegisterLink?: boolean;
   selectLabel?: string;
   maximize?: boolean;
@@ -47,10 +54,15 @@ export function PatientSearchList({
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const debouncedSearch = useDebouncedValue(search, 350);
   const { data: user } = useCurrentUser();
   const limit = maximize || expandable ? 30 : 20;
-  const showActions = Boolean(onSelectPatient || onScheduleAppointment);
+  const canEdit = Boolean(user && canEditPatient(user.role));
+  const showActions = Boolean(
+    onSelectPatient || onScheduleAppointment || canEdit,
+  );
 
   const query = usePatientsList({
     search: debouncedSearch || undefined,
@@ -61,6 +73,25 @@ export function PatientSearchList({
   const totalPages = query.data
     ? Math.max(1, Math.ceil(query.data.total / query.data.limit))
     : 1;
+
+  async function handleExportExcel() {
+    setExporting(true);
+    try {
+      const patients = await fetchAllPatientsForExport(
+        debouncedSearch || undefined,
+      );
+      if (patients.length === 0) {
+        toast.message("No patients to export");
+        return;
+      }
+      await downloadPatientsXlsx(patients, debouncedSearch || undefined);
+      toast.success(`Exported ${patients.length} patients`);
+    } catch {
+      toast.error("Could not export patients");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const searchBar = (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -84,6 +115,14 @@ export function PatientSearchList({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {headerAction}
+        <Button
+          type="button"
+          variant="outline"
+          disabled={exporting || query.isLoading}
+          onClick={() => void handleExportExcel()}
+        >
+          {exporting ? "Exporting…" : "Export Excel"}
+        </Button>
         {!hideRegisterLink && user && canRegisterPatient(user.role) ? (
           <Link href="/patients/new">
             <Button type="button">Register patient</Button>
@@ -122,7 +161,7 @@ export function PatientSearchList({
                 <DataTableHeaderCell>Name</DataTableHeaderCell>
                 <DataTableHeaderCell>Sex</DataTableHeaderCell>
                 <DataTableHeaderCell>Phone</DataTableHeaderCell>
-                <DataTableHeaderCell>DOB</DataTableHeaderCell>
+                <DataTableHeaderCell>Age</DataTableHeaderCell>
                 {showActions ? (
                   <DataTableHeaderCell stickyRight>Actions</DataTableHeaderCell>
                 ) : null}
@@ -147,9 +186,7 @@ export function PatientSearchList({
                   <DataTableCell>{p.sex}</DataTableCell>
                   <DataTableCell>{p.phone ?? "—"}</DataTableCell>
                   <DataTableCell>
-                    {p.dateOfBirth
-                      ? format(new Date(p.dateOfBirth), "dd MMM yyyy")
-                      : "—"}
+                    {formatAge(p.dateOfBirth) ?? "—"}
                   </DataTableCell>
                   {showActions ? (
                     <DataTableCell stickyRight>
@@ -161,6 +198,16 @@ export function PatientSearchList({
                             onClick={() => onSelectPatient(p)}
                           >
                             {selectLabel}
+                          </Button>
+                        ) : null}
+                        {canEdit ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditingPatient(p)}
+                          >
+                            Edit
                           </Button>
                         ) : null}
                         {onScheduleAppointment ? (
@@ -210,11 +257,23 @@ export function PatientSearchList({
     </>
   );
 
+  const editDialog = (
+    <PatientEditDialog
+      patient={editingPatient}
+      open={Boolean(editingPatient)}
+      onClose={() => setEditingPatient(null)}
+      onUpdated={() => void query.refetch()}
+    />
+  );
+
   if (expandable) {
     return (
-      <ExpandablePanel title={title} toolbar={searchBar}>
-        {tableBlock}
-      </ExpandablePanel>
+      <>
+        <ExpandablePanel title={title} toolbar={searchBar}>
+          {tableBlock}
+        </ExpandablePanel>
+        {editDialog}
+      </>
     );
   }
 
@@ -222,6 +281,7 @@ export function PatientSearchList({
     <div className="space-y-4">
       {searchBar}
       {tableBlock}
+      {editDialog}
     </div>
   );
 }

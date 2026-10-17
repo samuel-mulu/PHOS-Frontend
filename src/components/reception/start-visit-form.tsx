@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { isAxiosError } from "axios";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,11 @@ import {
   useServices,
 } from "@/features/facilities/hooks";
 import { useDoctors } from "@/features/users/use-doctors";
-import { createEncounter, type Encounter } from "@/features/encounters/api";
+import {
+  createEncounter,
+  fetchEncounters,
+  type Encounter,
+} from "@/features/encounters/api";
 import { createInvoice, issueInvoice } from "@/features/billing/api";
 import { createPayment } from "@/features/payments/api";
 import { EncounterPriority, EncounterType, QueueStation } from "@/types/encounter";
@@ -22,7 +27,30 @@ import { formatCents } from "@/lib/format/money";
 import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { newIdempotencyKey } from "@/lib/idempotency";
 import { cn } from "@/lib/utils";
-import { useQueryClient } from "@tanstack/react-query";
+
+function apiErrorMessage(e: unknown, fallback: string): string {
+  if (!isAxiosError(e)) return fallback;
+  const details = e.response?.data?.details as
+    | { message?: string | string[] }
+    | undefined;
+  const raw = details?.message ?? e.response?.data?.message;
+  if (Array.isArray(raw)) return raw.join(" ");
+  if (typeof raw === "string" && raw.trim()) return raw;
+  return e.message || fallback;
+}
+
+function incompleteVisitMessage(enc: Encounter): string {
+  const doctor = enc.assignedDoctor
+    ? `Dr. ${enc.assignedDoctor.firstName} ${enc.assignedDoctor.lastName}`
+    : "The doctor";
+  const visit =
+    enc.visitNumber != null ? `Visit ${enc.visitNumber}` : "this visit";
+  if (enc.status === "WAITING_PAYMENT") {
+    return `${visit} (${enc.encounterNumber}) is waiting for payment. Collect at cashier first (patient may reappear there after refresh), then start a new return. Currently with ${doctor}.`;
+  }
+  const status = enc.status.replaceAll("_", " ").toLowerCase();
+  return `${doctor} still has an incomplete ${visit} (${enc.encounterNumber}, ${status}). Ask them to complete it before starting a new return. Multiple visits the same day are allowed after the current one is completed.`;
+}
 
 type InitialStation = typeof QueueStation.TRIAGE | typeof QueueStation.DOCTOR;
 
@@ -64,6 +92,11 @@ export function StartVisitForm({
   const queryClient = useQueryClient();
   const facilities = useFacilities();
   const doctors = useDoctors();
+  const openVisits = useQuery({
+    queryKey: ["encounters", "open", patient.id],
+    queryFn: () => fetchEncounters({ patientId: patient.id, open: true }),
+  });
+  const blockingVisit = openVisits.data?.[0] ?? null;
   const [facilityId, setFacilityId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
@@ -126,7 +159,7 @@ export function StartVisitForm({
   }
 
   async function submit() {
-    if (!facilityId || !departmentId) return;
+    if (!facilityId || !departmentId || blockingVisit) return;
 
     setBusy(true);
     try {
@@ -180,18 +213,15 @@ export function StartVisitForm({
       void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
       onSuccess?.({ encounter, paid });
     } catch (e) {
-      const msg = isAxiosError(e)
-        ? (e.response?.data?.details?.message as string) ??
-          (e.response?.data?.message as string) ??
-          e.message
-        : "Could not start visit";
-      toast.error(msg);
+      toast.error(apiErrorMessage(e, "Could not start visit"));
+      void openVisits.refetch();
     } finally {
       setBusy(false);
     }
   }
 
-  const canSubmit = Boolean(facilityId && departmentId) && !busy;
+  const canSubmit =
+    Boolean(facilityId && departmentId) && !busy && !blockingVisit;
 
   return (
     <div className="space-y-4">
@@ -200,6 +230,16 @@ export function StartVisitForm({
           {kindMeta.label}
         </span>
       </div>
+
+      {blockingVisit ? (
+        <div
+          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950"
+          role="alert"
+        >
+          <p className="font-semibold">Cannot start a new visit yet</p>
+          <p className="mt-1">{incompleteVisitMessage(blockingVisit)}</p>
+        </div>
+      ) : null}
 
       <div>
         <Label className="mb-2 block text-xs">Send to</Label>

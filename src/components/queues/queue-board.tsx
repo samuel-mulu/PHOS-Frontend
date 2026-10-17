@@ -17,7 +17,10 @@ import { EmptyState, ErrorState, LoadingBlock } from "@/components/shared/state-
 import { useQueue, useUpdateQueueEntry } from "@/features/queues/hooks";
 import type { QueueStation } from "@/types/encounter";
 import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
-import { sortQueueNewestFirst } from "@/lib/queues/sort";
+import { useMemo } from "react";
+import { sortQueueByWaiting } from "@/lib/queues/sort";
+import { useDateSort } from "@/lib/queues/use-date-sort";
+import { DateSortToggle } from "@/components/shared/date-sort-toggle";
 
 export function QueueBoard({
   station,
@@ -34,6 +37,11 @@ export function QueueBoard({
 }) {
   const queue = useQueue(station, 8_000);
   const updateEntry = useUpdateQueueEntry();
+  const { direction, setDirection } = useDateSort("latest");
+  const items = useMemo(
+    () => sortQueueByWaiting(queue.data ?? [], direction),
+    [queue.data, direction],
+  );
 
   if (queue.isLoading) return <LoadingBlock label={`Loading ${title}`} />;
   if (queue.isError) {
@@ -44,8 +52,6 @@ export function QueueBoard({
       />
     );
   }
-
-  const items = sortQueueNewestFirst(queue.data ?? []);
 
   const titleNode = (
     <div className="flex flex-wrap items-center gap-2">
@@ -112,11 +118,27 @@ export function QueueBoard({
     </>
   );
 
+  const sortControl = (
+    <DateSortToggle value={direction} onChange={setDirection} />
+  );
+
   if (!expandable) {
-    return <div className="space-y-3">{titleNode}{table}</div>;
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {titleNode}
+          {sortControl}
+        </div>
+        {table}
+      </div>
+    );
   }
 
-  return <ExpandablePanel title={titleNode}>{table}</ExpandablePanel>;
+  return (
+    <ExpandablePanel title={titleNode} toolbar={sortControl}>
+      {table}
+    </ExpandablePanel>
+  );
 }
 
 function QueueRow({

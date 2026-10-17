@@ -1,4 +1,5 @@
 import { api } from "@/lib/api/client";
+import { dateOfBirthFromAge } from "@/lib/format/age";
 import type { LabOrder } from "@/features/laboratory/api";
 import type { Appointment } from "@/features/appointments/api";
 import type {
@@ -113,8 +114,8 @@ function optionalField(value: string | undefined): string | undefined {
   return trimmed === "" ? undefined : trimmed;
 }
 
-function toCreatePayload(values: CreatePatientFormValues) {
-  const { dateOfBirth, ...rest } = values;
+function toPatientPayload(values: CreatePatientFormValues) {
+  const { dateOfBirth, age, birthInputMode, ...rest } = values;
   const payload: Record<string, unknown> = {
     firstName: rest.firstName.trim(),
     lastName: rest.lastName.trim(),
@@ -134,7 +135,16 @@ function toCreatePayload(values: CreatePatientFormValues) {
     const v = optionalField(rest[key]);
     if (v !== undefined) payload[key] = v;
   }
-  if (dateOfBirth?.trim()) {
+
+  if (birthInputMode === "age") {
+    const raw = age?.trim();
+    if (raw) {
+      const n = Number(raw);
+      if (Number.isInteger(n) && n >= 0 && n <= 150) {
+        payload.dateOfBirth = new Date(dateOfBirthFromAge(n)).toISOString();
+      }
+    }
+  } else if (dateOfBirth?.trim()) {
     payload.dateOfBirth = new Date(dateOfBirth).toISOString();
   }
   return payload;
@@ -163,6 +173,17 @@ export async function fetchPatientChart(id: string) {
 }
 
 export async function createPatient(values: CreatePatientFormValues) {
-  const { data } = await api.post<Patient>("/patients", toCreatePayload(values));
+  const { data } = await api.post<Patient>("/patients", toPatientPayload(values));
+  return data;
+}
+
+export async function updatePatient(
+  id: string,
+  values: CreatePatientFormValues,
+) {
+  const { data } = await api.patch<Patient>(
+    `/patients/${id}`,
+    toPatientPayload(values),
+  );
   return data;
 }

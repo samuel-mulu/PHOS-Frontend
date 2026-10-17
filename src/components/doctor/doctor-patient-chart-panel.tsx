@@ -10,6 +10,7 @@ import {
   labOrderStatusBadge,
   StatusBadge,
 } from "@/components/shared/status-badge";
+import { formatAge } from "@/lib/format/age";
 import { cn } from "@/lib/utils";
 import { usePatientChart } from "@/features/patients/hooks";
 import type {
@@ -206,6 +207,8 @@ function PatientHistoryDrawer({
     }));
   }, [chart, currentEncounterId]);
 
+  const age = formatAge(chart.patient.dateOfBirth);
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 p-0 sm:p-4">
       <button
@@ -240,9 +243,7 @@ function PatientHistoryDrawer({
               </h2>
               <p className="text-sm text-slate-600">
                 {chart.patient.patientNumber}
-                {chart.patient.dateOfBirth
-                  ? ` · DOB ${format(new Date(chart.patient.dateOfBirth), "dd MMM yyyy")}`
-                  : ""}
+                {age ? ` · ${age}` : ""}
               </p>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={onClose}>

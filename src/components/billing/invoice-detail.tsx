@@ -136,11 +136,6 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
               <li key={p.id} className="rounded border border-slate-100 p-2">
                 {p.paymentNumber} — {formatCents(p.amountCents)} ({p.method}) —{" "}
                 {p.status}
-                {p.refunds.map((r) => (
-                  <p key={r.id} className="text-xs text-amber-800">
-                    Refund {r.refundNumber}: {formatCents(r.amountCents)} — {r.reason}
-                  </p>
-                ))}
               </li>
             ))}
           </ul>

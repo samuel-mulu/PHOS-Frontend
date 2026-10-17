@@ -28,6 +28,7 @@ export function useEncounters(params?: {
   patientId?: string;
   assignedDoctorId?: string;
   open?: boolean;
+  completedToday?: boolean;
 }) {
   return useQuery({
     queryKey: [
@@ -37,10 +38,15 @@ export function useEncounters(params?: {
       params?.patientId ?? "",
       params?.assignedDoctorId ?? "",
       params?.open ? "open" : "any",
+      params?.completedToday ? "completedToday" : "",
     ],
     queryFn: () => fetchEncounters(params),
     refetchInterval:
-      params?.open || params?.status === "WAITING_REVIEW" ? 8_000 : 20_000,
+      params?.open ||
+      params?.status === "WAITING_REVIEW" ||
+      params?.completedToday
+        ? 8_000
+        : 20_000,
   });
 }
 
@@ -122,8 +128,16 @@ export function useCreateEncounter() {
     },
     onError: (error) => {
       if (isAxiosError(error) && error.response?.status === 409) {
-        const body = error.response.data?.details as { message?: string };
-        toast.error(body?.message ?? "Patient already has an active visit");
+        const body = error.response.data?.details as {
+          message?: string | string[];
+        };
+        const msg = Array.isArray(body?.message)
+          ? body.message.join(" ")
+          : body?.message;
+        toast.error(
+          msg ??
+            "Patient already has an incomplete visit. Ask the doctor to complete it before starting a return.",
+        );
         return;
       }
       toast.error(normalizeApiError(error).message);

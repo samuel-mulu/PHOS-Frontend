@@ -24,7 +24,7 @@ import {
 } from "@/components/shared/data-table";
 import { useInvoice } from "@/features/billing/hooks";
 import { useEncounter } from "@/features/encounters/hooks";
-import { useCreatePayment, useCreateRefund } from "@/features/payments/hooks";
+import { useCreatePayment } from "@/features/payments/hooks";
 import { PrintReceipt } from "@/components/print/print-receipt";
 import { useQueue, useUpdateQueueEntry } from "@/features/queues/hooks";
 import { PaymentMethod } from "@/types/finance";
@@ -444,7 +444,6 @@ function PaymentPanel({
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [showMoreMethods, setShowMoreMethods] = useState(false);
   const [reference, setReference] = useState("");
-  const [showRefunds, setShowRefunds] = useState(false);
   const [paidDialogOpen, setPaidDialogOpen] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<{
     paymentNumber: string;
@@ -700,86 +699,6 @@ function PaymentPanel({
           </p>
         ) : null}
       </SimpleDialog>
-
-      {payments.length > 0 ? (
-        <div className="border-t border-slate-100 pt-3">
-          <button
-            type="button"
-            className="text-xs text-slate-500 underline"
-            onClick={() => setShowRefunds((v) => !v)}
-          >
-            {showRefunds ? "Hide refunds" : "Refunds"}
-          </button>
-          {showRefunds ? (
-            <div className="mt-2 space-y-2">
-              {payments.map((p) => (
-                <RefundRow key={p.id} payment={p} invoiceId={invoiceId} />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function RefundRow({
-  payment,
-  invoiceId,
-}: {
-  payment: {
-    id: string;
-    paymentNumber: string;
-    amountCents: number;
-    refundedCents: number;
-    status: string;
-  };
-  invoiceId: string;
-}) {
-  const refund = useCreateRefund(payment.id, invoiceId);
-  const [amount, setAmount] = useState(
-    payment.amountCents - payment.refundedCents,
-  );
-  const [reason, setReason] = useState("");
-  const max = payment.amountCents - payment.refundedCents;
-
-  if (
-    !["COMPLETED", "PARTIALLY_REFUNDED"].includes(payment.status) ||
-    max <= 0
-  ) {
-    return null;
-  }
-
-  return (
-    <div className="rounded border p-2 text-sm">
-      <p>
-        {payment.paymentNumber} — refundable {formatCents(max)}
-      </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Input
-          type="number"
-          className="max-w-[120px]"
-          min={1}
-          max={max}
-          value={amount}
-          onChange={(e) => setAmount(Number(e.target.value))}
-        />
-        <Input
-          className="min-w-[200px] flex-1"
-          placeholder="Reason"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={refund.isPending || reason.length < 5}
-          onClick={() => refund.mutate({ amountCents: amount, reason })}
-        >
-          Refund
-        </Button>
-      </div>
     </div>
   );
 }

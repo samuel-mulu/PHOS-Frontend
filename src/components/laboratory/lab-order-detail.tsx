@@ -345,7 +345,11 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
                 onSuccess: () => {
                   setSeededFor(null);
                   void order.refetch();
-                  toast.success("Sample received — enter results below");
+                  // Stays on this page for Step 2. Leaves “New from doctor”
+                  // only after this receive — Open alone does not move the list.
+                  toast.success(
+                    "Sample received — order moved to Enter results. Fill values below.",
+                  );
                 },
               })
             }

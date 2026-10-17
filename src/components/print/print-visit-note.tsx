@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { format, differenceInYears } from "date-fns";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import type { EncounterDetail } from "@/features/encounters/api";
 import { useWorkspaceContext } from "@/features/facilities/hooks";
+import { ageYears } from "@/lib/format/age";
 
 export type VisitNoteSection =
   | "vitals"
@@ -39,11 +40,6 @@ function sectionText(
     case "prescription":
       return consultation.historyPresentIllness?.trim() ?? "";
   }
-}
-
-function ageYears(dob: string | null | undefined): number | null {
-  if (!dob) return null;
-  return differenceInYears(new Date(), new Date(dob));
 }
 
 function escapeHtml(value: string) {

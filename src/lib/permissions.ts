@@ -25,6 +25,11 @@ export function canRegisterPatient(role: RoleType): boolean {
   );
 }
 
+/** Same desk roles as register — PATCH /patients/:id. */
+export function canEditPatient(role: RoleType): boolean {
+  return canRegisterPatient(role);
+}
+
 export function canCreateInvoice(role: RoleType): boolean {
   return DESK_BILLING.includes(role);
 }

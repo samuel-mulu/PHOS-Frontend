@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { format, isToday, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { formatWaitingSince } from "@/lib/format/wait-time";
 import type { QueueEntry } from "@/features/queues/api";
 import type { Encounter } from "@/features/encounters/api";
@@ -35,8 +35,14 @@ import { Role } from "@/types/role";
 import { LabOrderStatus } from "@/types/lab";
 import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
 import { cn } from "@/lib/utils";
-import { sortQueueNewestFirst } from "@/lib/queues/sort";
+import {
+  sortByDateField,
+  sortQueueByWaiting,
+} from "@/lib/queues/sort";
+import { useDateSort } from "@/lib/queues/use-date-sort";
+import { DateSortToggle } from "@/components/shared/date-sort-toggle";
 import { ExpandablePanel } from "@/components/shared/table-layout";
+import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
 import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
 import { DoctorAppointmentsPanel } from "@/components/doctor/doctor-appointments-panel";
 
@@ -48,21 +54,6 @@ function isLabReturn(entry: QueueEntry) {
 
 function isAtLab(entry: QueueEntry) {
   return entry.encounter.status === "WAITING_LAB";
-}
-
-function nextStopLabel(status: string): string {
-  switch (status) {
-    case "WAITING_LAB":
-      return "Lab";
-    case "WAITING_PHARMACY":
-      return "Pharmacy";
-    case "WAITING_PAYMENT":
-      return "Payment";
-    case "COMPLETED":
-      return "Done";
-    default:
-      return status.replaceAll("_", " ");
-  }
 }
 
 function RedBadge({ count }: { count: number }) {
@@ -158,16 +149,18 @@ function SummaryCard({
 
 export function DoctorQueueWorkspace() {
   const [tab, setTab] = useState<DoctorTab>("waiting");
+  const { direction, setDirection } = useDateSort("latest");
   const queue = useQueue(QueueStation.DOCTOR, 8_000);
   const updateEntry = useUpdateQueueEntry();
   const { data: user } = useCurrentUser();
-  const encounters = useEncounters();
+  const encounters = useEncounters({ open: true });
+  const completedToday = useEncounters({ completedToday: true });
   const reviewEncounters = useEncounters({ status: "WAITING_REVIEW" });
   const labOrders = useLabOrders();
 
   const { labReadyQueue, waitingQueue, waitingRoomCount, withDoctorCount } =
     useMemo(() => {
-      const items = sortQueueNewestFirst(queue.data ?? []);
+      const items = sortQueueByWaiting(queue.data ?? [], direction);
       const active = items.filter((e) => !isLabReturn(e) && !isAtLab(e));
       return {
         labReadyQueue: items.filter(isLabReturn),
@@ -179,36 +172,35 @@ export function DoctorQueueWorkspace() {
         withDoctorCount: active.filter((e) => e.status === "IN_SERVICE")
           .length,
       };
-    }, [queue.data]);
+    }, [queue.data, direction]);
 
   /** Lab returns from queue + WAITING_REVIEW encounters (in case queue entry was missed). */
   const labReadyRows = useMemo(() => {
     const fromQueueIds = new Set(labReadyQueue.map((e) => e.encounterId));
-    const extras = (reviewEncounters.data ?? []).filter((enc) => {
-      if (fromQueueIds.has(enc.id)) return false;
-      if (user?.role === Role.DOCTOR) {
-        return (
-          enc.assignedDoctorId === user.id ||
-          enc.assignedDoctor?.id === user.id ||
-          !enc.assignedDoctorId
-        );
-      }
-      return true;
-    });
+    const extras = sortByDateField(
+      (reviewEncounters.data ?? []).filter((enc) => {
+        if (fromQueueIds.has(enc.id)) return false;
+        if (user?.role === Role.DOCTOR) {
+          return (
+            enc.assignedDoctorId === user.id ||
+            enc.assignedDoctor?.id === user.id ||
+            !enc.assignedDoctorId
+          );
+        }
+        return true;
+      }),
+      (enc) => enc.startedAt,
+      direction,
+    );
     return { queue: labReadyQueue, extras };
-  }, [labReadyQueue, reviewEncounters.data, user]);
+  }, [labReadyQueue, reviewEncounters.data, user, direction]);
 
   const labReadyCount =
     labReadyRows.queue.length + labReadyRows.extras.length;
 
-  const mineToday = useMemo(() => {
+  const mineOpen = useMemo(() => {
     const rows = encounters.data ?? [];
     return rows.filter((e) => {
-      try {
-        if (!isToday(parseISO(e.startedAt))) return false;
-      } catch {
-        return false;
-      }
       if (user?.role === Role.DOCTOR) {
         return (
           e.assignedDoctorId === user.id ||
@@ -221,34 +213,37 @@ export function DoctorQueueWorkspace() {
   }, [encounters.data, user]);
 
   const inLabCount = useMemo(
-    () => mineToday.filter((e) => e.status === "WAITING_LAB").length,
-    [mineToday],
+    () => mineOpen.filter((e) => e.status === "WAITING_LAB").length,
+    [mineOpen],
   );
 
   const waitingForLab = useMemo(
     () =>
-      mineToday
-        .filter((e) => e.status === "WAITING_LAB")
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-        ),
-    [mineToday],
+      sortByDateField(
+        mineOpen.filter((e) => e.status === "WAITING_LAB"),
+        (e) => e.startedAt,
+        direction,
+      ),
+    [mineOpen, direction],
   );
 
-  const recentlyCompleted = useMemo(
-    () =>
-      mineToday
-        .filter((e) => e.status === "COMPLETED")
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-        )
-        .slice(0, 20),
-    [mineToday],
-  );
+  const recentlyCompleted = useMemo(() => {
+    const rows = (completedToday.data ?? []).filter((e) => {
+      if (user?.role === Role.DOCTOR) {
+        return (
+          e.assignedDoctorId === user.id ||
+          e.assignedDoctor?.id === user.id ||
+          !e.assignedDoctorId
+        );
+      }
+      return true;
+    });
+    return sortByDateField(
+      rows,
+      (e) => e.closedAt ?? e.startedAt,
+      direction,
+    );
+  }, [completedToday.data, user, direction]);
 
   const completedTodayCount = recentlyCompleted.length;
 
@@ -277,13 +272,19 @@ export function DoctorQueueWorkspace() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <div className="space-y-2">
-        <h1 className="text-xl font-semibold text-slate-900">Doctor</h1>
-        <p className="text-sm text-slate-600">
-          Waiting for consultation is the default. Switch tabs at the top —
-          they stay with Full screen.
-        </p>
-        <HmisClinicNav />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <h1 className="text-xl font-semibold text-slate-900">Doctor</h1>
+          <p className="text-sm text-slate-600">
+            Waiting for consultation is the default. Switch tabs at the top —
+            they stay with Full screen.
+          </p>
+          <HmisClinicNav />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <PrintFullLabActivity />
+          <DateSortToggle value={direction} onChange={setDirection} />
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -466,43 +467,103 @@ export function DoctorQueueWorkspace() {
         ) : null}
 
         {tab === "done" ? (
-          encounters.isLoading ? (
+          completedToday.isLoading ? (
             <LoadingBlock label="Loading completed visits" />
           ) : recentlyCompleted.length === 0 ? (
             <EmptyState
               title="No completed visits today yet"
-              description="After you complete a consultation, it appears here."
+              description="After you finish a visit (and payment is cleared), it appears here with today’s visit summary."
             />
           ) : (
-            <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
-              {recentlyCompleted.map((e) => (
-                <li
-                  key={e.id}
-                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900">
-                      {e.patient
-                        ? `${e.patient.firstName} ${e.patient.lastName}`
-                        : e.encounterNumber}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {format(new Date(e.startedAt), "HH:mm")} ·{" "}
-                      {e.visitNumber != null ? `Visit ${e.visitNumber} · ` : ""}
-                      {e.encounterNumber} · now at {nextStopLabel(e.status)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {encounterStatusBadge(e.status)}
-                    <Link href={`/doctor/${e.id}`}>
-                      <Button type="button" size="sm" variant="outline">
-                        View
-                      </Button>
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-3">
+              <p className="text-xs text-slate-500">
+                {format(new Date(), "EEEE, dd MMM yyyy")} ·{" "}
+                {recentlyCompleted.length} completed visit
+                {recentlyCompleted.length === 1 ? "" : "s"}
+              </p>
+              <ul className="space-y-2">
+                {recentlyCompleted.map((e) => {
+                  const doneAt = e.closedAt ?? e.startedAt;
+                  const primaryDx =
+                    e.consultation?.diagnoses?.find((d) => d.isPrimary)
+                      ?.label ??
+                    e.consultation?.diagnoses?.[0]?.label ??
+                    null;
+                  return (
+                    <li
+                      key={e.id}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm shadow-sm"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900">
+                            {e.patient
+                              ? `${e.patient.firstName} ${e.patient.lastName}`
+                              : e.encounterNumber}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {e.patient?.patientNumber
+                              ? `${e.patient.patientNumber} · `
+                              : ""}
+                            {e.visitNumber != null
+                              ? `Visit ${e.visitNumber} · `
+                              : ""}
+                            {e.encounterNumber}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {encounterStatusBadge(e.status)}
+                          <Link href={`/doctor/${e.id}`}>
+                            <Button type="button" size="sm" variant="outline">
+                              View visit
+                            </Button>
+                          </Link>
+                        </div>
+                      </div>
+                      <dl className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                        <div>
+                          <dt className="text-slate-400">Completed</dt>
+                          <dd className="font-medium text-slate-800">
+                            {format(new Date(doneAt), "HH:mm")}
+                            <span className="font-normal text-slate-500">
+                              {" "}
+                              · started{" "}
+                              {format(new Date(e.startedAt), "HH:mm")}
+                            </span>
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-slate-400">Service</dt>
+                          <dd className="font-medium text-slate-800">
+                            {e.service?.name ?? e.department?.name ?? "—"}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <dt className="text-slate-400">Chief complaint</dt>
+                          <dd className="text-slate-800">
+                            {e.consultation?.chiefComplaint?.trim() ||
+                              e.reason?.trim() ||
+                              "—"}
+                          </dd>
+                        </div>
+                        {primaryDx || e.consultation?.assessment ? (
+                          <div className="sm:col-span-2">
+                            <dt className="text-slate-400">
+                              {primaryDx ? "Diagnosis" : "Assessment"}
+                            </dt>
+                            <dd className="text-slate-800">
+                              {primaryDx ||
+                                e.consultation?.assessment?.trim() ||
+                                "—"}
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           )
         ) : null}
       </ExpandablePanel>
