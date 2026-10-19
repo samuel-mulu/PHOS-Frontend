@@ -48,7 +48,7 @@ export function DoctorAppointmentsPanel() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-500">
-          Same schedule front desk sees. Book follow-ups from Finish on a visit.
+          Same schedule front desk sees. Book follow-ups from Orders on a visit.
           Desk starts the visit when the patient arrives.
         </p>
         <div className="flex gap-1.5 rounded-md border border-slate-200 bg-white p-1">

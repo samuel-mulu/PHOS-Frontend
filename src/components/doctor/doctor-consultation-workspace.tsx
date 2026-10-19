@@ -293,10 +293,10 @@ export function DoctorConsultationWorkspace({
           ? "1 · Document this visit, then go to Orders."
           : workflowStep === "orders"
             ? labCounts.ready > 0
-              ? "2 · Review lab results. Add medicines if needed, then Finish."
-              : "2 · Lab and medicines. Save Rx, or save & send to pharmacy."
+              ? "2 · Review lab results. Medicines, cashier, or appointment — then Finish."
+              : "2 · Lab, medicines, send to cashier, or book a follow-up appointment."
             : workflowStep === "finish"
-              ? "3 · Give a follow-up appointment, or complete this visit."
+              ? "3 · Send to pharmacy if needed, then complete this visit."
               : "Past visits and results (read-only) — also via History at the top."}
       </p>
 
@@ -537,6 +537,18 @@ export function DoctorConsultationWorkspace({
                   onGoFinish={() => void goToStep("finish")}
                 />
               )}
+
+              <OrdersCashierAppointment
+                encounterId={encounterId}
+                patientId={patient.id}
+                departmentId={encounter.data.departmentId}
+                serviceId={encounter.data.serviceId}
+                encounterStatus={encounterStatus}
+                paymentReturnStation={encounter.data.paymentReturnStation}
+                isFinalized={Boolean(isFinalized)}
+                routePending={routePatient.isPending}
+              />
+
               {!isFinalized ? (
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -593,11 +605,7 @@ export function DoctorConsultationWorkspace({
           {workflowStep === "finish" ? (
             <FinishNextSteps
               consultationId={consultationId}
-              encounterId={encounterId}
               invoiceId={encounter.data.invoice?.id}
-              patientId={patient.id}
-              departmentId={encounter.data.departmentId}
-              serviceId={encounter.data.serviceId}
               encounterStatus={encounterStatus}
               paymentReturnStation={encounter.data.paymentReturnStation}
               isFinalized={Boolean(isFinalized)}
@@ -638,65 +646,44 @@ function defaultFollowUpLocal() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** After notes/orders — pharmacy, cashier, then end: appointment or complete. */
-function FinishNextSteps({
-  consultationId,
+/** Cashier charge + follow-up booking — lives on Orders (with lab / Rx / US). */
+function OrdersCashierAppointment({
   encounterId,
-  invoiceId,
   patientId,
   departmentId,
   serviceId,
   encounterStatus,
   paymentReturnStation,
   isFinalized,
-  finalizePending,
   routePending,
-  onComplete,
-  onPharmacy,
 }: {
-  consultationId?: string;
   encounterId: string;
-  invoiceId?: string;
   patientId: string;
   departmentId: string;
   serviceId?: string | null;
   encounterStatus: string;
   paymentReturnStation?: string | null;
   isFinalized: boolean;
-  finalizePending: boolean;
   routePending: boolean;
-  onComplete: () => void;
-  onPharmacy: () => void;
 }) {
-  const rxList = usePrescriptions();
   const createAppt = useCreateAppointment();
   const appts = useAppointments();
-  const invoice = useInvoice(invoiceId ?? null, {
-    refetchInterval: 8_000,
-  });
   const [scheduledAt, setScheduledAt] = useState(defaultFollowUpLocal);
   const [scheduleNotes, setScheduleNotes] = useState("");
 
-  const myRx =
-    rxList.data?.filter((p) => p.consultationId === consultationId) ?? [];
-  const activeRx = myRx.filter((p) =>
-    ["ACTIVE", "PARTIAL"].includes(p.status),
-  );
   const followUps = (appts.data ?? []).filter(
     (a) =>
       a.patientId === patientId && a.status === AppointmentStatus.SCHEDULED,
   );
 
-  const inv = invoice.data;
-  const unpaidCents = inv
-    ? Math.max(0, inv.totalCents - inv.paidCents)
-    : 0;
-  const hasUnpaid = unpaidCents > 0;
-  const busy = finalizePending || routePending || createAppt.isPending;
+  const busy = routePending || createAppt.isPending;
   const atCashier = encounterStatus === "WAITING_PAYMENT";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 border-t border-slate-200 pt-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Cashier & appointment
+      </h3>
       {atCashier ? (
         <div
           className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
@@ -707,28 +694,7 @@ function FinishNextSteps({
             : "Patient is at cashier. After payment they return to your queue automatically — no cashier send-back step."}
         </div>
       ) : null}
-
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900">Pharmacy</h3>
-          <p className="mt-1 text-xs text-slate-600">
-            Dispense prescribed medicines.{" "}
-            {activeRx.length === 0
-              ? "No active prescription yet — add medicines under Orders first, or still send if needed."
-              : `${activeRx.length} prescription ready.`}
-          </p>
-          {!isFinalized ? (
-            <Button
-              type="button"
-              className="mt-3"
-              disabled={busy || atCashier}
-              onClick={onPharmacy}
-            >
-              {routePending ? "Sending…" : "Send to pharmacy"}
-            </Button>
-          ) : null}
-        </div>
-
         {!isFinalized ? (
           <PaymentRequestPanel
             encounterId={encounterId}
@@ -744,9 +710,7 @@ function FinishNextSteps({
             </p>
           </div>
         )}
-      </div>
 
-      <div className="grid gap-3 lg:grid-cols-2">
         <div className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-900">
             Give appointment
@@ -812,6 +776,85 @@ function FinishNextSteps({
             </div>
           ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/** Finish step — pharmacy send + complete visit. */
+function FinishNextSteps({
+  consultationId,
+  invoiceId,
+  encounterStatus,
+  paymentReturnStation,
+  isFinalized,
+  finalizePending,
+  routePending,
+  onComplete,
+  onPharmacy,
+}: {
+  consultationId?: string;
+  invoiceId?: string;
+  encounterStatus: string;
+  paymentReturnStation?: string | null;
+  isFinalized: boolean;
+  finalizePending: boolean;
+  routePending: boolean;
+  onComplete: () => void;
+  onPharmacy: () => void;
+}) {
+  const rxList = usePrescriptions();
+  const invoice = useInvoice(invoiceId ?? null, {
+    refetchInterval: 8_000,
+  });
+
+  const myRx =
+    rxList.data?.filter((p) => p.consultationId === consultationId) ?? [];
+  const activeRx = myRx.filter((p) =>
+    ["ACTIVE", "PARTIAL"].includes(p.status),
+  );
+
+  const inv = invoice.data;
+  const unpaidCents = inv
+    ? Math.max(0, inv.totalCents - inv.paidCents)
+    : 0;
+  const hasUnpaid = unpaidCents > 0;
+  const busy = finalizePending || routePending;
+  const atCashier = encounterStatus === "WAITING_PAYMENT";
+
+  return (
+    <div className="space-y-4">
+      {atCashier ? (
+        <div
+          className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          {paymentReturnStation === "LAB"
+            ? "Patient is at cashier for lab payment. After pay they go to lab. Results return to your queue when ready."
+            : "Patient is at cashier. After payment they return to your queue automatically — no cashier send-back step."}
+        </div>
+      ) : null}
+
+      <div className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-slate-900">Pharmacy</h3>
+          <p className="mt-1 text-xs text-slate-600">
+            Dispense prescribed medicines.{" "}
+            {activeRx.length === 0
+              ? "No active prescription yet — add medicines under Orders first, or still send if needed."
+              : `${activeRx.length} prescription ready.`}
+          </p>
+          {!isFinalized ? (
+            <Button
+              type="button"
+              className="mt-3"
+              disabled={busy || atCashier}
+              onClick={onPharmacy}
+            >
+              {routePending ? "Sending…" : "Send to pharmacy"}
+            </Button>
+          ) : null}
+        </div>
 
         <div className="rounded-lg border-2 border-emerald-500 bg-emerald-50 p-4 shadow-sm">
           <h3 className="text-base font-semibold text-emerald-950">
@@ -825,7 +868,8 @@ function FinishNextSteps({
           {hasUnpaid && !isFinalized ? (
             <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
               Not paid — due {formatCents(unpaidCents)}. Use{" "}
-              <strong>Send to cashier</strong>, then complete after payment.
+              <strong>Send to cashier</strong> under Orders, then complete after
+              payment.
             </p>
           ) : null}
           {consultationId && !isFinalized ? (
