@@ -111,6 +111,28 @@ export async function fetchLabOrders(status?: LabOrderStatus) {
   return data;
 }
 
+export type PatientLabReport = {
+  patient: Patient;
+  orders: LabOrder[];
+};
+
+export async function fetchPatientLabOrders(
+  patientId: string,
+  from?: string,
+  to?: string,
+) {
+  const { data } = await api.get<PatientLabReport>(
+    `/lab/patients/${patientId}/orders`,
+    {
+      params: {
+        ...(from ? { from } : {}),
+        ...(to ? { to } : {}),
+      },
+    },
+  );
+  return data;
+}
+
 export async function fetchLabOrder(id: string) {
   const { data } = await api.get<LabOrder>(`/lab/orders/${id}`);
   return data;

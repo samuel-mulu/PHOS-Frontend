@@ -18,6 +18,7 @@ import { usePatientChart } from "@/features/patients/hooks";
 import { formatAge } from "@/lib/format/age";
 import { canEditPatient } from "@/lib/permissions";
 import { uniquePanelLabels } from "@/lib/lab/panels";
+import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import { PatientEditDialog } from "./patient-edit-dialog";
 import { PatientQrBadge } from "./patient-qr-badge";
 
@@ -140,7 +141,16 @@ export function PatientProfile({ patientId }: { patientId: string }) {
         )}
       </ChartSection>
 
-      <ChartSection title="Laboratory">
+      <ChartSection
+        title="Laboratory"
+        action={
+          <PrintPatientLabReport
+            patientId={p.id}
+            patientLabel={fullName}
+            triggerLabel="Print lab report"
+          />
+        }
+      >
         {data.labOrders.length === 0 ? (
           <p className="text-sm text-slate-500">No lab orders.</p>
         ) : (
@@ -157,7 +167,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
                 <DataTableRow key={o.id}>
                   <DataTableCell>
                     <Link
-                      href={`/laboratory/${o.id}`}
+                      href={`/laboratory/orders/${o.id}`}
                       className="text-teal-700 underline"
                     >
                       {o.orderNumber}
@@ -256,14 +266,19 @@ export function PatientProfile({ patientId }: { patientId: string }) {
 
 function ChartSection({
   title,
+  action,
   children,
 }: {
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-sm font-semibold text-slate-800">{title}</h2>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+        {action}
+      </div>
       {children}
     </section>
   );

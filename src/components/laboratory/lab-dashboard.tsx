@@ -30,6 +30,7 @@ import { useDateSort } from "@/lib/queues/use-date-sort";
 import { DateSortToggle } from "@/components/shared/date-sort-toggle";
 import { ExpandablePanel } from "@/components/shared/table-layout";
 import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
+import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import type { LabOrder } from "@/features/laboratory/api";
 import type { QueueEntry } from "@/features/queues/api";
 import { uniquePanelLabels } from "@/lib/lab/panels";
@@ -126,7 +127,10 @@ export function LabDashboard() {
             order does not move it; only those actions do.
           </p>
         </div>
-        <PrintFullLabActivity />
+        <div className="flex flex-wrap gap-2">
+          <PrintPatientLabReport />
+          <PrintFullLabActivity />
+        </div>
       </div>
 
       <nav

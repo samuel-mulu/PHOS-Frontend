@@ -23,6 +23,7 @@ import { sortByCreatedAt } from "@/lib/queues/sort";
 import { useDateSort } from "@/lib/queues/use-date-sort";
 import { DateSortToggle } from "@/components/shared/date-sort-toggle";
 import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
+import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import { LabPaper, labItemsToPaperLines } from "@/components/laboratory/lab-paper";
 import { groupByPanel, uniquePanelLabels } from "@/lib/lab/panels";
 
@@ -246,6 +247,7 @@ export function DoctorLabOrdersPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-800">Laboratory</h2>
         <div className="flex flex-wrap items-center gap-2">
+          <PrintPatientLabReport />
           <PrintFullLabActivity />
           {(ready.length > 0 || waiting.length > 0) && (
             <DateSortToggle value={direction} onChange={setDirection} />
