@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, LogOut, PanelLeft, PanelLeftClose } from "lucide-react";
@@ -46,6 +47,14 @@ export function AppTopBar() {
         </Link>
       ) : (
         <div className="flex min-w-0 flex-1 items-center gap-2">
+          <Image
+            src="/logo.png"
+            alt={APP_NAME}
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0 rounded object-contain md:hidden"
+            priority
+          />
           <span className="truncate text-sm font-semibold text-slate-900 md:hidden">
             {APP_NAME}
           </span>

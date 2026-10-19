@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -28,8 +29,20 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <aside className="flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-100">
       <div className="shrink-0 border-b border-slate-800 px-4 py-4">
-        <p className="text-sm font-semibold tracking-wide">{APP_NAME}</p>
-        <p className="mt-1 text-xs text-slate-400">Clinical workstation</p>
+        <div className="flex items-center gap-2.5">
+          <Image
+            src="/logo.png"
+            alt={APP_NAME}
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-md object-contain bg-white/95 p-0.5"
+            priority
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold tracking-wide">{APP_NAME}</p>
+            <p className="mt-0.5 text-xs text-slate-400">Clinical workstation</p>
+          </div>
+        </div>
       </div>
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
         <ul className="space-y-0.5">

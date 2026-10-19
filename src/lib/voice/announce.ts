@@ -4,6 +4,8 @@
  * workstation for best accent (Windows Language settings / Android TTS).
  */
 
+import { usePreferencesStore } from "@/stores/preferences-store";
+
 export type CallStation =
   | "TRIAGE"
   | "DOCTOR"
@@ -126,9 +128,12 @@ export function buildPaymentCompleteMessage(
 /**
  * Speak Amharic (am-ET) using the local speech engine — works offline when
  * an Amharic voice is installed on the device.
+ * Honors Settings → Patient Call voice (default off).
  */
 export function announceClinic(message: string) {
   if (typeof window === "undefined") return;
+  if (!usePreferencesStore.getState().voiceCallEnabled) return;
+
   const synth = window.speechSynthesis;
   if (!synth) return;
 

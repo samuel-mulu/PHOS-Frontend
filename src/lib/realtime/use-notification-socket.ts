@@ -10,12 +10,13 @@ import {
   notificationSummaryQueryKey,
 } from "@/features/notifications/hooks";
 import { useAuthStore } from "@/stores/auth-store";
+import { usePreferencesStore } from "@/stores/preferences-store";
 import { playNotifySound } from "./notify-sound";
 import { notificationSocketUrl } from "./socket-url";
 
 /**
- * Live notification channel. Invalidates React Query caches and plays a sound
- * when the backend emits `notification:new`.
+ * Live notification channel. Invalidates React Query caches and (when enabled
+ * in Settings) plays a sound + toast on `notification:new`.
  */
 export function useNotificationSocket() {
   const queryClient = useQueryClient();
@@ -40,16 +41,19 @@ export function useNotificationSocket() {
     socketRef.current = socket;
 
     socket.on("notification:new", (payload: Notification) => {
-      playNotifySound();
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
       void queryClient.invalidateQueries({
         queryKey: notificationSummaryQueryKey,
       });
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
-      toast.message(payload.title, {
-        description: payload.message,
-        duration: 5_000,
-      });
+
+      if (usePreferencesStore.getState().notificationAlertsEnabled) {
+        playNotifySound();
+        toast.message(payload.title, {
+          description: payload.message,
+          duration: 5_000,
+        });
+      }
     });
 
     socket.on("notification:count", (payload: { total: number }) => {

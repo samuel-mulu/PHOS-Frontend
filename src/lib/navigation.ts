@@ -7,6 +7,7 @@ import {
   Package,
   Pill,
   Receipt,
+  Settings,
   Shield,
   Stethoscope,
   UserCog,
@@ -127,6 +128,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/notifications",
     label: "Notifications",
     icon: Bell,
+    roles: Object.values(Role),
+  },
+  {
+    href: "/settings",
+    label: "Settings",
+    icon: Settings,
     roles: Object.values(Role),
   },
   {
