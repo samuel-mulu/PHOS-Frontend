@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft, LogOut, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { APP_NAME } from "@/lib/constants";
 import { useLogout } from "@/features/auth/hooks";
 import { chartWorkspaceReturn } from "@/lib/layout/workstation-layout";
@@ -60,17 +61,20 @@ export function AppTopBar() {
         </span>
       ) : null}
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="ml-auto shrink-0 text-slate-600 md:hidden"
-        onClick={() => logout.mutate()}
-        disabled={logout.isPending}
-        aria-label="Sign out"
-      >
-        <LogOut className="h-4 w-4" />
-      </Button>
+      <div className="ml-auto flex shrink-0 items-center gap-0.5">
+        <NotificationBell />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="shrink-0 text-slate-600 md:hidden"
+          onClick={() => logout.mutate()}
+          disabled={logout.isPending}
+          aria-label="Sign out"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
     </header>
   );
 }

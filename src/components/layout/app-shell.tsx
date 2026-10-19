@@ -12,11 +12,15 @@ import { LoadingBlock } from "@/components/shared/state-blocks";
 import { canAccessRoute } from "@/lib/navigation";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { NetworkStatusBanner } from "@/components/shared/network-status-banner";
+import { unlockNotifySound } from "@/lib/realtime/notify-sound";
+import { useNotificationSocket } from "@/lib/realtime/use-notification-socket";
 import { useOperationalSync } from "@/lib/realtime/use-operational-sync";
+import { primeSpeechSynthesis } from "@/lib/voice/announce";
 import { cn } from "@/lib/utils";
 
 function AppShellFrame({ children }: { children: React.ReactNode }) {
   useOperationalSync();
+  useNotificationSocket();
   const pathname = usePathname();
   const router = useRouter();
   const { data: user, isLoading } = useCurrentUser();
@@ -28,6 +32,20 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
       router.replace("/forbidden");
     }
   }, [user, pathname, router]);
+
+  useEffect(() => {
+    primeSpeechSynthesis();
+    const unlock = () => {
+      unlockNotifySound();
+      primeSpeechSynthesis();
+    };
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   if (isLoading || !user) {
     return (

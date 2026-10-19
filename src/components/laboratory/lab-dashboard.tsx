@@ -22,7 +22,7 @@ import { useLabOrders } from "@/features/laboratory/hooks";
 import { useQueue, useUpdateQueueEntry } from "@/features/queues/hooks";
 import { LabOrderStatus } from "@/types/lab";
 import { QueueStation } from "@/types/encounter";
-import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
+import { announcePatientCall } from "@/lib/voice/announce";
 import { formatWaitingSince } from "@/lib/format/wait-time";
 import { cn } from "@/lib/utils";
 import { sortByCreatedAt } from "@/lib/queues/sort";
@@ -84,7 +84,7 @@ export function LabDashboard() {
     };
   }, [orders.data, direction]);
 
-  /** Lab station queue entry by encounter (for Call / Start / waiting time). */
+  /** Lab station queue entry by encounter (for Call / waiting time). */
   const queueByEncounter = useMemo(() => {
     const map = new Map<string, QueueEntry>();
     for (const entry of queue.data ?? []) {
@@ -182,7 +182,7 @@ export function LabDashboard() {
             </h2>
             <p className="text-xs font-normal text-slate-500">
               {tab === "new"
-                ? "All new lab orders from doctors. If the patient is at the lab station, Call / Start appear here too. Stays until you Mark sample received."
+                ? "All new lab orders from doctors. If the patient is at the lab station, Call appears here too. Stays until you Mark sample received."
                 : tab === "results"
                   ? "Sample already received — enter every test value"
                   : tab === "send"
@@ -239,19 +239,14 @@ export function LabDashboard() {
             onCall={(entry) => {
               const p = entry.encounter.patient;
               updateEntry.mutate(
-                { id: entry.id, status: "CALLED" },
+                { id: entry.id, status: "IN_SERVICE" },
                 {
                   onSuccess: () => {
-                    announceClinic(
-                      `${p.firstName} ${p.lastName}, please proceed to ${stationCallLabel("LAB")}.`,
-                    );
+                    announcePatientCall(p.firstName, p.lastName, "LAB");
                   },
                 },
               );
             }}
-            onStart={(entry) =>
-              updateEntry.mutate({ id: entry.id, status: "IN_SERVICE" })
-            }
             stationBusy={updateEntry.isPending}
           />
         )}
@@ -302,7 +297,6 @@ function OrdersTable({
   showStationActions,
   queueByEncounter,
   onCall,
-  onStart,
   stationBusy,
 }: {
   rows: LabOrder[];
@@ -310,7 +304,6 @@ function OrdersTable({
   showStationActions?: boolean;
   queueByEncounter?: Map<string, QueueEntry>;
   onCall?: (entry: QueueEntry) => void;
-  onStart?: (entry: QueueEntry) => void;
   stationBusy?: boolean;
 }) {
   return (
@@ -393,7 +386,10 @@ function OrdersTable({
               )}
               <DataTableCell stickyRight className="text-right">
                 <div className="flex flex-nowrap justify-end gap-1.5">
-                  {showStationActions && entry?.status === "WAITING" ? (
+                  {showStationActions &&
+                  entry &&
+                  (entry.status === "WAITING" ||
+                    entry.status === "CALLED") ? (
                     <Button
                       type="button"
                       size="sm"
@@ -402,20 +398,6 @@ function OrdersTable({
                       onClick={() => onCall?.(entry)}
                     >
                       Call
-                    </Button>
-                  ) : null}
-                  {showStationActions &&
-                  entry &&
-                  (entry.status === "WAITING" ||
-                    entry.status === "CALLED") ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={stationBusy}
-                      onClick={() => onStart?.(entry)}
-                    >
-                      Start
                     </Button>
                   ) : null}
                   <Link href={`/laboratory/orders/${o.id}`}>

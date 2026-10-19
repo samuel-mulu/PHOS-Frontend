@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchInvoice } from "@/features/billing/api";
 import { SimpleDialog } from "@/components/shared/simple-dialog";
-import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
+import {
+  announcePatientCall,
+  buildPaymentCompleteMessage,
+  announceClinic,
+} from "@/lib/voice/announce";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -326,7 +330,8 @@ export function CashierWorkspace({
                         {formatWaitingSince(entry.enteredAt)}
                       </DataTableCell>
                       <DataTableCell stickyRight className="text-right">
-                        {entry.status === "WAITING" ? (
+                        {entry.status === "WAITING" ||
+                        entry.status === "CALLED" ? (
                           <Button
                             type="button"
                             size="sm"
@@ -334,11 +339,13 @@ export function CashierWorkspace({
                             disabled={updateEntry.isPending}
                             onClick={() =>
                               updateEntry.mutate(
-                                { id: entry.id, status: "CALLED" },
+                                { id: entry.id, status: "IN_SERVICE" },
                                 {
                                   onSuccess: () => {
-                                    announceClinic(
-                                      `${p.firstName} ${p.lastName}, please proceed to ${stationCallLabel("CASHIER")}.`,
+                                    announcePatientCall(
+                                      p.firstName,
+                                      p.lastName,
+                                      "CASHIER",
                                     );
                                   },
                                 },
@@ -625,11 +632,11 @@ function PaymentPanel({
                       });
                       if (inv.status === "PAID") {
                         setPaidDialogOpen(true);
-                        const dest = returnStationLabel(returnStation);
                         announceClinic(
-                          dest
-                            ? `Payment complete for ${patientName}. Please return to ${dest}.`
-                            : `Payment complete for ${patientName}. Invoice paid in full.`,
+                          buildPaymentCompleteMessage(
+                            patientName,
+                            returnStation,
+                          ),
                         );
                         onFullyPaid?.(invoiceId, returnStation);
                       }

@@ -39,7 +39,7 @@ export function OperationalDashboard() {
   const alerts = useQuery({
     queryKey: ["notifications", "summary"],
     queryFn: fetchNotificationSummary,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
   });
 
   if (stats.isLoading) return <LoadingBlock label="Loading dashboard" />;

@@ -5,16 +5,21 @@ import { toast } from "sonner";
 import { normalizeApiError } from "@/lib/api/errors";
 import {
   fetchNotifications,
+  fetchNotificationSummary,
   markAllNotificationsRead,
   markNotificationRead,
   type AlertPriority,
 } from "./api";
 
 export const notificationsQueryKey = ["notifications"] as const;
+export const notificationSummaryQueryKey = [
+  "notifications",
+  "summary",
+] as const;
 
 export function useNotifications(
   unreadOnly?: boolean,
-  refetchInterval = 30_000,
+  refetchInterval = 60_000,
   priority?: AlertPriority,
 ) {
   return useQuery({
@@ -28,10 +33,19 @@ export function useNotifications(
   });
 }
 
+export function useNotificationSummary(refetchInterval = 60_000) {
+  return useQuery({
+    queryKey: notificationSummaryQueryKey,
+    queryFn: fetchNotificationSummary,
+    refetchInterval,
+  });
+}
+
 export function useUnreadNotificationCount() {
-  const query = useNotifications(true, 30_000);
+  const query = useNotificationSummary();
   return {
-    count: query.data?.length ?? 0,
+    count: query.data?.total ?? 0,
+    byPriority: query.data?.byPriority,
     isLoading: query.isLoading,
   };
 }
@@ -42,7 +56,9 @@ export function useMarkNotificationRead() {
     mutationFn: markNotificationRead,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
-      void queryClient.invalidateQueries({ queryKey: ["notifications", "summary"] });
+      void queryClient.invalidateQueries({
+        queryKey: notificationSummaryQueryKey,
+      });
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });
@@ -54,7 +70,9 @@ export function useMarkAllNotificationsRead() {
     mutationFn: markAllNotificationsRead,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
-      void queryClient.invalidateQueries({ queryKey: ["notifications", "summary"] });
+      void queryClient.invalidateQueries({
+        queryKey: notificationSummaryQueryKey,
+      });
       toast.success("All notifications marked read");
     },
     onError: (e) => toast.error(normalizeApiError(e).message),

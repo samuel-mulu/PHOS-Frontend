@@ -2,13 +2,16 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { notificationsQueryKey } from "@/features/notifications/hooks";
+import {
+  notificationsQueryKey,
+  notificationSummaryQueryKey,
+} from "@/features/notifications/hooks";
 
-const POLL_MS = 45_000;
+const POLL_MS = 90_000;
 
 /**
- * REST-first operational sync. Backend Socket.IO is not wired yet; this
- * invalidates canonical queries on an interval while the tab is visible.
+ * Fallback REST sync while Socket.IO is disconnected or tab was backgrounded.
+ * Primary live path is `useNotificationSocket`.
  */
 export function useOperationalSync() {
   const queryClient = useQueryClient();
@@ -21,6 +24,9 @@ export function useOperationalSync() {
       if (now - lastRun.current < POLL_MS) return;
       lastRun.current = now;
       void queryClient.invalidateQueries({ queryKey: notificationsQueryKey });
+      void queryClient.invalidateQueries({
+        queryKey: notificationSummaryQueryKey,
+      });
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
     };
 

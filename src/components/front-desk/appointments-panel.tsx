@@ -23,7 +23,10 @@ import {
 } from "@/features/appointments/hooks";
 import type { Appointment } from "@/features/appointments/api";
 import { AppointmentStatus } from "@/types/appointment";
-import { announceClinic } from "@/lib/voice/announce";
+import {
+  announceClinic,
+  buildProceedMessage,
+} from "@/lib/voice/announce";
 import { cn } from "@/lib/utils";
 
 type ApptFilter = "today" | "all";
@@ -214,9 +217,11 @@ export function AppointmentsPanel() {
                         onSuccess: () => {
                           setCheckInAppt(null);
                           announceClinic(
-                            paid
-                              ? `${appt.patient.firstName} ${appt.patient.lastName}, payment received. Please proceed.`
-                              : `${appt.patient.firstName} ${appt.patient.lastName}, please proceed.`,
+                            buildProceedMessage(
+                              appt.patient.firstName,
+                              appt.patient.lastName,
+                              paid,
+                            ),
                           );
                         },
                       },

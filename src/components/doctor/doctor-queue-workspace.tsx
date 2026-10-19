@@ -33,7 +33,7 @@ import type { LabOrder } from "@/features/laboratory/api";
 import { QueueStation } from "@/types/encounter";
 import { Role } from "@/types/role";
 import { LabOrderStatus } from "@/types/lab";
-import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
+import { announcePatientCall } from "@/lib/voice/announce";
 import { cn } from "@/lib/utils";
 import {
   sortByDateField,
@@ -378,19 +378,14 @@ export function DoctorQueueWorkspace() {
               starting={updateEntry.isPending}
               onCall={(entry) =>
                 updateEntry.mutate(
-                  { id: entry.id, status: "CALLED" },
+                  { id: entry.id, status: "IN_SERVICE" },
                   {
                     onSuccess: () => {
                       const p = entry.encounter.patient;
-                      announceClinic(
-                        `${p.firstName} ${p.lastName}, please proceed to ${stationCallLabel("DOCTOR")}.`,
-                      );
+                      announcePatientCall(p.firstName, p.lastName, "DOCTOR");
                     },
                   },
                 )
-              }
-              onStart={(entry) =>
-                updateEntry.mutate({ id: entry.id, status: "IN_SERVICE" })
               }
             />
           )
@@ -448,19 +443,14 @@ export function DoctorQueueWorkspace() {
               starting={updateEntry.isPending}
               onCall={(entry) =>
                 updateEntry.mutate(
-                  { id: entry.id, status: "CALLED" },
+                  { id: entry.id, status: "IN_SERVICE" },
                   {
                     onSuccess: () => {
                       const p = entry.encounter.patient;
-                      announceClinic(
-                        `${p.firstName} ${p.lastName}, please proceed to ${stationCallLabel("DOCTOR")}.`,
-                      );
+                      announcePatientCall(p.firstName, p.lastName, "DOCTOR");
                     },
                   },
                 )
-              }
-              onStart={(entry) =>
-                updateEntry.mutate({ id: entry.id, status: "IN_SERVICE" })
               }
             />
           )
@@ -613,14 +603,12 @@ function LabReadyTable({
   orderByEncounter,
   starting,
   onCall,
-  onStart,
 }: {
   queueItems: QueueEntry[];
   extraEncounters: Encounter[];
   orderByEncounter: Map<string, { orderNumber: string; status: string }>;
   starting: boolean;
   onCall: (entry: QueueEntry) => void;
-  onStart: (entry: QueueEntry) => void;
 }) {
   return (
     <DataTable>
@@ -678,7 +666,7 @@ function LabReadyTable({
                 {formatWaitingSince(entry.enteredAt)}
               </DataTableCell>
               <DataTableCell stickyRight className="text-right">
-                {entry.status === "WAITING" ? (
+                {entry.status === "WAITING" || entry.status === "CALLED" ? (
                   <Button
                     type="button"
                     size="sm"
@@ -689,18 +677,6 @@ function LabReadyTable({
                     Call
                   </Button>
                 ) : null}
-                {(entry.status === "WAITING" || entry.status === "CALLED") && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={starting}
-                    onClick={() => onStart(entry)}
-                    className="ml-1"
-                  >
-                    Start
-                  </Button>
-                )}
                 <Link href={`/doctor/${entry.encounterId}`}>
                   <Button
                     type="button"
@@ -779,12 +755,10 @@ function QueueTable({
   items,
   starting,
   onCall,
-  onStart,
 }: {
   items: QueueEntry[];
   starting: boolean;
   onCall: (entry: QueueEntry) => void;
-  onStart: (entry: QueueEntry) => void;
 }) {
   return (
     <DataTable>
@@ -844,29 +818,15 @@ function QueueTable({
               </DataTableCell>
               <DataTableCell stickyRight className="text-right">
                 {entry.status === "WAITING" || entry.status === "CALLED" ? (
-                  <>
-                    {entry.status === "WAITING" ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        disabled={starting}
-                        onClick={() => onCall(entry)}
-                      >
-                        Call
-                      </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={starting}
-                      onClick={() => onStart(entry)}
-                      className="ml-1"
-                    >
-                      Start
-                    </Button>
-                  </>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={starting}
+                    onClick={() => onCall(entry)}
+                  >
+                    Call
+                  </Button>
                 ) : null}
                 <Link href={`/doctor/${entry.encounterId}`}>
                   <Button type="button" size="sm" className="ml-2">

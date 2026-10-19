@@ -52,7 +52,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <Icon className="h-4 w-4 shrink-0" aria-hidden />
                   <span className="flex-1">{item.label}</span>
                   {item.href === "/notifications" && unreadNotifications > 0 ? (
-                    <span className="rounded-full bg-teal-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                       {unreadNotifications > 99 ? "99+" : unreadNotifications}
                     </span>
                   ) : null}

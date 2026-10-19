@@ -15,36 +15,59 @@ export function notificationCategory(type: NotificationType): string {
   return TYPE_HINT[type] ?? "General";
 }
 
+function isDeskPaymentAlert(n: Notification): boolean {
+  if (n.type !== "SYSTEM") return false;
+  const hay = `${n.title} ${n.message}`.toLowerCase();
+  return (
+    hay.includes("cashier") ||
+    hay.includes("payment") ||
+    hay.includes("invoice")
+  );
+}
+
 export function notificationHref(n: Notification): string | null {
-  if (!n.entityId) return null;
-  const t = n.entityType?.toLowerCase();
-  if (t === "laborder" || t === "lab_order") {
-    return `/laboratory/orders/${n.entityId}`;
+  const t = n.entityType?.toLowerCase() ?? "";
+
+  if (n.entityId) {
+    if (t === "laborder" || t === "lab_order") {
+      // Doctors get a queue ping; lab staff open the order.
+      if (n.type === "LAB_RESULT_VERIFIED") return `/doctor`;
+      return `/laboratory/orders/${n.entityId}`;
+    }
+    if (t === "prescription") {
+      return `/pharmacy/prescriptions/${n.entityId}`;
+    }
+    if (t === "encounter") {
+      if (isDeskPaymentAlert(n)) return `/cashier`;
+      return `/doctor/${n.entityId}`;
+    }
+    if (t === "invoice") {
+      return `/billing/invoices/${n.entityId}`;
+    }
+    if (t === "payment" || t === "refund") {
+      return `/cashier`;
+    }
   }
-  if (t === "prescription") {
-    return `/pharmacy/prescriptions/${n.entityId}`;
-  }
-  if (t === "encounter") {
-    return `/doctor/${n.entityId}`;
-  }
-  if (t === "invoice") {
-    return `/billing/invoices/${n.entityId}`;
-  }
-  if (t === "payment") {
-    return `/cashier`;
-  }
+
   switch (n.type) {
     case "LAB_ORDER_CREATED":
+      return n.entityId ? `/laboratory/orders/${n.entityId}` : `/laboratory`;
     case "LAB_RESULT_VERIFIED":
-      return `/laboratory/orders/${n.entityId}`;
+      return `/doctor`;
     case "PRESCRIPTION_CREATED":
-      return `/pharmacy/prescriptions/${n.entityId}`;
+      return n.entityId
+        ? `/pharmacy/prescriptions/${n.entityId}`
+        : `/pharmacy`;
     case "LOW_STOCK":
     case "EXPIRING_STOCK":
       return `/inventory`;
     case "PAYMENT_COMPLETED":
     case "REFUND_COMPLETED":
-      return `/cashier`;
+      return t === "encounter" && n.entityId
+        ? `/doctor/${n.entityId}`
+        : `/cashier`;
+    case "SYSTEM":
+      return isDeskPaymentAlert(n) ? `/cashier` : null;
     default:
       return null;
   }

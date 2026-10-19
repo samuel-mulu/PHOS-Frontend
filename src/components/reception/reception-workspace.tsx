@@ -24,7 +24,11 @@ import type { Encounter } from "@/features/encounters/api";
 import type { Patient } from "@/types/patient";
 import { QueueStation } from "@/types/encounter";
 import { OverlayPortal } from "@/components/shared/overlay-portal";
-import { announceClinic } from "@/lib/voice/announce";
+import {
+  announceClinic,
+  buildProceedMessage,
+  buildRegisteredMessage,
+} from "@/lib/voice/announce";
 import { cn } from "@/lib/utils";
 
 type ReceptionSubTab = "find" | "triage" | "doctors";
@@ -232,11 +236,12 @@ export function ReceptionWorkspace({
                   onRegistered={(patient) => {
                     setRegisterOpen(false);
                     openVisit(patient, "NEW");
-                    const name = [patient.firstName, patient.lastName]
-                      .filter(Boolean)
-                      .join(" ");
                     announceClinic(
-                      `Patient ${name}, number ${patient.patientNumber}, registered.`,
+                      buildRegisteredMessage(
+                        patient.firstName,
+                        patient.lastName,
+                        patient.patientNumber,
+                      ),
                     );
                   }}
                 />
@@ -363,9 +368,7 @@ export function ReceptionWorkspace({
                     closeVisit();
                     if (p) {
                       announceClinic(
-                        paid
-                          ? `${p.firstName} ${p.lastName}, payment received. Please proceed.`
-                          : `${p.firstName} ${p.lastName}, please proceed.`,
+                        buildProceedMessage(p.firstName, p.lastName, paid),
                       );
                     }
                     if (paid) {

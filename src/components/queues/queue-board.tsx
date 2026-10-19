@@ -16,7 +16,7 @@ import { ExpandablePanel } from "@/components/shared/table-layout";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { useQueue, useUpdateQueueEntry } from "@/features/queues/hooks";
 import type { QueueStation } from "@/types/encounter";
-import { announceClinic, stationCallLabel } from "@/lib/voice/announce";
+import { announcePatientCall } from "@/lib/voice/announce";
 import { useMemo } from "react";
 import { sortQueueByWaiting } from "@/lib/queues/sort";
 import { useDateSort } from "@/lib/queues/use-date-sort";
@@ -92,24 +92,18 @@ export function QueueBoard({
                 entry={entry}
                 hrefPrefix={hrefPrefix}
                 resolveHref={resolveHref}
-                station={station}
-                onStart={() =>
-                  updateEntry.mutate({ id: entry.id, status: "IN_SERVICE" })
-                }
                 onCall={() =>
                   updateEntry.mutate(
-                    { id: entry.id, status: "CALLED" },
+                    { id: entry.id, status: "IN_SERVICE" },
                     {
                       onSuccess: () => {
                         const p = entry.encounter.patient;
-                        announceClinic(
-                          `${p.firstName} ${p.lastName}, please proceed to ${stationCallLabel(station)}.`,
-                        );
+                        announcePatientCall(p.firstName, p.lastName, station);
                       },
                     },
                   )
                 }
-                starting={updateEntry.isPending}
+                calling={updateEntry.isPending}
               />
             ))}
           </DataTableBody>
@@ -145,18 +139,14 @@ function QueueRow({
   entry,
   hrefPrefix,
   resolveHref,
-  station,
-  onStart,
   onCall,
-  starting,
+  calling,
 }: {
   entry: QueueEntry;
   hrefPrefix: string;
   resolveHref?: (entry: QueueEntry) => string | null;
-  station: QueueStation;
-  onStart: () => void;
   onCall: () => void;
-  starting: boolean;
+  calling: boolean;
 }) {
   const href = resolveHref
     ? resolveHref(entry)
@@ -185,28 +175,15 @@ function QueueRow({
       <DataTableCell stickyRight>
         <div className="flex flex-nowrap justify-end gap-1">
           {entry.status === "WAITING" || entry.status === "CALLED" ? (
-            <>
-              {entry.status === "WAITING" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  disabled={starting}
-                  onClick={onCall}
-                >
-                  Call
-                </Button>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={starting}
-                onClick={onStart}
-              >
-                Start
-              </Button>
-            </>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={calling}
+              onClick={onCall}
+            >
+              Call
+            </Button>
           ) : null}
           {href ? (
             <Link href={href}>
