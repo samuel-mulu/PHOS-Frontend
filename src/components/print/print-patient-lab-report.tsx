@@ -34,16 +34,16 @@ function escapeHtml(value: string) {
 }
 
 function recommendForFlag(flag: string | null | undefined): string {
-  if (!flag) return "—";
+  if (!flag) return "-";
   switch (flag) {
     case "LOW":
-      return "Below reference — review clinically";
+      return "Below reference - review clinically";
     case "HIGH":
-      return "Above reference — review clinically";
+      return "Above reference - review clinically";
     case "CRITICAL":
-      return "Critical — urgent clinical review";
+      return "Critical - urgent clinical review";
     case "ABNORMAL":
-      return "Abnormal — correlate with history";
+      return "Abnormal - correlate with history";
     case "NORMAL":
       return "Within reference range";
     default:
@@ -63,24 +63,24 @@ function orderSectionHtml(order: LabOrder, includeStats: boolean): string {
   );
   const doctor = order.doctor
     ? `Dr. ${order.doctor.firstName} ${order.doctor.lastName}`
-    : "—";
+    : "-";
   const when = format(new Date(order.createdAt), "dd MMM yyyy HH:mm");
 
   const tables = panels
     .map((group) => {
       const rows = group.items
         .map((item) => {
-          const value = item.result?.value ?? "—";
+          const value = item.result?.value ?? "-";
           const flag = item.result?.flag ?? "";
           const unit = item.result?.unit ?? item.labTest.unit ?? "";
           const range =
-            item.result?.referenceRange ?? item.labTest.referenceRange ?? "—";
+            item.result?.referenceRange ?? item.labTest.referenceRange ?? "-";
           const recommend = includeStats
             ? recommendForFlag(item.result?.flag) +
               (item.result?.notes?.trim()
                 ? ` · ${item.result.notes.trim()}`
                 : "")
-            : "—";
+            : "-";
           return `<tr>
             <td>${escapeHtml(item.labTest.name)}</td>
             <td>${escapeHtml(String(value))}${flag ? ` <span class="flag">${escapeHtml(flag)}</span>` : ""}</td>
@@ -188,13 +188,13 @@ export function PrintPatientLabReport({
     const name = patientFullName(patient);
     const age = ageYears(patient.dateOfBirth);
     const dateStr = format(new Date(), "dd MMMM yyyy");
-    const period = `${format(new Date(from), "dd/MM/yyyy")} – ${format(new Date(to), "dd/MM/yyyy")}`;
+    const period = `${format(new Date(from), "dd/MM/yyyy")} - ${format(new Date(to), "dd/MM/yyyy")}`;
     const body = chosenOrders
       .map((o) => orderSectionHtml(o, includeStats))
       .join("");
 
     return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<title>${escapeHtml(clinic)} — Patient Lab Report</title>
+<title>${escapeHtml(clinic)} - Patient Lab Report</title>
 <style>
   @page { margin: 14mm; }
   body { font-family: "Segoe UI", system-ui, sans-serif; color: #0f172a; margin: 0; padding: 20px; font-size: 12px; }
@@ -221,7 +221,7 @@ export function PrintPatientLabReport({
 </style></head><body>
   <div class="header">
     <div>
-      <div class="brand">${escapeHtml(clinic.toUpperCase())} — Patient Lab Report</div>
+      <div class="brand">${escapeHtml(clinic.toUpperCase())} - Patient Lab Report</div>
       <div class="sub">All selected lab results for one patient</div>
     </div>
     <div class="meta">${escapeHtml(dateStr)}<br/>Period: ${escapeHtml(period)}</div>
@@ -229,7 +229,7 @@ export function PrintPatientLabReport({
   <div class="summary">
     <div><strong>Patient</strong><br/>${escapeHtml(name)}</div>
     <div><strong>Patient ID</strong><br/>${escapeHtml(patient.patientNumber)}</div>
-    <div><strong>Sex / Age</strong><br/>${escapeHtml(patient.sex.replaceAll("_", " "))} · ${age != null ? age : "—"}</div>
+    <div><strong>Sex / Age</strong><br/>${escapeHtml(patient.sex.replaceAll("_", " "))} · ${age != null ? age : "-"}</div>
     <div><strong>Orders printed</strong><br/>${chosenOrders.length}</div>
   </div>
   ${body}

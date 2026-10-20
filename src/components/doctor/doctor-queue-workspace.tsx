@@ -19,6 +19,7 @@ import {
   EmptyState,
   ErrorState,
   LoadingBlock,
+  WorkspacePageSkeleton,
 } from "@/components/shared/state-blocks";
 import {
   encounterStatusBadge,
@@ -43,6 +44,7 @@ import { useDateSort } from "@/lib/queues/use-date-sort";
 import { DateSortToggle } from "@/components/shared/date-sort-toggle";
 import { ExpandablePanel } from "@/components/shared/table-layout";
 import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
+import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
 import { DoctorAppointmentsPanel } from "@/components/doctor/doctor-appointments-panel";
 
@@ -260,7 +262,9 @@ export function DoctorQueueWorkspace() {
     return map;
   }, [labOrders.data]);
 
-  if (queue.isLoading) return <LoadingBlock label="Loading doctor queue" />;
+  if (queue.isLoading) {
+    return <WorkspacePageSkeleton label="Loading doctor queue" />;
+  }
   if (queue.isError) {
     return (
       <ErrorState
@@ -282,6 +286,7 @@ export function DoctorQueueWorkspace() {
           <HmisClinicNav />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PrintPatientLabReport />
           <PrintFullLabActivity />
           <DateSortToggle value={direction} onChange={setDirection} />
         </div>

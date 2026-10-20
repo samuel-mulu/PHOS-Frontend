@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { endOfMonth, format, startOfMonth } from "date-fns";
+import { loadClinicLogoDataUrl } from "@/lib/print/hiwet-brand";
+import { buildPaymentsReportHtml } from "@/lib/print/payments-report-html";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +51,24 @@ function patientName(row: PaymentReport["rows"][number]) {
     .join(" ");
 }
 
+async function printPdf(report: PaymentReport, from: string, to: string) {
+  const logoUrl = await loadClinicLogoDataUrl();
+  const fromLabel = format(new Date(`${from}T12:00:00`), "dd MMM yyyy");
+  const toLabel = format(new Date(`${to}T12:00:00`), "dd MMM yyyy");
+  const html = buildPaymentsReportHtml({
+    report,
+    fromLabel,
+    toLabel,
+    logoUrl,
+  });
+  const w = window.open("", "_blank", "width=1100,height=800");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  window.setTimeout(() => w.print(), 80);
+}
+
 function downloadCsv(report: PaymentReport, from: string, to: string) {
   const csv = paymentReportToCsv(report);
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -60,10 +80,25 @@ function downloadCsv(report: PaymentReport, from: string, to: string) {
   URL.revokeObjectURL(url);
 }
 
-export function PaymentsReportPanel({ className }: { className?: string }) {
-  const [preset, setPreset] = useState<Preset>("day");
-  const [from, setFrom] = useState(todayIso);
-  const [to, setTo] = useState(todayIso);
+function monthRangeIso() {
+  const now = new Date();
+  return {
+    from: format(startOfMonth(now), "yyyy-MM-dd"),
+    to: format(endOfMonth(now), "yyyy-MM-dd"),
+  };
+}
+
+export function PaymentsReportPanel({
+  className,
+  showHeading = true,
+}: {
+  className?: string;
+  showHeading?: boolean;
+}) {
+  const initialMonth = monthRangeIso();
+  const [preset, setPreset] = useState<Preset>("month");
+  const [from, setFrom] = useState(initialMonth.from);
+  const [to, setTo] = useState(initialMonth.to);
 
   function applyPreset(next: Preset) {
     setPreset(next);
@@ -89,8 +124,21 @@ export function PaymentsReportPanel({ className }: { className?: string }) {
     return Object.entries(by).sort((a, b) => b[1].amountCents - a[1].amountCents);
   }, [query.data]);
 
+  const periodLabel = `${format(new Date(`${from}T12:00:00`), "dd MMM yyyy")} – ${format(new Date(`${to}T12:00:00`), "dd MMM yyyy")}`;
+
   return (
     <div className={cn("space-y-4", className)}>
+      {showHeading ? (
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">
+            Cashier &amp; front desk collections
+          </h2>
+          <p className="text-xs text-slate-600">
+            Payments recorded at cashier and front desk · default is this month ·
+            print PDF or export CSV
+          </p>
+        </div>
+      ) : null}
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-wrap gap-2">
           {(
@@ -146,16 +194,29 @@ export function PaymentsReportPanel({ className }: { className?: string }) {
         </div>
 
         {query.data ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => downloadCsv(query.data, from, to)}
-          >
-            Export CSV
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => void printPdf(query.data!, from, to)}
+            >
+              Print / PDF
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => downloadCsv(query.data!, from, to)}
+            >
+              Export CSV
+            </Button>
+          </>
         ) : null}
       </div>
+      {query.data ? (
+        <p className="text-xs text-slate-500">Period: {periodLabel}</p>
+      ) : null}
 
       {query.isLoading ? <LoadingBlock label="Loading payment report" /> : null}
       {query.isError ? (
@@ -202,7 +263,7 @@ export function PaymentsReportPanel({ className }: { className?: string }) {
                   Payment detail
                 </h2>
                 <p className="text-xs text-slate-600">
-                  {format(new Date(query.data.period.from), "dd MMM yyyy")} —{" "}
+                  {format(new Date(query.data.period.from), "dd MMM yyyy")} -{" "}
                   {format(new Date(query.data.period.to), "dd MMM yyyy")}
                 </p>
               </div>

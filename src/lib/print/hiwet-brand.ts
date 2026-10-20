@@ -3,7 +3,7 @@
 export const HIWET_BRAND = {
   nameEn: "HIWET CLINIC",
   nameAm: "ሂወት ክሊኒክ",
-  titleBilingual: "HIWET CLINIC – ሂወት ክሊኒክ",
+  titleBilingual: "HIWET CLINIC - ሂወት ክሊኒክ",
   tagline: "Shire, Tigray, Ethiopia ❤️ Your Trusted Partner In Healthcare ✨",
   locationEn: "Shire, Tigray, Ethiopia",
   phones: "0966281315 / 0903050666",

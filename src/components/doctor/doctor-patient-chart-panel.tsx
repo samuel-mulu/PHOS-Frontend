@@ -20,8 +20,38 @@ import type {
 } from "@/features/patients/api";
 import type { LabOrder } from "@/features/laboratory/api";
 import { LabOrderStatus } from "@/types/lab";
+import { PrintHistoryVisitNotesDialog } from "@/components/print/print-history-visit-notes";
+import { isUltrasoundDescription } from "@/lib/clinical/ultrasound";
 
-type HistoryTab = "visits" | "labs" | "meds";
+type HistoryTab = "visits" | "labs" | "ultrasound" | "meds";
+
+type UltrasoundHistoryRecord = {
+  encounter: PatientChartEncounter;
+  planText: string | null;
+  orderedLines: string[];
+};
+
+function buildUltrasoundRecords(chart: PatientChart): UltrasoundHistoryRecord[] {
+  const rows: UltrasoundHistoryRecord[] = [];
+  for (const enc of chart.encounters) {
+    const planText = enc.consultation?.plan?.trim() || null;
+    const invoice = chart.invoices.find((i) => i.encounterId === enc.id);
+    const orderedLines = (invoice?.items ?? [])
+      .filter((item) => isUltrasoundDescription(item.description))
+      .map((item) => item.description);
+    if (!planText && orderedLines.length === 0) continue;
+    rows.push({ encounter: enc, planText, orderedLines });
+  }
+  return rows.sort((a, b) => {
+    const vn =
+      (a.encounter.visitNumber ?? 0) - (b.encounter.visitNumber ?? 0);
+    if (vn !== 0) return vn;
+    return (
+      new Date(b.encounter.startedAt).getTime() -
+      new Date(a.encounter.startedAt).getTime()
+    );
+  });
+}
 
 function doctorName(
   person?: { firstName: string; lastName: string } | null,
@@ -197,6 +227,15 @@ function PatientHistoryDrawer({
 }) {
   const [tab, setTab] = useState<HistoryTab>("visits");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedVisitIds, setSelectedVisitIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [printOpen, setPrintOpen] = useState(false);
+
+  const ultrasoundRecords = useMemo(
+    () => buildUltrasoundRecords(chart),
+    [chart],
+  );
 
   const visitBundles = useMemo(() => {
     return chart.encounters.map((enc) => ({
@@ -208,6 +247,19 @@ function PatientHistoryDrawer({
   }, [chart, currentEncounterId]);
 
   const age = formatAge(chart.patient.dateOfBirth);
+
+  const selectedEncounters = chart.encounters.filter((e) =>
+    selectedVisitIds.has(e.id),
+  );
+
+  function toggleVisitSelected(id: string, checked: boolean) {
+    setSelectedVisitIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 p-0 sm:p-4">
@@ -260,6 +312,7 @@ function PatientHistoryDrawer({
               [
                 ["visits", `Visits (${chart.encounters.length})`],
                 ["labs", `Lab records (${chart.labOrders.length})`],
+                ["ultrasound", `Ultrasound (${ultrasoundRecords.length})`],
                 ["meds", `Medications (${chart.prescriptions.length})`],
               ] as const
             ).map(([id, label]) => (
@@ -286,21 +339,41 @@ function PatientHistoryDrawer({
               {visitBundles.length === 0 ? (
                 <Empty>No previous visits recorded.</Empty>
               ) : (
-                visitBundles.map(({ encounter, labs, meds, isCurrent }) => (
-                  <VisitHistoryCard
-                    key={encounter.id}
-                    encounter={encounter}
-                    labs={labs}
-                    meds={meds}
-                    isCurrent={isCurrent}
-                    expanded={expandedId === encounter.id}
-                    onToggle={() =>
-                      setExpandedId((id) =>
-                        id === encounter.id ? null : encounter.id,
-                      )
-                    }
-                  />
-                ))
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
+                    <p className="text-xs text-slate-600">
+                      Select visits, then print Hiwet-style visit notes.
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={selectedVisitIds.size === 0}
+                      onClick={() => setPrintOpen(true)}
+                    >
+                      Print selected ({selectedVisitIds.size})
+                    </Button>
+                  </div>
+                  {visitBundles.map(({ encounter, labs, meds, isCurrent }) => (
+                    <VisitHistoryCard
+                      key={encounter.id}
+                      encounter={encounter}
+                      labs={labs}
+                      meds={meds}
+                      isCurrent={isCurrent}
+                      expanded={expandedId === encounter.id}
+                      onToggle={() =>
+                        setExpandedId((id) =>
+                          id === encounter.id ? null : encounter.id,
+                        )
+                      }
+                      selectable
+                      selected={selectedVisitIds.has(encounter.id)}
+                      onSelectChange={(checked) =>
+                        toggleVisitSelected(encounter.id, checked)
+                      }
+                    />
+                  ))}
+                </>
               )}
             </div>
           ) : null}
@@ -312,6 +385,18 @@ function PatientHistoryDrawer({
               ) : (
                 chart.labOrders.map((order) => (
                   <LabHistoryCard key={order.id} order={order} />
+                ))
+              )}
+            </div>
+          ) : null}
+
+          {tab === "ultrasound" ? (
+            <div className="space-y-3">
+              {ultrasoundRecords.length === 0 ? (
+                <Empty>No ultrasound notes or orders on record.</Empty>
+              ) : (
+                ultrasoundRecords.map((record) => (
+                  <UltrasoundHistoryCard key={record.encounter.id} {...record} />
                 ))
               )}
             </div>
@@ -330,6 +415,14 @@ function PatientHistoryDrawer({
           ) : null}
         </div>
       </aside>
+
+      {printOpen && selectedEncounters.length > 0 ? (
+        <PrintHistoryVisitNotesDialog
+          patient={chart.patient}
+          encounters={selectedEncounters}
+          onClose={() => setPrintOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -345,6 +438,9 @@ function VisitHistoryCard({
   isCurrent,
   expanded,
   onToggle,
+  selectable,
+  selected,
+  onSelectChange,
 }: {
   encounter: PatientChartEncounter;
   labs: LabOrder[];
@@ -352,6 +448,9 @@ function VisitHistoryCard({
   isCurrent: boolean;
   expanded: boolean;
   onToggle: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectChange?: (checked: boolean) => void;
 }) {
   const consult = encounter.consultation;
   const who =
@@ -364,12 +463,23 @@ function VisitHistoryCard({
         isCurrent ? "border-teal-300 ring-1 ring-teal-100" : "border-slate-200",
       )}
     >
-      <button
-        type="button"
-        className="flex w-full items-start justify-between gap-3 px-3 py-3 text-left"
-        onClick={onToggle}
-        aria-expanded={expanded}
-      >
+      <div className="flex items-start gap-2 px-3 py-3">
+        {selectable ? (
+          <input
+            type="checkbox"
+            className="mt-1 shrink-0"
+            checked={selected ?? false}
+            aria-label={`Select visit ${encounter.visitNumber ?? ""}`}
+            onChange={(e) => onSelectChange?.(e.target.checked)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : null}
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
+          onClick={onToggle}
+          aria-expanded={expanded}
+        >
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {encounter.visitNumber != null ? (
@@ -401,7 +511,8 @@ function VisitHistoryCard({
         <span className="shrink-0 text-xs font-medium text-teal-800">
           {expanded ? "Hide" : "Details"}
         </span>
-      </button>
+        </button>
+      </div>
 
       {expanded ? (
         <div className="space-y-3 border-t border-slate-100 px-3 py-3 text-sm">
@@ -504,6 +615,53 @@ function VisitHistoryCard({
           </section>
         </div>
       ) : null}
+    </article>
+  );
+}
+
+function UltrasoundHistoryCard({
+  encounter,
+  planText,
+  orderedLines,
+}: UltrasoundHistoryRecord) {
+  const who =
+    doctorName(encounter.consultation?.doctor) ??
+    doctorName(encounter.assignedDoctor);
+
+  return (
+    <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        {encounter.visitNumber != null ? (
+          <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">
+            Visit {encounter.visitNumber}
+          </span>
+        ) : null}
+        <p className="font-semibold text-slate-900">
+          {formatFullDate(encounter.startedAt)}
+        </p>
+        {encounterStatusBadge(encounter.status)}
+      </div>
+      <p className="mt-1 text-xs text-slate-500">
+        {who ?? "Doctor not recorded"}
+        {encounter.encounterNumber ? ` · ${encounter.encounterNumber}` : ""}
+      </p>
+      {orderedLines.length > 0 ? (
+        <div className="mt-3">
+          <SectionLabel>Ordered on invoice</SectionLabel>
+          <ul className="mt-1 list-inside list-disc text-xs text-slate-700">
+            {orderedLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {planText ? (
+        <ReadonlyBlock label="Ultrasound report / notes">{planText}</ReadonlyBlock>
+      ) : (
+        <p className="mt-2 text-xs text-slate-500">
+          No ultrasound text in consultation notes for this visit.
+        </p>
+      )}
     </article>
   );
 }

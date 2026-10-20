@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/doctor", label: "Doctor", view: null },
   { href: "/reports?view=full", label: "HMIS-Full", view: "full" },
   { href: "/reports", label: "HMIS", view: "live" },
+  { href: "/reports?view=payments", label: "Collections", view: "payments" },
   { href: "/doctor", label: "HIS", view: "his" },
   { href: "/reports?view=hfr", label: "HFR", view: "hfr" },
 ] as const;
@@ -30,8 +31,13 @@ export function HmisClinicNav() {
         else if (item.label === "HIS") active = false;
         else if (item.view === "full") active = onReports && view === "full";
         else if (item.view === "hfr") active = onReports && view === "hfr";
+        else if (item.view === "payments") active = onReports && view === "payments";
         else if (item.view === "live") {
-          active = onReports && view !== "full" && view !== "hfr";
+          active =
+            onReports &&
+            view !== "full" &&
+            view !== "hfr" &&
+            view !== "payments";
         }
         return (
           <Link

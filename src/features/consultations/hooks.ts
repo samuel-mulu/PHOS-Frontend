@@ -11,6 +11,11 @@ import {
   saveConsultation,
 } from "./api";
 import type { ConsultationFormValues, DiagnosisFormValues } from "./schemas";
+import {
+  rememberConsultationFields,
+  rememberReferralSheet,
+} from "@/lib/field-memory/remember";
+import { useAuthStore } from "@/stores/auth-store";
 
 export function useConsultation(encounterId: string) {
   return useQuery({
@@ -25,9 +30,14 @@ export function useSaveConsultation(encounterId: string) {
   return useMutation({
     mutationFn: (values: ConsultationFormValues) =>
       saveConsultation(encounterId, values),
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
       void queryClient.setQueryData(["consultation", encounterId], data);
       void queryClient.invalidateQueries({ queryKey: ["encounters", encounterId] });
+      const userId = useAuthStore.getState().user?.id;
+      rememberConsultationFields(userId, variables);
+      if (variables.referralSheet) {
+        rememberReferralSheet(userId, variables.referralSheet);
+      }
       toast.success("Consultation saved");
     },
     onError: (error) => toast.error(normalizeApiError(error).message),

@@ -17,7 +17,7 @@ type ReportSection = "summary" | "labActivity" | "statistics";
 const SECTION_LABEL: Record<ReportSection, string> = {
   summary: "Out / In patient summary",
   labActivity: "Lab diagnostic activity table",
-  statistics: "Statistics — range & recommend only",
+  statistics: "Statistics - range & recommend only",
 };
 
 function escapeHtml(value: string) {
@@ -28,7 +28,7 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;");
 }
 
-/** Aggregate Full Lab Report (Hiwet-style) from Laboratory — choose sections in a modal. */
+/** Aggregate Full Lab Report (Hiwet-style) from Laboratory - choose sections in a modal. */
 export function PrintFullLabActivity() {
   const { facilityName } = useWorkspaceContext(null);
   const [open, setOpen] = useState(false);
@@ -112,7 +112,7 @@ export function PrintFullLabActivity() {
         0,
       );
       body += `<div class="section">
-        <h3>Statistics — range &amp; recommend</h3>
+        <h3>Statistics - range &amp; recommend</h3>
         <table>
           <thead><tr><th>Indicator</th><th>Value</th><th>Recommend</th></tr></thead>
           <tbody>
@@ -126,7 +126,7 @@ export function PrintFullLabActivity() {
     }
 
     return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<title>${escapeHtml(name)} — Full Lab Report</title>
+<title>${escapeHtml(name)} - Full Lab Report</title>
 <style>
   @page { margin: 14mm; }
   body { font-family: "Segoe UI", system-ui, sans-serif; color: #0f172a; margin: 0; padding: 20px; font-size: 12px; }
@@ -145,8 +145,8 @@ export function PrintFullLabActivity() {
   .clinic { margin-top: 16px; font-size: 11px; color: #64748b; }
 </style></head><body>
   <div class="header">
-    <div class="brand">${escapeHtml(name.toUpperCase())} — Full Lab Report</div>
-    <div class="period">Period: ${escapeHtml(fromLabel)} — ${escapeHtml(toLabel)}</div>
+    <div class="brand">${escapeHtml(name.toUpperCase())} - Full Lab Report</div>
+    <div class="period">Period: ${escapeHtml(fromLabel)} - ${escapeHtml(toLabel)}</div>
   </div>
   ${body}
   <div class="footer">

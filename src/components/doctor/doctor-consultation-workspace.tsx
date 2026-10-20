@@ -1,16 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { SuggestingTextarea } from "@/components/shared/suggesting-field";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
 import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
-import { LoadingBlock, ErrorState } from "@/components/shared/state-blocks";
+import {
+  ErrorState,
+  LoadingBlock,
+  WorkspacePageSkeleton,
+} from "@/components/shared/state-blocks";
 import {
   useEncounter,
   useRouteEncounter,
@@ -44,6 +48,7 @@ import {
 } from "@/features/prescriptions/hooks";
 import { toast } from "sonner";
 import { LabOrderStatus } from "@/types/lab";
+import { isUltrasoundDescription } from "@/lib/clinical/ultrasound";
 import { format } from "date-fns";
 import {
   useAppointments,
@@ -51,6 +56,8 @@ import {
 } from "@/features/appointments/hooks";
 import { AppointmentStatus } from "@/types/appointment";
 import { PrintVisitNote } from "@/components/print/print-visit-note";
+import { PrintReferralSheet } from "@/components/print/print-referral-sheet";
+import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 
 type Step = "notes" | "orders" | "history" | "finish";
 
@@ -91,6 +98,26 @@ export function DoctorConsultationWorkspace({
   const consultationId = consultation?.id;
   const isFinalized = consultation?.status === "FINALIZED";
   const labCounts = useDoctorLabOrderCounts(consultationId);
+  const allLabOrders = useLabOrders();
+  const consultationLabOrders = useMemo(
+    () =>
+      (allLabOrders.data ?? []).filter(
+        (o) => o.consultationId === consultationId,
+      ),
+    [allLabOrders.data, consultationId],
+  );
+  const laboratoryTestsSummary = useMemo(
+    () =>
+      consultationLabOrders
+        .flatMap((order) =>
+          (order.items ?? []).map(
+            (item) => item.labTest?.name ?? item.labTestId ?? "Lab test",
+          ),
+        )
+        .filter(Boolean)
+        .join(", "),
+    [consultationLabOrders],
+  );
   const finalize = useFinalizeConsultation(consultationId ?? "", encounterId);
   const form = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationSchema),
@@ -152,7 +179,7 @@ export function DoctorConsultationWorkspace({
   }
 
   if (encounter.isLoading || consultationQuery.isLoading) {
-    return <LoadingBlock label="Loading consultation workspace" />;
+    return <WorkspacePageSkeleton label="Loading consultation workspace" />;
   }
   if (encounter.isError || !encounter.data?.patient) {
     return <ErrorState message="Encounter could not be loaded." />;
@@ -175,7 +202,23 @@ export function DoctorConsultationWorkspace({
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PrintPatientLabReport
+            patientId={patient.id}
+            patientLabel={[patient.firstName, patient.lastName]
+              .filter(Boolean)
+              .join(" ")}
+            triggerLabel="Patient lab report"
+          />
           <PrintVisitNote encounter={encounter.data} />
+          <PrintReferralSheet
+            encounter={encounter.data}
+            consultation={consultation}
+            laboratoryTestsSummary={laboratoryTestsSummary}
+            saving={save.isPending}
+            onSave={async (referralSheet) => {
+              await save.mutateAsync({ ...form.getValues(), referralSheet });
+            }}
+          />
           <DoctorPatientChartPanel
             patientId={patient.id}
             encounterId={encounterId}
@@ -338,13 +381,19 @@ export function DoctorConsultationWorkspace({
               invoiceId={encounter.data.invoice?.id}
               encounterStatus={encounterStatus}
               paymentReturnStation={encounter.data.paymentReturnStation}
+              ultrasoundPlan={form.watch("plan") || consultation?.plan}
             />
           ) : (
-            <Panel title="Laboratory">
-              <p className="text-xs text-slate-500">
-                Save notes first to order lab or medicines.
-              </p>
-            </Panel>
+            <>
+              <Panel title="Laboratory">
+                <p className="text-xs text-slate-500">
+                  Save notes first to order lab or medicines.
+                </p>
+              </Panel>
+              <Panel title="Ultrasound">
+                <p className="text-xs text-slate-500">None</p>
+              </Panel>
+            </>
           )}
         </aside>
 
@@ -358,14 +407,15 @@ export function DoctorConsultationWorkspace({
                 Visit notes
               </h2>
               <p className="text-xs text-slate-500">
-                Same sections as the printed visit note. Check which to include
-                when you print.
+                Same sections as the printed visit note. After you save, typing
+                2+ characters shows your recent phrases for that field.
               </p>
               <div>
                 <Label className="mb-1 block text-xs font-medium text-slate-700">
                   Vitals
                 </Label>
-                <Textarea
+                <SuggestingTextarea
+                  fieldKey="physicalExam"
                   rows={3}
                   disabled={isFinalized}
                   placeholder="e.g. BP 120/80, Temp 36.5, HR 72, Weight 70kg, Height 170cm"
@@ -377,7 +427,8 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-slate-700">
                   Medical Notes / Follow-up Plan / Recommendations
                 </Label>
-                <Textarea
+                <SuggestingTextarea
+                  fieldKey="notes"
                   rows={4}
                   disabled={isFinalized}
                   placeholder="e.g. follow-up in 2 weeks, rest, increase fluids…"
@@ -389,7 +440,8 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-slate-700">
                   Diagnosis
                 </Label>
-                <Textarea
+                <SuggestingTextarea
+                  fieldKey="assessment"
                   rows={3}
                   disabled={isFinalized}
                   placeholder="e.g. Acute gastritis"
@@ -401,7 +453,8 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-slate-700">
                   Ultrasound
                 </Label>
-                <Textarea
+                <SuggestingTextarea
+                  fieldKey="plan"
                   rows={3}
                   disabled={isFinalized}
                   placeholder="e.g. findings…"
@@ -413,10 +466,11 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-slate-700">
                   Prescription (Rx)
                 </Label>
-                <Textarea
+                <SuggestingTextarea
+                  fieldKey="historyPresentIllness"
                   rows={4}
                   disabled={isFinalized}
-                  placeholder={"e.g.\nAmoxicillin 500mg — 1×3×7 days"}
+                  placeholder={"e.g.\nAmoxicillin 500mg - 1x3x7 days"}
                   className="min-h-[5.5rem] resize-y"
                   {...form.register("historyPresentIllness")}
                 />
@@ -507,6 +561,10 @@ export function DoctorConsultationWorkspace({
               {orderSubTab === "lab" ? (
                 <DoctorLabOrdersPanel
                   consultationId={consultationId}
+                  patientId={patient.id}
+                  patientLabel={[patient.firstName, patient.lastName]
+                    .filter(Boolean)
+                    .join(" ")}
                   isFinalized={isFinalized}
                   preferResults={
                     labCounts.ready > 0 ||
@@ -1096,11 +1154,13 @@ function VisitSideCards({
   invoiceId,
   encounterStatus,
   paymentReturnStation,
+  ultrasoundPlan,
 }: {
   consultationId: string;
   invoiceId?: string;
   encounterStatus: string;
   paymentReturnStation?: string | null;
+  ultrasoundPlan?: string | null;
 }) {
   const labs = useLabOrders();
   const rx = usePrescriptions();
@@ -1122,9 +1182,21 @@ function VisitSideCards({
     inv?.status === "PAID" ||
     (inv != null && inv.totalCents > 0 && inv.paidCents >= inv.totalCents);
   const cashierItems =
-    inv?.items.filter((item) => !isLabInvoiceLine(item.description)) ?? [];
+    inv?.items.filter(
+      (item) =>
+        !isLabInvoiceLine(item.description) &&
+        !isUltrasoundDescription(item.description),
+    ) ?? [];
+  const ultrasoundItems =
+    inv?.items.filter((item) =>
+      isUltrasoundDescription(item.description),
+    ) ?? [];
+  const ultrasoundNotes = ultrasoundPlan?.trim() ?? "";
   const atCashierLab = atCashier && paymentReturnStation === "LAB";
   const atCashierOther = atCashier && paymentReturnStation !== "LAB";
+  const atCashierDoctor =
+    atCashier &&
+    (paymentReturnStation === "DOCTOR" || !paymentReturnStation);
 
   return (
     <>
@@ -1162,6 +1234,55 @@ function VisitSideCards({
               );
             })}
           </ul>
+        )}
+      </Panel>
+      <Panel title="Ultrasound">
+        {ultrasoundItems.length === 0 && !ultrasoundNotes ? (
+          <p className="text-xs text-slate-500">None</p>
+        ) : (
+          <div className="space-y-2 text-xs">
+            {ultrasoundItems.length > 0 ? (
+              <ul className="space-y-1.5">
+                {ultrasoundItems.map((item) => {
+                  const state: "Paid" | "At cashier" | "Due" = invoicePaid
+                    ? "Paid"
+                    : atCashierDoctor
+                      ? "At cashier"
+                      : "Due";
+                  return (
+                    <li
+                      key={item.id}
+                      className="flex flex-wrap items-start justify-between gap-1.5"
+                    >
+                      <span className="font-medium text-slate-800">
+                        {item.description}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-1">
+                        <span className="tabular-nums text-slate-600">
+                          {formatCents(item.totalCents)}
+                        </span>
+                        {state === "Paid" ? (
+                          <StatusBadge label="Paid" tone="green" />
+                        ) : state === "At cashier" ? (
+                          <StatusBadge label="At cashier" tone="amber" />
+                        ) : (
+                          <StatusBadge label="Due" tone="slate" />
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+            {ultrasoundNotes ? (
+              <p className="whitespace-pre-wrap text-slate-700">
+                <span className="font-semibold text-slate-800">Notes: </span>
+                {ultrasoundNotes.length > 120
+                  ? `${ultrasoundNotes.slice(0, 120)}…`
+                  : ultrasoundNotes}
+              </p>
+            ) : null}
+          </div>
         )}
       </Panel>
       <Panel title="Medicines">

@@ -12,6 +12,7 @@ export type Consultation = {
   assessment: string | null;
   plan: string | null;
   notes: string | null;
+  referralSheet?: Record<string, unknown> | null;
   diagnoses: Array<{
     id: string;
     label: string;

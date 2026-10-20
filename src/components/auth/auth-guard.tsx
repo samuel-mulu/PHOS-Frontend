@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { LoadingBlock } from "@/components/shared/state-blocks";
+import { AuthSessionSkeleton } from "@/components/shared/state-blocks";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCurrentUser, useSessionBootstrap } from "@/features/auth/hooks";
 
@@ -25,44 +25,23 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [hasHydrated, accessToken, refreshToken, router]);
 
   if (!hasHydrated) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingBlock label="Loading session" />
-      </div>
-    );
+    return <AuthSessionSkeleton label="Loading session" />;
   }
 
   if (!accessToken && !refreshToken) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingBlock label="Redirecting to sign in" />
-      </div>
-    );
+    return <AuthSessionSkeleton label="Redirecting to sign in" />;
   }
 
-  // Refresh-only restore (access expired, refresh still present).
   if (!accessToken && refreshToken) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingBlock label="Restoring session" />
-      </div>
-    );
+    return <AuthSessionSkeleton label="Restoring session" />;
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingBlock label="Restoring session" />
-      </div>
-    );
+    return <AuthSessionSkeleton label="Restoring session" />;
   }
 
   if (isError || !isSuccess) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingBlock label="Session expired" />
-      </div>
-    );
+    return <AuthSessionSkeleton label="Session expired" />;
   }
 
   return <>{children}</>;

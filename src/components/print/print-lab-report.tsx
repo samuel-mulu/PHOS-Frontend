@@ -21,16 +21,16 @@ function escapeHtml(value: string) {
 }
 
 function recommendForFlag(flag: string | null | undefined): string {
-  if (!flag) return "—";
+  if (!flag) return "-";
   switch (flag) {
     case "LOW":
-      return "Below reference — review clinically";
+      return "Below reference - review clinically";
     case "HIGH":
-      return "Above reference — review clinically";
+      return "Above reference - review clinically";
     case "CRITICAL":
-      return "Critical — urgent clinical review";
+      return "Critical - urgent clinical review";
     case "ABNORMAL":
-      return "Abnormal — correlate with history";
+      return "Abnormal - correlate with history";
     case "NORMAL":
       return "Within reference range";
     default:
@@ -45,7 +45,7 @@ function triageLines(triage: Record<string, unknown> | null): string[] {
     lines.push(`Temp: ${String(triage.temperature)} °C`);
   if (triage.systolic != null || triage.diastolic != null)
     lines.push(
-      `BP: ${String(triage.systolic ?? "—")}/${String(triage.diastolic ?? "—")}`,
+      `BP: ${String(triage.systolic ?? "-")}/${String(triage.diastolic ?? "-")}`,
     );
   if (triage.heartRate != null)
     lines.push(`Pulse: ${String(triage.heartRate)}`);
@@ -126,7 +126,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
           vitalsFromDoctor ? `Doctor vitals / exam:\n${vitalsFromDoctor}` : "",
         ]
           .filter(Boolean)
-          .join("\n") || "—";
+          .join("\n") || "-";
       vitalsBlock = `<div class="section"><h3>Doctor vitals</h3><pre>${escapeHtml(body)}</pre></div>`;
     }
 
@@ -134,17 +134,17 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
       .map((group) => {
         const rows = group.items
           .map((item) => {
-            const value = item.result?.value ?? "—";
+            const value = item.result?.value ?? "-";
             const flag = item.result?.flag ?? "";
             const unit = item.result?.unit ?? item.labTest.unit ?? "";
             const range =
-              item.result?.referenceRange ?? item.labTest.referenceRange ?? "—";
+              item.result?.referenceRange ?? item.labTest.referenceRange ?? "-";
             const recommend = includeStats
               ? recommendForFlag(item.result?.flag) +
                 (item.result?.notes?.trim()
                   ? ` · ${item.result.notes.trim()}`
                   : "")
-              : "—";
+              : "-";
             return `<tr>
               <td>${escapeHtml(item.labTest.name)}</td>
               <td>${escapeHtml(String(value))}${flag ? ` <span class="flag">${escapeHtml(flag)}</span>` : ""}</td>
@@ -168,13 +168,13 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
       .join("");
 
     const statsNote = includeStats
-      ? `<div class="section"><h3>Statistics — range &amp; recommend</h3>
+      ? `<div class="section"><h3>Statistics - range &amp; recommend</h3>
          <p class="note">Reference ranges are shown per test. Recommendations follow result flags (Normal / Low / High / Critical). Correlate with clinical findings.</p>
        </div>`
       : "";
 
     return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-<title>${escapeHtml(clinic)} — Full Lab Report</title>
+<title>${escapeHtml(clinic)} - Full Lab Report</title>
 <style>
   @page { margin: 14mm; }
   body { font-family: "Segoe UI", system-ui, sans-serif; color: #0f172a; margin: 0; padding: 20px; font-size: 12px; }
@@ -199,7 +199,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
 </style></head><body>
   <div class="header">
     <div>
-      <div class="brand">${escapeHtml(clinic.toUpperCase())} — Full Lab Report</div>
+      <div class="brand">${escapeHtml(clinic.toUpperCase())} - Full Lab Report</div>
       <div class="sub">Laboratory diagnostic report</div>
     </div>
     <div class="meta">
@@ -210,8 +210,8 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
   <div class="summary">
     <div><strong>Patient</strong><br/>${escapeHtml(name)}</div>
     <div><strong>Patient ID</strong><br/>${escapeHtml(patient.patientNumber)}</div>
-    <div><strong>Sex / Age</strong><br/>${escapeHtml(patient.sex.replaceAll("_", " "))} · ${age != null ? age : "—"}</div>
-    <div><strong>Ordered by</strong><br/>${escapeHtml(doctor || "—")}</div>
+    <div><strong>Sex / Age</strong><br/>${escapeHtml(patient.sex.replaceAll("_", " "))} · ${age != null ? age : "-"}</div>
+    <div><strong>Ordered by</strong><br/>${escapeHtml(doctor || "-")}</div>
     <div><strong>Priority</strong><br/>${escapeHtml(order.priority)}</div>
     <div><strong>Status</strong><br/>${escapeHtml(order.status.replaceAll("_", " "))}</div>
   </div>
@@ -269,7 +269,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
                 Print full lab report
               </h3>
               <p className="mt-1 text-xs text-slate-600">
-                Check sections to include — same idea as the doctor visit note.
+                Check sections to include - same idea as the doctor visit note.
                 Template uses range and recommend for statistics.
               </p>
 
@@ -348,7 +348,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
                     onChange={() => setIncludeStats((v) => !v)}
                   />
                   <span>
-                    Statistics — range &amp; recommend
+                    Statistics - range &amp; recommend
                     <span className="mt-0.5 block text-[11px] font-normal text-slate-500">
                       Adds reference range and clinical recommend columns (not
                       daily/weekly charts).

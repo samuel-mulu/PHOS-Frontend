@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DiagnosisType } from "@/types/encounter";
+import { referralSheetSchema } from "./referral-sheet";
 
 export const consultationSchema = z.object({
   chiefComplaint: z.string().optional(),
@@ -8,6 +9,7 @@ export const consultationSchema = z.object({
   assessment: z.string().optional(),
   plan: z.string().optional(),
   notes: z.string().optional(),
+  referralSheet: referralSheetSchema.optional().nullable(),
 });
 
 export type ConsultationFormValues = z.infer<typeof consultationSchema>;

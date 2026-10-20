@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SuggestingInput } from "@/components/shared/suggesting-field";
+import { rememberLabClinicalNotes } from "@/lib/field-memory/remember";
+import { useAuthStore } from "@/stores/auth-store";
 import { Label } from "@/components/ui/label";
 import { LoadingBlock } from "@/components/shared/state-blocks";
 import { SimpleDialog } from "@/components/shared/simple-dialog";
@@ -105,6 +108,8 @@ function WaitingOrderCard({
 
 export function DoctorLabOrdersPanel({
   consultationId,
+  patientId,
+  patientLabel,
   isFinalized,
   preferResults: _preferResults,
   encounterStatus,
@@ -113,6 +118,9 @@ export function DoctorLabOrdersPanel({
   onSentToLab,
 }: {
   consultationId?: string;
+  /** When set (consultation), patient lab report skips search. */
+  patientId?: string;
+  patientLabel?: string;
   isFinalized: boolean;
   /** Kept for callers; results + pending now show together. */
   preferResults?: boolean;
@@ -189,6 +197,10 @@ export function DoctorLabOrdersPanel({
     0,
   );
 
+  function rememberClinicalNotes() {
+    rememberLabClinicalNotes(useAuthStore.getState().user?.id, notes);
+  }
+
   function sendCashierLab() {
     if (!selected.length || create.isPending || cashierLabTotalCents < 1) return;
     create.mutate(
@@ -200,6 +212,7 @@ export function DoctorLabOrdersPanel({
       },
       {
         onSuccess: () => {
+          rememberClinicalNotes();
           setSelected([]);
           setOpenCategory(null);
           setNotes("");
@@ -247,7 +260,11 @@ export function DoctorLabOrdersPanel({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-slate-800">Laboratory</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <PrintPatientLabReport />
+          <PrintPatientLabReport
+            patientId={patientId}
+            patientLabel={patientLabel}
+            triggerLabel="Patient lab report"
+          />
           <PrintFullLabActivity />
           {(ready.length > 0 || waiting.length > 0) && (
             <DateSortToggle value={direction} onChange={setDirection} />
@@ -466,7 +483,8 @@ export function DoctorLabOrdersPanel({
                 </div>
                 <div>
                   <Label className="mb-1 block text-xs">Clinical notes</Label>
-                  <Input
+                  <SuggestingInput
+                    fieldKey="lab.clinicalNotes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Optional"
@@ -486,6 +504,7 @@ export function DoctorLabOrdersPanel({
                       },
                       {
                         onSuccess: () => {
+                          rememberClinicalNotes();
                           setSelected([]);
                           setOpenCategory(null);
                           setNotes("");

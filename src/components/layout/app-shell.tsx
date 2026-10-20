@@ -8,7 +8,7 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/layout/sidebar-provider";
-import { LoadingBlock } from "@/components/shared/state-blocks";
+import { AppShellSkeleton } from "@/components/shared/state-blocks";
 import { canAccessRoute } from "@/lib/navigation";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { NetworkStatusBanner } from "@/components/shared/network-status-banner";
@@ -48,19 +48,11 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (isLoading || !user) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingBlock label="Loading workspace" />
-      </div>
-    );
+    return <AppShellSkeleton label="Loading workspace" />;
   }
 
   if (!canAccessRoute(user.role, pathname)) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center p-8">
-        <LoadingBlock label="Checking permissions" />
-      </div>
-    );
+    return <AppShellSkeleton label="Checking permissions" />;
   }
 
   const showSidebar = sidebarOpen;

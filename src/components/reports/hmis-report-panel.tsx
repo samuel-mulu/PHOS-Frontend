@@ -131,7 +131,7 @@ function ClinicTables({
             ["SAM <5y", d.samUnder5],
           ]}
         />
-        <p className="text-[11px] text-slate-500">Deaths are not recorded — 0.</p>
+        <p className="text-[11px] text-slate-500">Deaths are not recorded - 0.</p>
       </Section>
 
       <Section title="HIV testing">
@@ -144,7 +144,7 @@ function ClinicTables({
               clinic.hiv.testedPregnant,
               clinic.hiv.positivePregnant,
             ],
-            ["New ART enrollments", clinic.hiv.artNew, "—"],
+            ["New ART enrollments", clinic.hiv.artNew, "-"],
           ]}
         />
       </Section>
@@ -159,7 +159,7 @@ function ClinicTables({
               )}
             />
             <p className="text-[11px] text-slate-500">
-              Method mix is not captured yet — leave blank on the paper HMIS.
+              Method mix is not captured yet - leave blank on the paper HMIS.
             </p>
           </Section>
           <Section title="Antenatal / MCH">
@@ -179,7 +179,7 @@ function ClinicTables({
           </Section>
           <Section title="EPI (under 1 year)">
             <p className="text-sm text-slate-500">
-              Immunization doses are not in PHOS yet — all zeros.
+              Immunization doses are not in PHOS yet - all zeros.
             </p>
           </Section>
         </>
@@ -317,10 +317,10 @@ export function HmisReportPanel({ full = false }: { full?: boolean }) {
         <>
           <div className="hidden" aria-hidden ref={printRef}>
             <h2>
-              {report.facility} — HMIS {full ? "Full" : "Live"}
+              {report.facility} - HMIS {full ? "Full" : "Live"}
             </h2>
             <p>
-              Period: {format(new Date(report.period.from), "dd MMM yyyy")} —{" "}
+              Period: {format(new Date(report.period.from), "dd MMM yyyy")} -{" "}
               {format(new Date(report.period.to), "dd MMM yyyy")}
             </p>
             {report.clinic ? (
@@ -329,7 +329,7 @@ export function HmisReportPanel({ full = false }: { full?: boolean }) {
           </div>
           <p className="text-sm text-slate-700">
             {report.facility} ·{" "}
-            {format(new Date(report.period.from), "dd MMM yyyy")} —{" "}
+            {format(new Date(report.period.from), "dd MMM yyyy")} -{" "}
             {format(new Date(report.period.to), "dd MMM yyyy")}
           </p>
           {report.clinic ? (

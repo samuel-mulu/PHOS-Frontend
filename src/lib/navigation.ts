@@ -150,6 +150,9 @@ export const NAV_ITEMS: NavItem[] = [
       Role.CEO,
       Role.ADMIN,
       Role.REPORTING_OFFICER,
+      Role.CASHIER,
+      Role.FRONT_DESK,
+      Role.RECEPTIONIST,
       Role.DOCTOR,
       Role.NURSE,
       Role.LAB_TECH,
@@ -174,7 +177,12 @@ export function navItemsForRole(role: RoleType): NavItem[] {
       role === Role.NURSE ||
       role === Role.LAB_TECH ||
       role === Role.LAB_SUPERVISOR;
-    return clinical ? { ...item, label: "HMIS" } : item;
+    if (clinical) return { ...item, label: "HMIS" };
+    const desk =
+      role === Role.CASHIER ||
+      role === Role.FRONT_DESK ||
+      role === Role.RECEPTIONIST;
+    return desk ? { ...item, href: "/reports?view=payments", label: "Reports" } : item;
   });
 }
 

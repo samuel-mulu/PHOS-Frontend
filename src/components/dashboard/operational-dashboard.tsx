@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { LoadingBlock, ErrorState } from "@/components/shared/state-blocks";
+import { ErrorState, WorkspacePageSkeleton } from "@/components/shared/state-blocks";
 import { fetchDashboardStats } from "@/features/reports/dashboard";
 import { fetchNotificationSummary } from "@/features/notifications/api";
 import { useTranslation } from "@/i18n/context";
@@ -42,7 +42,9 @@ export function OperationalDashboard() {
     refetchInterval: 60_000,
   });
 
-  if (stats.isLoading) return <LoadingBlock label="Loading dashboard" />;
+  if (stats.isLoading) {
+    return <WorkspacePageSkeleton label="Loading dashboard" />;
+  }
   if (stats.isError || !stats.data) {
     return (
       <ErrorState

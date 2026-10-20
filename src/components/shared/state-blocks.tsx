@@ -1,16 +1,13 @@
 import { AlertCircle, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export function LoadingBlock({ label = "Loading…" }: { label?: string }) {
-  return (
-    <div className="space-y-3" aria-busy="true" aria-label={label}>
-      <Skeleton className="h-4 w-1/3" />
-      <Skeleton className="h-10 w-full" />
-      <Skeleton className="h-10 w-full" />
-    </div>
-  );
-}
+export {
+  LoadingBlock,
+  AppShellSkeleton,
+  AuthSessionSkeleton,
+  LoginFormSkeleton,
+  WorkspacePageSkeleton,
+} from "@/components/shared/loading-skeletons";
 
 export function EmptyState({
   title,

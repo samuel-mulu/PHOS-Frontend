@@ -23,15 +23,7 @@ function isUltrasoundService(service: Service) {
   );
 }
 
-function isUltrasoundDescription(description: string) {
-  const hay = description.toLowerCase();
-  return (
-    hay.includes("ultrasound") ||
-    hay.includes("usg") ||
-    hay.includes("sono") ||
-    hay.includes("diagnostic imaging")
-  );
-}
+import { isUltrasoundDescription } from "@/lib/clinical/ultrasound";
 
 export function DoctorUltrasoundPanel({
   encounterId,

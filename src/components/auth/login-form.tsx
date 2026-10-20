@@ -5,8 +5,10 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { loginSchema, type LoginFormValues } from "@/features/auth/schemas";
 import { useLogin } from "@/features/auth/hooks";
+import { cn } from "@/lib/utils";
 
 export function LoginForm() {
   const login = useLogin();
@@ -21,40 +23,62 @@ export function LoginForm() {
 
   return (
     <form
-      className="space-y-4"
+      className="space-y-5"
       onSubmit={handleSubmit((values) => login.mutate(values))}
       noValidate
     >
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-slate-700">
+          Work email
+        </Label>
         <Input
           id="email"
           type="email"
           autoComplete="username"
+          placeholder="you@hiwetclinic.et"
+          className="h-11 border-slate-200 bg-white focus-visible:ring-teal-600/40"
           {...register("email")}
         />
         {errors.email ? (
-          <p className="text-sm text-red-600">{errors.email.message}</p>
+          <p className="text-sm text-red-600" role="alert">
+            {errors.email.message}
+          </p>
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="password" className="text-slate-700">
+          Password
+        </Label>
         <Input
           id="password"
           type="password"
           autoComplete="current-password"
+          placeholder="••••••••"
+          className="h-11 border-slate-200 bg-white focus-visible:ring-teal-600/40"
           {...register("password")}
         />
         {errors.password ? (
-          <p className="text-sm text-red-600">{errors.password.message}</p>
+          <p className="text-sm text-red-600" role="alert">
+            {errors.password.message}
+          </p>
         ) : null}
       </div>
       <Button
         type="submit"
-        className="w-full"
+        className={cn(
+          "h-11 w-full bg-teal-800 text-base font-semibold hover:bg-teal-900",
+          login.isPending && "pointer-events-none",
+        )}
         disabled={login.isPending}
       >
-        {login.isPending ? "Signing in…" : "Sign in"}
+        {login.isPending ? (
+          <span className="flex w-full items-center justify-center gap-2">
+            <Skeleton className="h-2 w-24 rounded-full bg-teal-400/50" />
+            <span className="text-teal-100">Signing in…</span>
+          </span>
+        ) : (
+          "Sign in"
+        )}
       </Button>
     </form>
   );

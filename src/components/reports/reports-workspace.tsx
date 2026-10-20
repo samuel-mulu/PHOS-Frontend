@@ -12,6 +12,7 @@ import { useOperationalSnapshot } from "@/features/reports/hooks";
 import { Button } from "@/components/ui/button";
 import { HmisReportPanel } from "@/components/reports/hmis-report-panel";
 import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
+import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
@@ -73,6 +74,7 @@ export function ReportsWorkspace() {
   const view = search.get("view");
   const isHfr = view === "hfr";
   const isFull = view === "full";
+  const isPayments = view === "payments";
   const query = useOperationalSnapshot(isHfr);
 
   return (
@@ -80,12 +82,18 @@ export function ReportsWorkspace() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
           <h1 className="text-lg font-semibold text-slate-900">
-            {isHfr ? "Health facility report" : "HMIS clinic report"}
+            {isPayments
+              ? "Cashier & front desk report"
+              : isHfr
+                ? "Health facility report"
+                : "HMIS clinic report"}
           </h1>
           <p className="text-sm text-slate-600">
-            {isHfr
-              ? "Operational counts for this facility (HFR)."
-              : "Live aggregations from doctor diagnoses and lab results."}
+            {isPayments
+              ? "Collections by day, month, or custom range — print PDF for records."
+              : isHfr
+                ? "Operational counts for this facility (HFR)."
+                : "Live aggregations from doctor diagnoses and lab results."}
           </p>
           <HmisClinicNav />
         </div>
@@ -96,7 +104,13 @@ export function ReportsWorkspace() {
         ) : null}
       </div>
 
-      {!isHfr ? <HmisReportPanel full={isFull} /> : null}
+      {isPayments ? (
+        <PaymentsReportPanel
+          showHeading={false}
+          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        />
+      ) : null}
+      {!isHfr && !isPayments ? <HmisReportPanel full={isFull} /> : null}
 
       {isHfr ? <QueryStaleBanner query={query} /> : null}
 
