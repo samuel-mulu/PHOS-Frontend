@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: "Perfect Health Operating System — clinic workstation",
+  description: "Perfect Health Operating System - clinic workstation",
   icons: {
     icon: [{ url: "/logo.png", type: "image/png" }],
     shortcut: ["/logo.png"],

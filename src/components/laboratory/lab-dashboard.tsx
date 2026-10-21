@@ -181,16 +181,16 @@ export function LabDashboard() {
                 : tab === "results"
                   ? "Enter results"
                   : tab === "send"
-                    ? "Results ready — send to doctor"
+                    ? "Results ready - send to doctor"
                     : "Already sent to doctor"}
             </h2>
             <p className="text-xs font-normal text-slate-500">
               {tab === "new"
                 ? "All new lab orders from doctors. If the patient is at the lab station, Call appears here too. Stays until you Mark sample received."
                 : tab === "results"
-                  ? "Sample already received — enter every test value"
+                  ? "Sample already received - enter every test value"
                   : tab === "send"
-                    ? "Results saved — send patient back to the doctor"
+                    ? "Results saved - send patient back to the doctor"
                     : "Already verified and returned to doctor"}
             </p>
           </div>

@@ -184,9 +184,9 @@ export function PatientSearchList({
                       .join(" ")}
                   </DataTableCell>
                   <DataTableCell>{p.sex}</DataTableCell>
-                  <DataTableCell>{p.phone ?? "—"}</DataTableCell>
+                  <DataTableCell>{p.phone ?? "-"}</DataTableCell>
                   <DataTableCell>
-                    {formatAge(p.dateOfBirth) ?? "—"}
+                    {formatAge(p.dateOfBirth) ?? "-"}
                   </DataTableCell>
                   {showActions ? (
                     <DataTableCell stickyRight>

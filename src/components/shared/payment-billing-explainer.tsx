@@ -7,7 +7,7 @@ type Props = {
   invoiceStatus?: string | null;
 };
 
-/** Compact status only — no instructional essays. */
+/** Compact status only - no instructional essays. */
 export function PaymentBillingExplainer({
   variant,
   invoiceNumber,
@@ -26,7 +26,7 @@ export function PaymentBillingExplainer({
 
   return (
     <p className="text-xs text-slate-500">
-      No invoice yet — desk will bill this visit.
+      No invoice yet - desk will bill this visit.
     </p>
   );
 }

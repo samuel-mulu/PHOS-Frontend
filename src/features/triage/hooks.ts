@@ -28,7 +28,7 @@ export function useRecordTriage(encounterId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters", encounterId] });
-      toast.success("Triage completed — patient sent to doctor queue");
+      toast.success("Triage completed - patient sent to doctor queue");
       router.push("/nurse");
     },
     onError: (error) => toast.error(normalizeApiError(error).message),

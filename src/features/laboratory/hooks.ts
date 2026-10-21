@@ -152,7 +152,7 @@ export function useCreateLabOrder(consultationId: string) {
       void queryClient.invalidateQueries({ queryKey: ["billing"] });
       toast.success(
         vars.billFirst
-          ? "Sent to cashier — after pay goes to lab"
+          ? "Sent to cashier - after pay goes to lab"
           : "Lab order created",
       );
     },

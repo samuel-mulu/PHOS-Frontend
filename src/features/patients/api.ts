@@ -122,6 +122,7 @@ function toPatientPayload(values: CreatePatientFormValues) {
     sex: rest.sex,
   };
   const optionalKeys = [
+    "patientNumber",
     "middleName",
     "phone",
     "email",
@@ -181,9 +182,8 @@ export async function updatePatient(
   id: string,
   values: CreatePatientFormValues,
 ) {
-  const { data } = await api.patch<Patient>(
-    `/patients/${id}`,
-    toPatientPayload(values),
-  );
+  const payload = toPatientPayload(values);
+  delete payload.patientNumber;
+  const { data } = await api.patch<Patient>(`/patients/${id}`, payload);
   return data;
 }

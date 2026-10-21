@@ -129,7 +129,7 @@ export function BillingWorkspace({
       }
 
       if (invoice.status === "VOIDED" || invoice.status === "CANCELLED") {
-        toast.error("This invoice was voided — cannot collect payment");
+        toast.error("This invoice was voided - cannot collect payment");
         return;
       }
 
@@ -144,7 +144,7 @@ export function BillingWorkspace({
         goCollect(encId, issued.invoiceNumber);
       } catch (e) {
         if (isAxiosError(e) && e.response?.status === 409) {
-          // Already issued between checks — still go to cashier
+          // Already issued between checks - still go to cashier
           goCollect(encId, invoice.invoiceNumber);
           return;
         }

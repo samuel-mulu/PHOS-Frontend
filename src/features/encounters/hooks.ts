@@ -86,7 +86,7 @@ export function usePaymentRequest(encounterId: string) {
         TRIAGE: "triage",
       };
       const dest = destLabels[vars.returnStation] ?? vars.returnStation;
-      toast.success(`Sent to cashier — returns to ${dest} after pay`);
+      toast.success(`Sent to cashier - returns to ${dest} after pay`);
     },
     onError: (error) => toast.error(normalizeApiError(error).message),
   });
@@ -124,7 +124,7 @@ export function useCreateEncounter() {
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       const dest =
         variables.initialStation === "TRIAGE" ? "triage" : "doctor";
-      toast.success(`Visit started — patient sent to ${dest}`);
+      toast.success(`Visit started - patient sent to ${dest}`);
     },
     onError: (error) => {
       if (isAxiosError(error) && error.response?.status === 409) {

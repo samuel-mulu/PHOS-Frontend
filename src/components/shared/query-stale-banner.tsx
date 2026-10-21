@@ -22,15 +22,15 @@ export function QueryStaleBanner<T>({
       ? format(new Date(query.dataUpdatedAt), "HH:mm")
       : null;
 
-  let message = "Network unavailable — data may be outdated.";
+  let message = "Network unavailable - data may be outdated.";
   if (browserOffline) {
     message = updated
-      ? `Offline — showing last loaded data from ${updated}. Changes cannot be submitted.`
-      : "Offline — changes cannot be submitted.";
+      ? `Offline - showing last loaded data from ${updated}. Changes cannot be submitted.`
+      : "Offline - changes cannot be submitted.";
   } else if (apiUnreachable) {
     message = updated
-      ? `Server unavailable — showing last loaded data from ${updated}. Safe to retry loading.`
-      : "Server unavailable — retry loading when the connection returns.";
+      ? `Server unavailable - showing last loaded data from ${updated}. Safe to retry loading.`
+      : "Server unavailable - retry loading when the connection returns.";
   }
 
   return (

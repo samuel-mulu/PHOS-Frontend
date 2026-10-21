@@ -130,7 +130,7 @@ export function AppointmentsPanel() {
                     {a.status.replaceAll("_", " ")}
                   </DataTableCell>
                   <DataTableCell className="max-w-[12rem] truncate text-slate-600">
-                    {a.notes ?? "—"}
+                    {a.notes ?? "-"}
                   </DataTableCell>
                   <DataTableCell stickyRight>
                     <div className="flex flex-nowrap gap-1.5">
@@ -187,7 +187,7 @@ export function AppointmentsPanel() {
                   id="appt-visit-dialog-title"
                   className="text-lg font-semibold text-slate-900"
                 >
-                  Appointment — bill & start
+                  Appointment - bill & start
                 </h3>
                 <Button
                   type="button"

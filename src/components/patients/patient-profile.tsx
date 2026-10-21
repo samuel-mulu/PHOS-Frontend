@@ -90,7 +90,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
             label="Emergency"
             value={
               p.emergencyContactName
-                ? `${p.emergencyContactName}${p.emergencyContactPhone ? ` — ${p.emergencyContactPhone}` : ""}`
+                ? `${p.emergencyContactName}${p.emergencyContactPhone ? ` - ${p.emergencyContactPhone}` : ""}`
                 : null
             }
           />
@@ -132,7 +132,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
                         .map((d) => d.label)
                         .join(", ") ??
                       enc.triage?.notes ??
-                      "—"}
+                      "-"}
                   </DataTableCell>
                 </DataTableRow>
               ))}
@@ -198,7 +198,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
                 {" · "}
                 {format(new Date(rx.createdAt), "dd MMM yyyy")}
                 <span className="text-slate-600">
-                  {" — "}
+                  {" - "}
                   {rx.items
                     .map((i) => `${i.medicine.name} ×${i.quantity}`)
                     .join("; ")}
@@ -303,7 +303,7 @@ function InfoRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex justify-between gap-4">
       <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right text-slate-900">{value ?? "—"}</dd>
+      <dd className="text-right text-slate-900">{value ?? "-"}</dd>
     </div>
   );
 }

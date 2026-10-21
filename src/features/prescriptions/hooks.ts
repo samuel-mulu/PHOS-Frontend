@@ -42,7 +42,7 @@ export function useCreatePrescription(consultationId: string) {
       toast.success(
         variables.sendToPharmacy
           ? "Saved and sent to pharmacy"
-          : "Prescription saved — send from Finish when ready",
+          : "Prescription saved - send from Finish when ready",
       );
     },
     onError: (e) => toast.error(normalizeApiError(e).message),

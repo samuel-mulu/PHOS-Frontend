@@ -134,7 +134,7 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
           <ul className="mt-2 space-y-2 text-sm">
             {inv.payments.map((p) => (
               <li key={p.id} className="rounded border border-slate-100 p-2">
-                {p.paymentNumber} — {formatCents(p.amountCents)} ({p.method}) —{" "}
+                {p.paymentNumber} - {formatCents(p.amountCents)} ({p.method}) -{" "}
                 {p.status}
               </li>
             ))}

@@ -345,8 +345,8 @@ export function ReceptionWorkspace({
                   className="text-lg font-semibold text-slate-900"
                 >
                   {visitKind === "NEW"
-                    ? "New patient — bill & start"
-                    : "Returning patient — bill & start"}
+                    ? "New patient - bill & start"
+                    : "Returning patient - bill & start"}
                 </h3>
                 <Button
                   type="button"

@@ -186,7 +186,7 @@ export function AdminUsersPanel() {
                 setDraft({ ...draft, departmentId: e.target.value })
               }
             >
-              <option value="">—</option>
+              <option value="">-</option>
               {(departments.data ?? []).map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -275,7 +275,7 @@ export function AdminUsersPanel() {
                 setEditDraft({ ...editDraft, departmentId: e.target.value })
               }
             >
-              <option value="">—</option>
+              <option value="">-</option>
               {(departments.data ?? []).map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}

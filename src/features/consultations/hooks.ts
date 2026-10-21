@@ -76,7 +76,7 @@ export function useFinalizeConsultation(
       });
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters"] });
-      toast.success("Consultation completed — patient left your queue");
+      toast.success("Consultation completed - patient left your queue");
       if (redirect) router.push("/doctor");
     },
     onError: (error) => toast.error(normalizeApiError(error).message),

@@ -33,7 +33,7 @@ export function LoginPanel() {
           </div>
           <p className="mt-8 text-sm leading-relaxed text-teal-50/90">
             Secure staff sign-in for reception, clinical, laboratory, pharmacy,
-            and cashier workflows — one clinic, one queue.
+            and cashier workflows - one clinic, one queue.
           </p>
           <ul className="mt-6 space-y-2 text-xs text-teal-100/85">
             {HIWET_BRAND.sidebarServices.slice(0, 4).map((item) => (

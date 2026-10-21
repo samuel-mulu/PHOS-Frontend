@@ -32,7 +32,7 @@ export function DateSortToggle({
         <SortOption
           active={value === "oldest"}
           onClick={() => onChange("oldest")}
-          title="Oldest first — longest waiting on top"
+          title="Oldest first - longest waiting on top"
         >
           Oldest
         </SortOption>

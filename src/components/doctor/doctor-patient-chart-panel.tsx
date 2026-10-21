@@ -756,7 +756,7 @@ function MedHistoryCard({
             {item.medicine.strength ? ` ${item.medicine.strength}` : ""}
             {item.dose || item.frequency || item.duration ? (
               <span className="text-slate-600">
-                {" — "}
+                {" - "}
                 {[item.dose, item.route, item.frequency, item.duration]
                   .filter(Boolean)
                   .join(" · ")}

@@ -70,12 +70,12 @@ export type CreateEncounterInput = {
   patientId: string;
   facilityId: string;
   departmentId: string;
-  /** Optional — visit may start with no fee. */
+  /** Optional - visit may start with no fee. */
   serviceId?: string;
   type?: EncounterType;
   priority?: EncounterPriority;
   reason?: string;
-  /** TRIAGE or DOCTOR — defaults to DOCTOR on the server. */
+  /** TRIAGE or DOCTOR - defaults to DOCTOR on the server. */
   initialStation?: "TRIAGE" | "DOCTOR";
   /** Optional doctor assignment by user id. */
   assignedDoctorId?: string;

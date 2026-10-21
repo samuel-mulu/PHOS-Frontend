@@ -78,12 +78,12 @@ export function PharmacyDashboard() {
                   <DataTableCell>
                     {rx.patient
                       ? `${rx.patient.firstName} ${rx.patient.lastName}`
-                      : "—"}
+                      : "-"}
                   </DataTableCell>
                   <DataTableCell>
                     {rx.doctor
                       ? `Dr. ${rx.doctor.firstName} ${rx.doctor.lastName}`
-                      : "—"}
+                      : "-"}
                   </DataTableCell>
                   <DataTableCell>{rx.status}</DataTableCell>
                   <DataTableCell className="text-xs">

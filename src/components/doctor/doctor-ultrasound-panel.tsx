@@ -116,7 +116,7 @@ export function DoctorUltrasoundPanel({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-sm font-semibold text-amber-950">
-                Sent to cashier — pending payment
+                Sent to cashier - pending payment
               </p>
               <p className="mt-0.5 text-xs text-amber-900">
                 After pay they return here so you can do the scan. Send is
@@ -156,7 +156,7 @@ export function DoctorUltrasoundPanel({
       ) : hasSentUltrasound && !atCashier ? (
         <article className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4">
           <p className="text-sm font-semibold text-emerald-950">
-            Ultrasound paid — do the scan here
+            Ultrasound paid - do the scan here
           </p>
           <ul className="mt-3 space-y-1.5">
             {sentLines.map((line, i) => (
@@ -176,7 +176,7 @@ export function DoctorUltrasoundPanel({
 
       {isFinalized ? (
         <p className="text-sm text-slate-500">
-          Consultation finalized — new ultrasound charges are closed.
+          Consultation finalized - new ultrasound charges are closed.
         </p>
       ) : hideOrderForm ? null : (
         <>
@@ -232,7 +232,7 @@ export function DoctorUltrasoundPanel({
           >
             {request.isPending
               ? "Sending…"
-              : `Send to cashier — ultrasound${chosen.length ? ` (${chosen.length})` : ""}`}
+              : `Send to cashier - ultrasound${chosen.length ? ` (${chosen.length})` : ""}`}
           </Button>
           <p className="text-xs text-slate-500">
             Patient pays at cashier / front desk, then returns here. You do the
@@ -243,7 +243,7 @@ export function DoctorUltrasoundPanel({
 
       <SimpleDialog
         open={confirmOpen}
-        title="Send to cashier — ultrasound"
+        title="Send to cashier - ultrasound"
         primaryLabel={request.isPending ? "Sending…" : "Send to cashier"}
         secondaryLabel="Cancel"
         onSecondary={() => setConfirmOpen(false)}

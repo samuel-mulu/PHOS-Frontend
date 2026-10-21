@@ -54,7 +54,7 @@ function incompleteVisitMessage(enc: Encounter): string {
 
 type InitialStation = typeof QueueStation.TRIAGE | typeof QueueStation.DOCTOR;
 
-/** How the desk opened this visit — not chosen manually. */
+/** How the desk opened this visit - not chosen manually. */
 export type VisitKind = "NEW" | "RETURNING" | "APPOINTMENT";
 
 const PAY_METHODS: PaymentMethod[] = [

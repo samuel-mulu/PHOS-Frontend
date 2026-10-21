@@ -339,7 +339,7 @@ export function AdminCatalogPanel() {
                 }
               />
               <Input
-                placeholder="Price (ETB) — 0 = no fixed fee"
+                placeholder="Price (ETB) - 0 = no fixed fee"
                 required
                 inputMode="decimal"
                 value={svcForm.priceEtb}

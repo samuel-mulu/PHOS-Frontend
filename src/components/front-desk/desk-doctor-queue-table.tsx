@@ -63,7 +63,7 @@ export function DeskDoctorQueueTable() {
             Doctor queue
           </h2>
           <p className="text-xs font-normal text-slate-500">
-            Read-only. After you assign a visit, watch where the patient is —
+            Read-only. After you assign a visit, watch where the patient is -
             doctor, lab, cashier, ultrasound return, results.
           </p>
         </div>
@@ -135,7 +135,7 @@ export function DeskDoctorQueueTable() {
                     <span className="font-medium">
                       {p
                         ? `${p.firstName} ${p.lastName}`
-                        : "—"}
+                        : "-"}
                     </span>
                     {p?.patientNumber ? (
                       <p className="text-xs text-slate-500">

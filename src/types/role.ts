@@ -1,4 +1,4 @@
-/** Mirrors backend Prisma `Role` enum — keep in sync with phos-backend. */
+/** Mirrors backend Prisma `Role` enum - keep in sync with phos-backend. */
 export const Role = {
   CEO: "CEO",
   ADMIN: "ADMIN",

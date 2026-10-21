@@ -62,7 +62,7 @@ export function useIssueInvoice(invoiceId: string) {
     mutationFn: () => issueInvoice(invoiceId),
     onSuccess: (data) => {
       void queryClient.setQueryData(["invoices", invoiceId], data);
-      toast.success("Invoice issued — ready for payment");
+      toast.success("Invoice issued - ready for payment");
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

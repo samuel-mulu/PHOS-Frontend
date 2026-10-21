@@ -1,6 +1,6 @@
 /**
  * Offline clinic PA via browser SpeechSynthesis (am-ET).
- * No network — uses OS-installed voices. Install an Amharic voice pack on the
+ * No network - uses OS-installed voices. Install an Amharic voice pack on the
  * workstation for best accent (Windows Language settings / Android TTS).
  */
 
@@ -78,7 +78,7 @@ export function stationCallLabelAm(station: CallStation): string {
   }
 }
 
-/** @deprecated Prefer stationCallLabelAm — kept for any external imports. */
+/** @deprecated Prefer stationCallLabelAm - kept for any external imports. */
 export function stationCallLabel(station: string): string {
   return stationCallLabelAm(station);
 }
@@ -126,7 +126,7 @@ export function buildPaymentCompleteMessage(
 }
 
 /**
- * Speak Amharic (am-ET) using the local speech engine — works offline when
+ * Speak Amharic (am-ET) using the local speech engine - works offline when
  * an Amharic voice is installed on the device.
  * Honors Settings → Patient Call voice (default off).
  */
@@ -152,7 +152,7 @@ export function announceClinic(message: string) {
     utter.lang = voice.lang || AM_LANG;
   }
 
-  // Defer slightly so cancel() settles (Chrome quirk) — still offline.
+  // Defer slightly so cancel() settles (Chrome quirk) - still offline.
   window.setTimeout(() => {
     try {
       synth.speak(utter);

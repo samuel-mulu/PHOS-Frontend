@@ -109,7 +109,7 @@ export function PrintHistoryVisitNotesDialog({
           Print visit notes
         </h3>
         <p className="mt-1 text-xs text-slate-600">
-          {visitLabel} — same sections apply to each selected visit. Each visit
+          {visitLabel} - same sections apply to each selected visit. Each visit
           starts on a new page.
         </p>
         <ul className="mt-4 space-y-2">

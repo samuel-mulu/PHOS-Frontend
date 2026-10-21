@@ -127,7 +127,7 @@ export function DoctorAppointmentsPanel() {
                   </span>
                 </DataTableCell>
                 <DataTableCell className="max-w-[14rem] truncate text-slate-600">
-                  {a.notes ?? "—"}
+                  {a.notes ?? "-"}
                 </DataTableCell>
               </DataTableRow>
             ))}

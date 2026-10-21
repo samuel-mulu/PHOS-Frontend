@@ -8,8 +8,8 @@ export function NetworkStatusBanner() {
   if (!browserOffline && !apiUnreachable) return null;
 
   const message = browserOffline
-    ? "Offline — changes cannot be submitted."
-    : "Server unavailable — retrying is safe for read-only actions.";
+    ? "Offline - changes cannot be submitted."
+    : "Server unavailable - retrying is safe for read-only actions.";
 
   return (
     <div

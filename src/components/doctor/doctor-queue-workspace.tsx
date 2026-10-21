@@ -280,7 +280,7 @@ export function DoctorQueueWorkspace() {
         <div className="space-y-2">
           <h1 className="text-xl font-semibold text-slate-900">Doctor</h1>
           <p className="text-sm text-slate-600">
-            Waiting for consultation is the default. Switch tabs at the top —
+            Waiting for consultation is the default. Switch tabs at the top -
             they stay with Full screen.
           </p>
           <HmisClinicNav />
@@ -530,7 +530,7 @@ export function DoctorQueueWorkspace() {
                         <div>
                           <dt className="text-slate-400">Service</dt>
                           <dd className="font-medium text-slate-800">
-                            {e.service?.name ?? e.department?.name ?? "—"}
+                            {e.service?.name ?? e.department?.name ?? "-"}
                           </dd>
                         </div>
                         <div className="sm:col-span-2">
@@ -538,7 +538,7 @@ export function DoctorQueueWorkspace() {
                           <dd className="text-slate-800">
                             {e.consultation?.chiefComplaint?.trim() ||
                               e.reason?.trim() ||
-                              "—"}
+                              "-"}
                           </dd>
                         </div>
                         {primaryDx || e.consultation?.assessment ? (
@@ -549,7 +549,7 @@ export function DoctorQueueWorkspace() {
                             <dd className="text-slate-800">
                               {primaryDx ||
                                 e.consultation?.assessment?.trim() ||
-                                "—"}
+                                "-"}
                             </dd>
                           </div>
                         ) : null}

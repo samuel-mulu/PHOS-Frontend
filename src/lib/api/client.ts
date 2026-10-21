@@ -36,7 +36,7 @@ export async function refreshAccessToken(): Promise<string | null> {
         { refreshToken },
         { withCredentials: true },
       );
-      // Persist immediately — must not depend on React effect cancellation.
+      // Persist immediately - must not depend on React effect cancellation.
       setSession({
         accessToken: data.accessToken,
         refreshToken: data.refreshToken,

@@ -37,7 +37,7 @@ const WAITING_STATUSES: LabOrderStatus[] = [
   LabOrderStatus.RESULT_ENTERED,
 ];
 
-/** Full verified result — primary thing the doctor needs to see. */
+/** Full verified result - primary thing the doctor needs to see. */
 function ReadyResultCard({ order }: { order: LabOrder }) {
   return (
     <article className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
@@ -134,7 +134,7 @@ export function DoctorLabOrdersPanel({
   const create = useCreateLabOrder(consultationId ?? "");
   const { direction, setDirection } = useDateSort("latest");
   const [selected, setSelected] = useState<string[]>([]);
-  /** Which panel list is open — tests start unchecked; doctor taps only what is needed. */
+  /** Which panel list is open - tests start unchecked; doctor taps only what is needed. */
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [priority, setPriority] = useState<EncounterPriority>(
     EncounterPriority.ROUTINE,
@@ -527,11 +527,11 @@ export function DoctorLabOrdersPanel({
                 >
                   {create.isPending && create.variables?.billFirst
                     ? "Sending…"
-                    : `Send to cashier — lab (${selected.length})`}
+                    : `Send to cashier - lab (${selected.length})`}
                 </Button>
               </div>
               <p className="text-xs text-slate-500">
-                Send lab order goes straight to lab. Send to cashier — lab:
+                Send lab order goes straight to lab. Send to cashier - lab:
                 patient pays first, then lab. Results come back to you.
               </p>
             </div>
@@ -539,13 +539,13 @@ export function DoctorLabOrdersPanel({
         </section>
       ) : (
         <p className="text-sm text-slate-500">
-          Consultation finalized — new lab orders are closed.
+          Consultation finalized - new lab orders are closed.
         </p>
       )}
 
       <SimpleDialog
         open={cashierLabOpen}
-        title="Send to cashier — lab"
+        title="Send to cashier - lab"
         primaryLabel={
           create.isPending ? "Sending…" : "Send to cashier"
         }

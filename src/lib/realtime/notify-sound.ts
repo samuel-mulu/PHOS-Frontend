@@ -22,7 +22,7 @@ export function unlockNotifySound() {
   });
 }
 
-/** Short chime for new notifications (Web Audio — no asset file). */
+/** Short chime for new notifications (Web Audio - no asset file). */
 export function playNotifySound() {
   try {
     const ctx = getCtx();
@@ -57,6 +57,6 @@ export function playNotifySound() {
 
     unlocked = true;
   } catch {
-    // Autoplay or AudioContext unavailable — ignore.
+    // Autoplay or AudioContext unavailable - ignore.
   }
 }

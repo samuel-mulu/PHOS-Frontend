@@ -164,9 +164,9 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
         void order.refetch();
         if (returningToSend) {
           setResultsEditMode(false);
-          toast.success("Results updated — review and send to doctor");
+          toast.success("Results updated - review and send to doctor");
         } else {
-          toast.success("Results saved — review them, then send to doctor");
+          toast.success("Results saved - review them, then send to doctor");
         }
       },
     });
@@ -185,7 +185,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
   function sendToDoctor() {
     verify.mutate(undefined, {
       onSuccess: () => {
-        toast.success("Sent to doctor — Lab results ready");
+        toast.success("Sent to doctor - Lab results ready");
         router.push("/laboratory");
       },
     });
@@ -209,7 +209,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
         )}
       >
         <h2 className="text-sm font-semibold text-slate-900">
-          {isDone ? "Sent to doctor" : "Step 3 — Send to doctor"}
+          {isDone ? "Sent to doctor" : "Step 3 - Send to doctor"}
         </h2>
         <p className="mt-1 text-sm text-slate-600">
           {isDone
@@ -331,7 +331,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
       {canReceive ? (
         <section className="rounded-lg border border-teal-200 bg-white p-4 shadow-sm">
           <h2 className="text-sm font-semibold text-slate-900">
-            Step 1 — Receive sample
+            Step 1 - Receive sample
           </h2>
           <p className="mt-1 text-sm text-slate-600">
             Then you will enter results on this page.
@@ -346,9 +346,9 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
                   setSeededFor(null);
                   void order.refetch();
                   // Stays on this page for Step 2. Leaves “New from doctor”
-                  // only after this receive — Open alone does not move the list.
+                  // only after this receive - Open alone does not move the list.
                   toast.success(
-                    "Sample received — order moved to Enter results. Fill values below.",
+                    "Sample received - order moved to Enter results. Fill values below.",
                   );
                 },
               })
@@ -359,7 +359,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
         </section>
       ) : null}
 
-      {/* Step 2 — RESULTS PRIMARY */}
+      {/* Step 2 - RESULTS PRIMARY */}
       {showResultsSection ? (
       <section
         ref={resultsSectionRef}
@@ -375,7 +375,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
             <h2 className="text-sm font-semibold text-slate-900">
               {isDone
                 ? "Final results (sent to doctor)"
-                : "Step 2 — Results (primary)"}
+                : "Step 2 - Results (primary)"}
             </h2>
             <p className="text-xs text-slate-500">
               {canEditResults
@@ -398,7 +398,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
             ) : null}
             {resultsReady && !isDone && !resultsEditMode ? (
               <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900">
-                Saved — ready to send
+                Saved - ready to send
               </span>
             ) : null}
           </div>
@@ -446,7 +446,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
               </span>
             ) : resultsReady && resultsEditMode ? (
               <span className="text-xs text-teal-700">
-                Save to return to Step 3 — Send to doctor
+                Save to return to Step 3 - Send to doctor
               </span>
             ) : resultsReady ? (
               <span className="text-xs text-teal-700">

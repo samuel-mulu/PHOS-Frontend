@@ -115,10 +115,10 @@ export function PaymentRequestPanel({
             <option value="">Select a service…</option>
             {priced.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name} — {formatCents(s.priceCents)}
+                {s.name} - {formatCents(s.priceCents)}
               </option>
             ))}
-            <option value={CUSTOM}>Other — type name and amount</option>
+            <option value={CUSTOM}>Other - type name and amount</option>
           </select>
         </div>
 

@@ -21,6 +21,8 @@ export type BirthInputMode = z.infer<typeof birthInputModeSchema>;
 
 export const createPatientSchema = z
   .object({
+    /** Clinic card ID. Leave blank to auto-assign next HC number. */
+    patientNumber: optionalText,
     firstName: z.string().trim().min(2, "First name is required"),
     middleName: optionalText,
     lastName: z.string().trim().min(2, "Last name is required"),
@@ -69,6 +71,7 @@ export type PatientFormValues = CreatePatientFormValues;
 export function patientToFormValues(patient: Patient): PatientFormValues {
   const years = ageYears(patient.dateOfBirth);
   return {
+    patientNumber: patient.patientNumber ?? "",
     firstName: patient.firstName,
     middleName: patient.middleName ?? "",
     lastName: patient.lastName,

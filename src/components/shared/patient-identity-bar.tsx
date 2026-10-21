@@ -97,17 +97,17 @@ export function PatientIdentityBar({
           </dd>
 
           <dt className="text-slate-500">Age</dt>
-          <dd className="text-slate-900">{age ?? "—"}</dd>
+          <dd className="text-slate-900">{age ?? "-"}</dd>
 
           <dt className="text-slate-500">Date of birth</dt>
           <dd className="text-slate-900">
             {patient.dateOfBirth
               ? format(new Date(patient.dateOfBirth), "dd MMM yyyy")
-              : "—"}
+              : "-"}
           </dd>
 
           <dt className="text-slate-500">Phone</dt>
-          <dd className="text-slate-900">{patient.phone ?? "—"}</dd>
+          <dd className="text-slate-900">{patient.phone ?? "-"}</dd>
 
           {encounterNumber ? (
             <>

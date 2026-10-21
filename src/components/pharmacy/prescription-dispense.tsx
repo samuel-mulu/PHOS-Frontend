@@ -78,7 +78,7 @@ export function PrescriptionDispense({
               className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
             >
               <p className="font-medium">
-                {item.medicine.code} — {item.medicine.name}
+                {item.medicine.code} - {item.medicine.name}
               </p>
               <p className="text-xs text-slate-600">
                 {item.dose} · {item.route} · {item.frequency} · {item.duration}

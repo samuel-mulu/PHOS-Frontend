@@ -19,7 +19,7 @@
   "dashboard.alerts": "Your unread alerts",
   "dashboard.openAlerts": "Open alert center",
   "billing.doctorTitle": "Payment request vs invoice",
-  "billing.doctorStep1": "Request payment notifies the desk — it does not charge.",
+  "billing.doctorStep1": "Request payment notifies the desk - it does not charge.",
   "billing.doctorStep2": "Desk creates and issues invoice, then cashier collects.",
   "billing.doctorStep3": "Request can be sent before or after invoice exists.",
   "billing.visit": "Visit",

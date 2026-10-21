@@ -22,6 +22,7 @@ import type { Patient } from "@/types/patient";
 import { Sex } from "@/types/patient";
 
 const emptyDefaults: PatientFormValues = {
+  patientNumber: "",
   firstName: "",
   lastName: "",
   sex: Sex.UNKNOWN,
@@ -103,7 +104,7 @@ export function PatientForm({
                   href={`/patients/${m.id}`}
                   className="text-teal-800 underline"
                 >
-                  {m.patientNumber} — {m.firstName} {m.lastName}
+                  {m.patientNumber} - {m.firstName} {m.lastName}
                   {m.phone ? ` (${m.phone})` : ""}
                 </Link>
               </li>
@@ -113,6 +114,30 @@ export function PatientForm({
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">
+        <Field
+          label="Clinic ID / Patient number"
+          error={errors.patientNumber?.message}
+          className="md:col-span-2"
+        >
+          <Input
+            id="patientNumber"
+            placeholder={
+              isEdit
+                ? undefined
+                : "Leave blank to auto-assign next HC number, or enter paper card ID"
+            }
+            readOnly={isEdit}
+            disabled={isEdit}
+            {...register("patientNumber")}
+          />
+          {!isEdit ? (
+            <p className="mt-1 text-xs text-slate-500">
+              Blank = continue from latest. Enter paper ID (e.g. HC15274) for a
+              new card. If the ID already exists, you will get a link to that
+              patient.
+            </p>
+          ) : null}
+        </Field>
         <Field label="First name *" error={errors.firstName?.message}>
           <Input id="firstName" {...register("firstName")} />
         </Field>

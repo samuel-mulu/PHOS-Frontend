@@ -100,7 +100,7 @@ function StockTab() {
             return (
               <DataTableRow key={m.id}>
                 <DataTableCell>
-                  {m.code} — {m.name}
+                  {m.code} - {m.name}
                 </DataTableCell>
                 <DataTableCell>{onHand}</DataTableCell>
                 <DataTableCell>{m.reorderLevel}</DataTableCell>
@@ -129,7 +129,7 @@ function LowStockTab() {
     <ul className="space-y-2 text-sm">
       {low.data.map((m) => (
         <li key={m.id} className="rounded border bg-white p-3">
-          {m.name} — reorder at {m.reorderLevel}
+          {m.name} - reorder at {m.reorderLevel}
         </li>
       ))}
     </ul>
@@ -209,7 +209,7 @@ function ReceiveTab({ enabled }: { enabled: boolean }) {
           <option value="">Select</option>
           {medicines.data?.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.code} — {m.name}
+              {m.code} - {m.name}
             </option>
           ))}
         </select>

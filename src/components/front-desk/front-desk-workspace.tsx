@@ -7,18 +7,21 @@ import { ReceptionWorkspace } from "@/components/reception/reception-workspace";
 import { CashierWorkspace } from "@/components/cashier/cashier-workspace";
 import { AppointmentsPanel } from "@/components/front-desk/appointments-panel";
 import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
+import { ExpenseRecordPanel } from "@/components/expenses/expense-record-panel";
+import { ExpensesReportPanel } from "@/components/expenses/expenses-report-panel";
 import { useQueue } from "@/features/queues/hooks";
 import { useAppointments } from "@/features/appointments/hooks";
 import { QueueStation } from "@/types/encounter";
 import { AppointmentStatus } from "@/types/appointment";
 import { cn } from "@/lib/utils";
 
-type Tab = "reception" | "appointments" | "payments" | "report";
+type Tab = "reception" | "appointments" | "payments" | "expenses" | "report";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "reception", label: "Reception" },
   { id: "appointments", label: "Appointments" },
   { id: "payments", label: "Payments" },
+  { id: "expenses", label: "Expenses" },
   { id: "report", label: "Report" },
 ];
 
@@ -28,6 +31,7 @@ function resolveTab(raw: string | null): Tab {
     raw === "reception" ||
     raw === "appointments" ||
     raw === "payments" ||
+    raw === "expenses" ||
     raw === "report"
   ) {
     return raw;
@@ -134,7 +138,13 @@ export function FrontDeskWorkspace() {
           onInvoiceFullyPaid={() => onTab("payments")}
         />
       ) : null}
-      {tab === "report" ? <PaymentsReportPanel /> : null}
+      {tab === "expenses" ? <ExpenseRecordPanel /> : null}
+      {tab === "report" ? (
+        <div className="space-y-6">
+          <PaymentsReportPanel />
+          <ExpensesReportPanel />
+        </div>
+      ) : null}
     </div>
   );
 }

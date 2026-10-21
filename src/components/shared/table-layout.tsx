@@ -26,7 +26,7 @@ export function useTableLayout() {
   return useContext(TableLayoutContext);
 }
 
-/** Fullscreen toggle — works inside ExpandablePanel or alone with local state. */
+/** Fullscreen toggle - works inside ExpandablePanel or alone with local state. */
 export function TableFullscreenButton({
   fullscreen,
   onToggle,
@@ -75,7 +75,7 @@ export function ExpandablePanel({
   bodyClassName,
 }: {
   title?: React.ReactNode;
-  /** Search / filters — stays visible in full screen. */
+  /** Search / filters - stays visible in full screen. */
   toolbar?: React.ReactNode;
   children: React.ReactNode;
   className?: string;

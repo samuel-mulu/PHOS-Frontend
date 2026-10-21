@@ -268,7 +268,7 @@ export function DoctorConsultationWorkspace({
         >
           <span>
             {labCounts.ready} lab result
-            {labCounts.ready === 1 ? "" : "s"} ready — open Orders → Laboratory.
+            {labCounts.ready === 1 ? "" : "s"} ready - open Orders → Laboratory.
           </span>
           <Button
             type="button"
@@ -336,11 +336,11 @@ export function DoctorConsultationWorkspace({
           ? "1 · Document this visit, then go to Orders."
           : workflowStep === "orders"
             ? labCounts.ready > 0
-              ? "2 · Review lab results. Medicines, cashier, or appointment — then Finish."
+              ? "2 · Review lab results. Medicines, cashier, or appointment - then Finish."
               : "2 · Lab, medicines, send to cashier, or book a follow-up appointment."
             : workflowStep === "finish"
               ? "3 · Send to pharmacy if needed, then complete this visit."
-              : "Past visits and results (read-only) — also via History at the top."}
+              : "Past visits and results (read-only) - also via History at the top."}
       </p>
 
       {ensuringDraft ? (
@@ -704,7 +704,7 @@ function defaultFollowUpLocal() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Cashier charge + follow-up booking — lives on Orders (with lab / Rx / US). */
+/** Cashier charge + follow-up booking - lives on Orders (with lab / Rx / US). */
 function OrdersCashierAppointment({
   encounterId,
   patientId,
@@ -749,7 +749,7 @@ function OrdersCashierAppointment({
         >
           {paymentReturnStation === "LAB"
             ? "Patient is at cashier for lab payment. After pay they go to lab. Results return to your queue when ready."
-            : "Patient is at cashier. After payment they return to your queue automatically — no cashier send-back step."}
+            : "Patient is at cashier. After payment they return to your queue automatically - no cashier send-back step."}
         </div>
       ) : null}
       <div className="grid gap-3 lg:grid-cols-2">
@@ -764,7 +764,7 @@ function OrdersCashierAppointment({
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-900">Cashier</h3>
             <p className="mt-1 text-xs text-slate-600">
-              Consultation finalized — desk handles remaining balance.
+              Consultation finalized - desk handles remaining balance.
             </p>
           </div>
         )}
@@ -783,7 +783,7 @@ function OrdersCashierAppointment({
                 <li key={a.id}>
                   {format(new Date(a.scheduledAt), "dd MMM yyyy, HH:mm")}
                   {a.notes ? (
-                    <span className="text-slate-500"> — {a.notes}</span>
+                    <span className="text-slate-500"> - {a.notes}</span>
                   ) : null}
                 </li>
               ))}
@@ -805,7 +805,7 @@ function OrdersCashierAppointment({
                 <Input
                   value={scheduleNotes}
                   onChange={(e) => setScheduleNotes(e.target.value)}
-                  placeholder="Optional — reason for follow-up"
+                  placeholder="Optional - reason for follow-up"
                   disabled={busy}
                 />
               </div>
@@ -839,7 +839,7 @@ function OrdersCashierAppointment({
   );
 }
 
-/** Finish step — pharmacy send + complete visit. */
+/** Finish step - pharmacy send + complete visit. */
 function FinishNextSteps({
   consultationId,
   invoiceId,
@@ -889,7 +889,7 @@ function FinishNextSteps({
         >
           {paymentReturnStation === "LAB"
             ? "Patient is at cashier for lab payment. After pay they go to lab. Results return to your queue when ready."
-            : "Patient is at cashier. After payment they return to your queue automatically — no cashier send-back step."}
+            : "Patient is at cashier. After payment they return to your queue automatically - no cashier send-back step."}
         </div>
       ) : null}
 
@@ -899,7 +899,7 @@ function FinishNextSteps({
           <p className="mt-1 text-xs text-slate-600">
             Dispense prescribed medicines.{" "}
             {activeRx.length === 0
-              ? "No active prescription yet — add medicines under Orders first, or still send if needed."
+              ? "No active prescription yet - add medicines under Orders first, or still send if needed."
               : `${activeRx.length} prescription ready.`}
           </p>
           {!isFinalized ? (
@@ -925,7 +925,7 @@ function FinishNextSteps({
           </p>
           {hasUnpaid && !isFinalized ? (
             <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-              Not paid — due {formatCents(unpaidCents)}. Use{" "}
+              Not paid - due {formatCents(unpaidCents)}. Use{" "}
               <strong>Send to cashier</strong> under Orders, then complete after
               payment.
             </p>
@@ -1021,7 +1021,7 @@ function PrescriptionTab({
       {!isFinalized ? (
         <div className="space-y-3">
           <p className="text-xs font-medium text-slate-600">
-            Select medicines — save now, or save and send to pharmacy
+            Select medicines - save now, or save and send to pharmacy
           </p>
           {medicines.isLoading ? (
             <LoadingBlock label="Loading medicines" />
@@ -1116,7 +1116,7 @@ function PrescriptionTab({
             {myRx.map((p) => (
               <li key={p.id} className="flex flex-wrap items-center gap-2">
                 <span>
-                  {p.prescriptionNumber} — {p.status}
+                  {p.prescriptionNumber} - {p.status}
                 </span>
                 <span className="text-xs text-slate-500">
                   {p.items?.map((i) => i.medicine?.name).filter(Boolean).join(", ")}
@@ -1292,7 +1292,7 @@ function VisitSideCards({
           <ul className="text-xs">
             {rxItems.map((p) => (
               <li key={p.id}>
-                {p.prescriptionNumber} — {p.status}
+                {p.prescriptionNumber} - {p.status}
               </li>
             ))}
           </ul>

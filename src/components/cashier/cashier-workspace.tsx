@@ -41,6 +41,8 @@ import { cn } from "@/lib/utils";
 import { sortByEnteredAtDesc } from "@/lib/queues/sort";
 import { ExpandablePanel } from "@/components/shared/table-layout";
 import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
+import { ExpenseRecordPanel } from "@/components/expenses/expense-record-panel";
+import { ExpensesReportPanel } from "@/components/expenses/expenses-report-panel";
 import { toast } from "sonner";
 
 function returnStationLabel(
@@ -56,7 +58,7 @@ function returnStationLabel(
   return map[station] ?? station;
 }
 
-type CashierTab = "waiting" | "report";
+type CashierTab = "waiting" | "expenses" | "report";
 
 function unpaidInvoiceLines(
   items: Array<{ id: string; description: string; totalCents: number }>,
@@ -200,13 +202,22 @@ export function CashierWorkspace({
           emphasize={waitingCount > 0}
         />
         {!embedded ? (
-          <TabButton
-            active={tab === "report"}
-            onClick={() => setTab("report")}
-            label="Report"
-            badge={0}
-            muted
-          />
+          <>
+            <TabButton
+              active={tab === "expenses"}
+              onClick={() => setTab("expenses")}
+              label="Expenses"
+              badge={0}
+              muted
+            />
+            <TabButton
+              active={tab === "report"}
+              onClick={() => setTab("report")}
+              label="Report"
+              badge={0}
+              muted
+            />
+          </>
         ) : null}
       </nav>
 
@@ -234,7 +245,7 @@ export function CashierWorkspace({
                 const label = returnStationLabel(dest);
                 toast.success(
                   label
-                    ? `Paid — patient sent back to ${label}`
+                    ? `Paid - patient sent back to ${label}`
                     : "Paid in full",
                 );
                 onInvoiceFullyPaid?.(id);
@@ -373,6 +384,12 @@ export function CashierWorkspace({
         </ExpandablePanel>
       ) : null}
 
+      {!embedded && tab === "expenses" ? (
+        <div className="space-y-6">
+          <ExpenseRecordPanel className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" />
+          <ExpensesReportPanel className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm" />
+        </div>
+      ) : null}
       {!embedded && tab === "report" ? <PaymentsReportPanel /> : null}
     </div>
   );
@@ -697,7 +714,7 @@ function PaymentPanel({
         onClose={() => setPaidDialogOpen(false)}
       >
         <p>
-          <strong>{patientName}</strong> — {invoiceNumber} paid.
+          <strong>{patientName}</strong> - {invoiceNumber} paid.
         </p>
         {lastReceipt ? (
           <p className="mt-2 text-slate-600">
