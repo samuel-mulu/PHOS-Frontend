@@ -128,7 +128,7 @@ export function PrintHistoryVisitNotesDialog({
                     />
                     {VISIT_NOTE_SECTION_LABEL[key]}
                     {!anyContent ? (
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-2xs text-slate-400">
                         (empty for selection)
                       </span>
                     ) : null}

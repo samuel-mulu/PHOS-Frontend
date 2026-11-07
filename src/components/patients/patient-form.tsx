@@ -131,7 +131,7 @@ export function PatientForm({
             {...register("patientNumber")}
           />
           {!isEdit ? (
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-muted">
               Blank = continue from latest. Enter paper ID (e.g. HC15274) for a
               new card. If the ID already exists, you will get a link to that
               patient.
@@ -150,7 +150,7 @@ export function PatientForm({
         <Field label="Sex" error={errors.sex?.message}>
           <select
             id="sex"
-            className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm"
+            className="flex h-10 w-full rounded-md border border-border bg-card px-3 text-sm"
             {...register("sex")}
           >
             {Object.values(Sex).map((v) => (
@@ -166,7 +166,7 @@ export function PatientForm({
               {birthInputMode === "age" ? "Age" : "Date of birth"}
             </Label>
             <div
-              className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5"
+              className="inline-flex rounded-md border border-border bg-muted-bg p-0.5"
               role="tablist"
               aria-label="Birth input mode"
             >
@@ -288,10 +288,10 @@ function ModeTab({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        "rounded px-2 py-0.5 text-[11px] font-medium transition-colors",
+        "rounded px-2 py-0.5 text-2xs font-medium transition-colors",
         active
-          ? "bg-white text-teal-800 shadow-sm"
-          : "text-slate-500 hover:text-slate-700",
+          ? "bg-card text-teal-800 shadow-sm"
+          : "text-muted hover:text-foreground",
       )}
     >
       {children}

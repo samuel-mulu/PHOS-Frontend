@@ -41,10 +41,10 @@ export function ServicePriceRow({
   });
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-100 px-2 py-1.5">
+    <li className="flex flex-wrap items-center justify-between gap-2 rounded border border-border px-2 py-1.5">
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-slate-900">{service.name}</p>
-        <p className="text-xs text-slate-500">
+        <p className="font-medium text-foreground">{service.name}</p>
+        <p className="text-xs text-muted">
           {service.code} · {service.active ? "Active" : "Inactive"}
         </p>
       </div>
@@ -57,7 +57,7 @@ export function ServicePriceRow({
             onChange={(e) => setPriceEtb(e.target.value)}
             aria-label="Price in ETB"
           />
-          <span className="text-xs text-slate-500">ETB</span>
+          <span className="text-xs text-muted">ETB</span>
           <Button
             type="button"
             size="sm"

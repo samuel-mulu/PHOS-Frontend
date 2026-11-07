@@ -9,6 +9,7 @@ export const consultationSchema = z.object({
   assessment: z.string().optional(),
   plan: z.string().optional(),
   notes: z.string().optional(),
+  labNotes: z.string().optional(),
   referralSheet: referralSheetSchema.optional().nullable(),
 });
 

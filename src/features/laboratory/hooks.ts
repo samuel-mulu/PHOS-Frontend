@@ -12,7 +12,9 @@ import {
   fetchLabOrder,
   fetchLabOrders,
   fetchLabTests,
+  fetchPatientLabOrders,
   receiveLabOrder,
+  saveDoctorLabNotes,
   setLabTestActive,
   updateLabTest,
   verifyLabOrder,
@@ -155,6 +157,29 @@ export function useCreateLabOrder(consultationId: string) {
           ? "Sent to cashier - after pay goes to lab"
           : "Lab order created",
       );
+    },
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
+}
+
+export function usePatientLabOrders(patientId?: string) {
+  return useQuery({
+    queryKey: ["lab", "patients", patientId, "orders"],
+    queryFn: () => fetchPatientLabOrders(patientId!),
+    enabled: Boolean(patientId),
+  });
+}
+
+export function useSaveDoctorLabNotes(orderId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (doctorReviewNotes: string) =>
+      saveDoctorLabNotes(orderId, doctorReviewNotes),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["lab", "orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["lab", "patients"] });
+      void queryClient.invalidateQueries({ queryKey: ["patients"] });
+      toast.success("Lab notes saved");
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });

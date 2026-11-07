@@ -152,6 +152,7 @@ export function buildPaymentsReportHtml(input: {
     <div class="tile"><div class="label">Refunded</div><div class="val">${escapeHtml(formatCents(report.totals.refundedCents))}</div></div>
     <div class="tile net"><div class="label">Net</div><div class="val">${escapeHtml(formatCents(report.totals.netCents))}</div></div>
   </div>
+  ${report.totals.debtCollectedCents ? `<p class="sub">Of which old debt collected: <strong>${escapeHtml(formatCents(report.totals.debtCollectedCents))}</strong></p>` : ""}
 
   ${methodRows.length > 0 ? `<h2>By payment method</h2>
   <table><thead><tr><th>Method</th><th class="num">Count</th><th class="num">Amount</th></tr></thead><tbody>${methodSummary}</tbody></table>` : ""}

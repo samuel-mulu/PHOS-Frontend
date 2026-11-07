@@ -1,16 +1,25 @@
 "use client";
 
+import {
+  INVOICE_STATE_LABEL,
+  invoiceState,
+  LINE_STATE_LABEL,
+  type InvoiceMoney,
+  type LineState,
+} from "@/lib/billing/invoice-state";
 import { cn } from "@/lib/utils";
 
 type Tone = "green" | "amber" | "red" | "blue" | "slate" | "teal";
 
 const TONE_CLASS: Record<Tone, string> = {
-  green: "bg-emerald-100 text-emerald-900 ring-emerald-200",
-  amber: "bg-amber-100 text-amber-950 ring-amber-200",
-  red: "bg-red-100 text-red-900 ring-red-200",
-  blue: "bg-sky-100 text-sky-900 ring-sky-200",
-  slate: "bg-slate-100 text-slate-700 ring-slate-200",
-  teal: "bg-teal-100 text-teal-900 ring-teal-200",
+  green:
+    "bg-emerald-100 text-emerald-900 ring-emerald-200 dark:bg-emerald-400/10 dark:text-emerald-200 dark:ring-emerald-400/20",
+  amber:
+    "bg-amber-100 text-amber-950 ring-amber-200 dark:bg-amber-400/10 dark:text-amber-200 dark:ring-amber-400/20",
+  red: "bg-red-100 text-red-900 ring-red-200 dark:bg-red-400/10 dark:text-red-200 dark:ring-red-400/20",
+  blue: "bg-sky-100 text-sky-900 ring-sky-200 dark:bg-sky-400/10 dark:text-sky-200 dark:ring-sky-400/20",
+  slate: "bg-muted-bg text-foreground ring-border",
+  teal: "bg-teal-100 text-teal-900 ring-teal-200 dark:bg-teal-400/10 dark:text-teal-200 dark:ring-teal-400/20",
 };
 
 export function StatusBadge({
@@ -42,8 +51,9 @@ export function invoiceStatusBadge(status: string) {
     case "PAID":
       return <StatusBadge label={label} tone="green" />;
     case "ISSUED":
-    case "PARTIALLY_PAID":
       return <StatusBadge label={label} tone="amber" />;
+    case "PARTIALLY_PAID":
+      return <StatusBadge label="PART PAID" tone="blue" />;
     case "DRAFT":
       return <StatusBadge label={label} tone="slate" />;
     case "VOID":
@@ -51,6 +61,42 @@ export function invoiceStatusBadge(status: string) {
     default:
       return <StatusBadge label={label} tone="slate" />;
   }
+}
+
+/** Money state of a whole invoice: Paid / Part paid / Pay later / Waived / Not paid. */
+export function invoiceStateBadge(inv: InvoiceMoney | null | undefined) {
+  if (!inv) return null;
+  if (inv.status === "VOID") return <StatusBadge label="Void" tone="red" />;
+  if (inv.status === "DRAFT") return <StatusBadge label="Draft" tone="slate" />;
+  const state = invoiceState(inv);
+  const tone: Tone =
+    state === "PAID"
+      ? "green"
+      : state === "WAIVED" || state === "PARTIAL"
+        ? "blue"
+        : "amber";
+  return <StatusBadge label={INVOICE_STATE_LABEL[state]} tone={tone} />;
+}
+
+/** Money state of one invoice line. While at the cashier, unpaid shows "At cashier". */
+export function LineStateBadge({
+  state,
+  atCashier,
+}: {
+  state: LineState;
+  atCashier: boolean;
+}) {
+  if ((state === "DUE" || state === "PART_PAID") && atCashier)
+    return <StatusBadge label="At cashier" tone="amber" />;
+  const tone: Tone =
+    state === "PAID"
+      ? "green"
+      : state === "WAIVED"
+        ? "blue"
+        : state === "DUE"
+          ? "slate"
+          : "amber";
+  return <StatusBadge label={LINE_STATE_LABEL[state]} tone={tone} />;
 }
 
 /** Desk-friendly location for an open visit (read-only tracking). */

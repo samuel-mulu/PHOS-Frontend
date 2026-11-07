@@ -8,8 +8,8 @@ export default function NewPatientPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900">Register patient</h1>
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <h1 className="text-xl font-semibold text-foreground">Register patient</h1>
+      <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
         <PatientRegisterForm
           onRegistered={(patient) => {
             router.push(

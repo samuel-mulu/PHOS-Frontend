@@ -7,8 +7,14 @@ function num(value?: string) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+function yesNoToBool(value?: "" | "yes" | "no") {
+  if (value === "yes") return true;
+  if (value === "no") return false;
+  return undefined;
+}
+
 function toPayload(values: TriageFormValues) {
-  const out: Record<string, string | number> = {};
+  const out: Record<string, string | number | boolean> = {};
   const temperature = num(values.temperature);
   const systolic = num(values.systolic);
   const diastolic = num(values.diastolic);
@@ -31,6 +37,15 @@ function toPayload(values: TriageFormValues) {
   if (painScore !== undefined) out.painScore = Math.trunc(painScore);
   if (bloodGlucoseMgDl !== undefined)
     out.bloodGlucoseMgDl = Math.trunc(bloodGlucoseMgDl);
+
+  const pregnancySuspected = yesNoToBool(values.pregnancySuspected);
+  const mchNeeded = yesNoToBool(values.mchNeeded);
+  const fpNeeded = yesNoToBool(values.fpNeeded);
+  if (pregnancySuspected !== undefined)
+    out.pregnancySuspected = pregnancySuspected;
+  if (mchNeeded !== undefined) out.mchNeeded = mchNeeded;
+  if (fpNeeded !== undefined) out.fpNeeded = fpNeeded;
+
   if (values.notes?.trim()) out.notes = values.notes.trim();
 
   return out;

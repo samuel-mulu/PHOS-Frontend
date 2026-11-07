@@ -87,7 +87,7 @@ function AppShellFrame({ children }: { children: React.ReactNode }) {
         <AppTopBar />
         <main
           className={cn(
-            "min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4 md:p-6",
+            "min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6",
             chartFocus && "md:p-4 lg:p-5",
           )}
         >

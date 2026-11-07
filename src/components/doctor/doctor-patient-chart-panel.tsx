@@ -23,7 +23,13 @@ import { LabOrderStatus } from "@/types/lab";
 import { PrintHistoryVisitNotesDialog } from "@/components/print/print-history-visit-notes";
 import { isUltrasoundDescription } from "@/lib/clinical/ultrasound";
 
-type HistoryTab = "visits" | "labs" | "ultrasound" | "meds";
+type HistoryTab =
+  | "visits"
+  | "labs"
+  | "ultrasound"
+  | "meds"
+  | "maternal"
+  | "fp";
 
 type UltrasoundHistoryRecord = {
   encounter: PatientChartEncounter;
@@ -95,7 +101,7 @@ export function DoctorPatientChartPanel({
       );
     }
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-3">
+      <div className="rounded-lg border border-border bg-card p-3">
         <LoadingBlock label="Loading history" />
       </div>
     );
@@ -111,22 +117,17 @@ export function DoctorPatientChartPanel({
   return (
     <>
       {compact ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => setOpen(true)}
-        >
+        <Button type="button" size="sm" onClick={() => setOpen(true)}>
           View history
         </Button>
       ) : (
-        <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="space-y-3 rounded-lg border border-border bg-card p-3 shadow-sm">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
                 Patient history
               </h3>
-              <p className="mt-0.5 text-[11px] text-slate-500">
+              <p className="mt-0.5 text-2xs text-muted">
                 Read-only past visits, labs &amp; medicines
               </p>
             </div>
@@ -146,9 +147,9 @@ export function DoctorPatientChartPanel({
           </dl>
 
           <div className="space-y-1.5">
-            <p className="text-xs font-medium text-slate-700">Recent visits</p>
+            <p className="text-xs font-medium text-foreground">Recent visits</p>
             {pastVisits.length === 0 ? (
-              <p className="text-xs text-slate-500">No earlier visits.</p>
+              <p className="text-xs text-muted">No earlier visits.</p>
             ) : (
               <ul className="max-h-36 space-y-1.5 overflow-y-auto text-xs">
                 {pastVisits.slice(0, 4).map((enc) => {
@@ -158,15 +159,15 @@ export function DoctorPatientChartPanel({
                   return (
                     <li
                       key={enc.id}
-                      className="rounded-md border border-slate-100 px-2 py-1.5"
+                      className="rounded-md border border-border px-2 py-1.5"
                     >
-                      <p className="font-medium text-slate-800">
+                      <p className="font-medium text-foreground">
                         {enc.visitNumber != null
                           ? `Visit ${enc.visitNumber} · `
                           : ""}
                         {formatFullDate(enc.startedAt)}
                       </p>
-                      <p className="text-slate-600">
+                      <p className="text-muted">
                         {enc.service?.name ?? enc.type}
                         {who ? ` · ${who}` : ""}
                       </p>
@@ -207,9 +208,9 @@ export function DoctorPatientChartPanel({
 
 function StatMini({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md bg-slate-50 px-1 py-1.5">
-      <p className="text-base font-semibold text-slate-900">{value}</p>
-      <p className="text-[10px] uppercase tracking-wide text-slate-500">
+    <div className="rounded-md bg-muted-bg px-1 py-1.5">
+      <p className="text-base font-semibold text-foreground">{value}</p>
+      <p className="text-3xs uppercase tracking-wide text-muted">
         {label}
       </p>
     </div>
@@ -270,12 +271,12 @@ function PatientHistoryDrawer({
         onClick={onClose}
       />
       <aside
-        className="relative z-10 flex h-full w-full max-w-2xl flex-col overflow-hidden bg-white shadow-xl sm:rounded-xl"
+        className="relative z-10 flex h-full w-full max-w-2xl flex-col overflow-hidden bg-card shadow-xl sm:rounded-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="patient-history-title"
       >
-        <header className="border-b border-slate-200 px-4 py-3 sm:px-5">
+        <header className="border-b border-border px-4 py-3 sm:px-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-teal-700">
@@ -283,7 +284,7 @@ function PatientHistoryDrawer({
               </p>
               <h2
                 id="patient-history-title"
-                className="text-lg font-semibold text-slate-900"
+                className="text-lg font-semibold text-foreground"
               >
                 {[
                   chart.patient.firstName,
@@ -293,7 +294,7 @@ function PatientHistoryDrawer({
                   .filter(Boolean)
                   .join(" ")}
               </h2>
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-muted">
                 {chart.patient.patientNumber}
                 {age ? ` · ${age}` : ""}
               </p>
@@ -307,13 +308,24 @@ function PatientHistoryDrawer({
               Allergies: {chart.patient.allergies}
             </p>
           ) : null}
-          <nav className="mt-3 flex flex-wrap gap-1.5" aria-label="History sections">
+          <nav
+            className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto pb-1"
+            aria-label="History sections"
+          >
             {(
               [
                 ["visits", `Visits (${chart.encounters.length})`],
                 ["labs", `Lab records (${chart.labOrders.length})`],
                 ["ultrasound", `Ultrasound (${ultrasoundRecords.length})`],
                 ["meds", `Medications (${chart.prescriptions.length})`],
+                [
+                  "maternal",
+                  `Maternal (${(chart.maternal?.ancVisits?.length ?? 0) + (chart.maternal?.obstetricHistory ? 1 : 0)})`,
+                ],
+                [
+                  "fp",
+                  `FP (${chart.maternal?.familyPlanningRecords?.length ?? 0})`,
+                ],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -323,7 +335,7 @@ function PatientHistoryDrawer({
                   "rounded-md px-3 py-1.5 text-xs font-medium",
                   tab === id
                     ? "bg-teal-800 text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                    : "bg-muted-bg text-foreground hover:bg-muted-bg",
                 )}
                 onClick={() => setTab(id)}
               >
@@ -340,8 +352,8 @@ function PatientHistoryDrawer({
                 <Empty>No previous visits recorded.</Empty>
               ) : (
                 <>
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p className="text-xs text-slate-600">
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted-bg px-3 py-2">
+                    <p className="text-xs text-muted">
                       Select visits, then print Hiwet-style visit notes.
                     </p>
                     <Button
@@ -413,6 +425,10 @@ function PatientHistoryDrawer({
               )}
             </div>
           ) : null}
+
+          {tab === "maternal" ? <MaternalHistoryView chart={chart} /> : null}
+
+          {tab === "fp" ? <FamilyPlanningHistoryView chart={chart} /> : null}
         </div>
       </aside>
 
@@ -428,7 +444,133 @@ function PatientHistoryDrawer({
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-slate-500">{children}</p>;
+  return <p className="text-sm text-muted">{children}</p>;
+}
+
+function yesNo(v?: boolean | null) {
+  if (v === true) return "Yes";
+  if (v === false) return "No";
+  return "—";
+}
+
+function MaternalHistoryView({ chart }: { chart: PatientChart }) {
+  const maternal = chart.maternal;
+  const oh = maternal?.obstetricHistory;
+  const visits = maternal?.ancVisits ?? [];
+
+  if (!oh && visits.length === 0) {
+    return <Empty>No maternal health records on chart.</Empty>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {oh ? (
+        <article className="rounded-lg border border-border bg-card p-3 shadow-sm">
+          <SectionLabel>Obstetric history</SectionLabel>
+          <ul className="mt-2 grid gap-1 text-xs text-foreground sm:grid-cols-2">
+            <li>
+              GTPAL: {oh.gravidity ?? "—"}-{oh.term ?? "—"}-{oh.preterm ?? "—"}-
+              {oh.abortion ?? "—"}-{oh.living ?? "—"}
+            </li>
+            <li>LMP: {oh.lmp ? format(new Date(oh.lmp), "dd MMM yyyy") : "—"}</li>
+            <li>EDD: {oh.edd ? format(new Date(oh.edd), "dd MMM yyyy") : "—"}</li>
+            <li>Previous delivery: {oh.previousDelivery ?? "—"}</li>
+            <li>Previous CS: {yesNo(oh.previousCs)}</li>
+            <li>Previous PPH: {yesNo(oh.previousPph)}</li>
+            <li>PET/eclampsia: {yesNo(oh.previousPetEclampsia)}</li>
+            <li>Stillbirth: {yesNo(oh.stillbirth)}</li>
+            {oh.bloodGroupRh ? <li>Blood group: {oh.bloodGroupRh}</li> : null}
+            {oh.hivStatus ? <li>HIV: {oh.hivStatus}</li> : null}
+          </ul>
+        </article>
+      ) : null}
+
+      {visits.length === 0 ? (
+        <Empty>No ANC visits on chart.</Empty>
+      ) : (
+        visits.map((v) => (
+          <article
+            key={v.id}
+            className="rounded-lg border border-border bg-card p-3 shadow-sm"
+          >
+            <p className="font-semibold text-foreground">
+              ANC visit {v.visitNumber}
+              {v.visitDate
+                ? ` · ${format(new Date(v.visitDate), "dd MMM yyyy")}`
+                : ""}
+            </p>
+            <ul className="mt-2 grid gap-1 text-xs text-foreground sm:grid-cols-2">
+              <li>
+                GA:{" "}
+                {v.gaWeeks != null
+                  ? `${v.gaWeeks}w${v.gaDays != null ? `+${v.gaDays}d` : ""}`
+                  : "—"}
+              </li>
+              <li>
+                BP:{" "}
+                {v.systolic != null
+                  ? `${v.systolic}/${v.diastolic ?? "—"}`
+                  : "—"}
+              </li>
+              <li>Weight: {v.weightKg ?? "—"}</li>
+              <li>FHR: {v.fetalHeartRate ?? "—"}</li>
+              <li>Risk: {v.riskAssessment ?? "—"}</li>
+            </ul>
+            {v.treatment ? (
+              <ReadonlyBlock label="Treatment" value={v.treatment} />
+            ) : null}
+          </article>
+        ))
+      )}
+    </div>
+  );
+}
+
+function FamilyPlanningHistoryView({ chart }: { chart: PatientChart }) {
+  const records = chart.maternal?.familyPlanningRecords ?? [];
+  if (records.length === 0) {
+    return <Empty>No family planning records on chart.</Empty>;
+  }
+
+  return (
+    <div className="space-y-3">
+      {records.map((r) => (
+        <article
+          key={r.id}
+          className="rounded-lg border border-border bg-card p-3 shadow-sm"
+        >
+          <p className="font-semibold text-foreground">
+            {r.visitType?.replaceAll("_", " ") ?? "FP visit"}
+            {r.currentMethod
+              ? ` · ${r.currentMethod.replaceAll("_", " ")}`
+              : ""}
+          </p>
+          <ul className="mt-2 grid gap-1 text-xs text-foreground sm:grid-cols-2">
+            <li>
+              G/P/Living: {r.gravidity ?? "—"}/{r.parity ?? "—"}/
+              {r.livingChildren ?? "—"}
+            </li>
+            <li>
+              BP:{" "}
+              {r.systolic != null ? `${r.systolic}/${r.diastolic ?? "—"}` : "—"}
+            </li>
+            <li>Previous method: {r.previousMethod?.replaceAll("_", " ") ?? "—"}</li>
+            <li>Outcome: {r.outcome ?? "—"}</li>
+            <li>Counseling: {yesNo(r.counselingDone)}</li>
+            <li>
+              Procedure:{" "}
+              {r.procedureDate
+                ? format(new Date(r.procedureDate), "dd MMM yyyy")
+                : "—"}
+            </li>
+          </ul>
+          {r.counselingNotes ? (
+            <ReadonlyBlock label="Counseling notes" value={r.counselingNotes} />
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
 }
 
 function VisitHistoryCard({
@@ -459,8 +601,8 @@ function VisitHistoryCard({
   return (
     <article
       className={cn(
-        "rounded-lg border bg-white shadow-sm",
-        isCurrent ? "border-teal-300 ring-1 ring-teal-100" : "border-slate-200",
+        "rounded-lg border bg-card shadow-sm",
+        isCurrent ? "border-teal-300 ring-1 ring-teal-100" : "border-border",
       )}
     >
       <div className="flex items-start gap-2 px-3 py-3">
@@ -483,11 +625,11 @@ function VisitHistoryCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             {encounter.visitNumber != null ? (
-              <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">
+              <span className="rounded-full bg-teal-700 px-2 py-0.5 text-2xs font-bold text-white">
                 Visit {encounter.visitNumber}
               </span>
             ) : null}
-            <p className="font-semibold text-slate-900">
+            <p className="font-semibold text-foreground">
               {formatFullDate(encounter.startedAt)}
             </p>
             {encounterStatusBadge(encounter.status)}
@@ -495,13 +637,13 @@ function VisitHistoryCard({
               <StatusBadge label="This visit" tone="teal" />
             ) : null}
           </div>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted">
             {encounter.service?.name ?? encounter.type}
             {encounter.department?.name
               ? ` · ${encounter.department.name}`
               : ""}
           </p>
-          <p className="mt-0.5 text-xs text-slate-500">
+          <p className="mt-0.5 text-xs text-muted">
             {who ?? "Doctor not recorded"}
             {encounter.encounterNumber
               ? ` · ${encounter.encounterNumber}`
@@ -515,7 +657,7 @@ function VisitHistoryCard({
       </div>
 
       {expanded ? (
-        <div className="space-y-3 border-t border-slate-100 px-3 py-3 text-sm">
+        <div className="space-y-3 border-t border-border px-3 py-3 text-sm">
           {encounter.reason ? (
             <ReadonlyBlock label="Visit reason">{encounter.reason}</ReadonlyBlock>
           ) : null}
@@ -523,7 +665,7 @@ function VisitHistoryCard({
           {encounter.triage ? (
             <section>
               <SectionLabel>Triage</SectionLabel>
-              <ul className="mt-1 grid gap-1 text-xs text-slate-700 sm:grid-cols-2">
+              <ul className="mt-1 grid gap-1 text-xs text-foreground sm:grid-cols-2">
                 {encounter.triage.temperature != null ? (
                   <li>Temp: {encounter.triage.temperature} °C</li>
                 ) : null}
@@ -573,6 +715,7 @@ function VisitHistoryCard({
                 label="Medical notes / follow-up / recommendations"
                 value={consult.notes}
               />
+              <ReadonlyBlock label="Lab notes" value={consult.labNotes} />
               <ReadonlyBlock label="Diagnosis" value={consult.assessment} />
               <ReadonlyBlock label="Ultrasound" value={consult.plan} />
               <ReadonlyBlock
@@ -581,13 +724,13 @@ function VisitHistoryCard({
               />
             </section>
           ) : (
-            <p className="text-xs text-slate-500">No consultation notes.</p>
+            <p className="text-xs text-muted">No consultation notes.</p>
           )}
 
           <section>
             <SectionLabel>Labs this visit ({labs.length})</SectionLabel>
             {labs.length === 0 ? (
-              <p className="mt-1 text-xs text-slate-500">None</p>
+              <p className="mt-1 text-xs text-muted">None</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {labs.map((o) => (
@@ -602,7 +745,7 @@ function VisitHistoryCard({
           <section>
             <SectionLabel>Medications this visit ({meds.length})</SectionLabel>
             {meds.length === 0 ? (
-              <p className="mt-1 text-xs text-slate-500">None</p>
+              <p className="mt-1 text-xs text-muted">None</p>
             ) : (
               <ul className="mt-2 space-y-2">
                 {meds.map((rx) => (
@@ -629,26 +772,26 @@ function UltrasoundHistoryCard({
     doctorName(encounter.assignedDoctor);
 
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <article className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         {encounter.visitNumber != null ? (
-          <span className="rounded-full bg-teal-700 px-2 py-0.5 text-[11px] font-bold text-white">
+          <span className="rounded-full bg-teal-700 px-2 py-0.5 text-2xs font-bold text-white">
             Visit {encounter.visitNumber}
           </span>
         ) : null}
-        <p className="font-semibold text-slate-900">
+        <p className="font-semibold text-foreground">
           {formatFullDate(encounter.startedAt)}
         </p>
         {encounterStatusBadge(encounter.status)}
       </div>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-muted">
         {who ?? "Doctor not recorded"}
         {encounter.encounterNumber ? ` · ${encounter.encounterNumber}` : ""}
       </p>
       {orderedLines.length > 0 ? (
         <div className="mt-3">
           <SectionLabel>Ordered on invoice</SectionLabel>
-          <ul className="mt-1 list-inside list-disc text-xs text-slate-700">
+          <ul className="mt-1 list-inside list-disc text-xs text-foreground">
             {orderedLines.map((line) => (
               <li key={line}>{line}</li>
             ))}
@@ -658,7 +801,7 @@ function UltrasoundHistoryCard({
       {planText ? (
         <ReadonlyBlock label="Ultrasound report / notes">{planText}</ReadonlyBlock>
       ) : (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-muted">
           No ultrasound text in consultation notes for this visit.
         </p>
       )}
@@ -677,14 +820,14 @@ function LabHistoryCard({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200 p-3",
+        "rounded-md border border-border p-3",
         verified && "border-l-4 border-l-emerald-500",
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="font-medium text-slate-900">{order.orderNumber}</p>
-          <p className="text-xs text-slate-500">
+          <p className="font-medium text-foreground">{order.orderNumber}</p>
+          <p className="text-xs text-muted">
             {formatFullDate(order.createdAt)}
             {doctorName(order.doctor) ? ` · ${doctorName(order.doctor)}` : ""}
           </p>
@@ -697,11 +840,11 @@ function LabHistoryCard({
             key={item.id}
             className="flex flex-wrap items-baseline justify-between gap-2"
           >
-            <span className="font-medium text-slate-800">
+            <span className="font-medium text-foreground">
               {item.labTest?.name ?? "Test"}
             </span>
             {verified && item.result?.value ? (
-              <span className="text-slate-900">
+              <span className="text-foreground">
                 {item.result.value}
                 {item.result.unit ? ` ${item.result.unit}` : ""}
                 {item.result.flag ? (
@@ -710,15 +853,23 @@ function LabHistoryCard({
                   </span>
                 ) : null}
               </span>
+            ) : verified ? (
+              <span className="italic text-muted">Not added</span>
             ) : (
-              <span className="text-slate-400">No result yet</span>
+              <span className="text-muted">No result yet</span>
             )}
           </li>
         ))}
       </ul>
       {order.clinicalNotes ? (
-        <p className="mt-2 text-[11px] text-slate-500">
+        <p className="mt-2 text-2xs text-muted">
           Clinical notes: {order.clinicalNotes}
+        </p>
+      ) : null}
+      {order.doctorReviewNotes ? (
+        <p className="mt-1.5 rounded bg-emerald-50 px-2 py-1 text-2xs text-emerald-950">
+          <span className="font-semibold">Lab notes: </span>
+          {order.doctorReviewNotes}
         </p>
       ) : null}
     </div>
@@ -733,13 +884,13 @@ function MedHistoryCard({
   compact?: boolean;
 }) {
   return (
-    <div className="rounded-md border border-slate-200 p-3">
+    <div className="rounded-md border border-border p-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <p className="font-medium text-slate-900">
+          <p className="font-medium text-foreground">
             {rx.prescriptionNumber ?? "Prescription"}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             {formatFullDate(rx.createdAt)}
             {doctorName(rx.doctor) ? ` · ${doctorName(rx.doctor)}` : ""}
           </p>
@@ -751,18 +902,18 @@ function MedHistoryCard({
       </div>
       <ul className={cn("mt-2 space-y-1.5 text-xs", !compact && "text-sm")}>
         {rx.items.map((item, idx) => (
-          <li key={`${rx.id}-${idx}`} className="text-slate-800">
+          <li key={`${rx.id}-${idx}`} className="text-foreground">
             <span className="font-medium">{item.medicine.name}</span>
             {item.medicine.strength ? ` ${item.medicine.strength}` : ""}
             {item.dose || item.frequency || item.duration ? (
-              <span className="text-slate-600">
+              <span className="text-muted">
                 {" - "}
                 {[item.dose, item.route, item.frequency, item.duration]
                   .filter(Boolean)
                   .join(" · ")}
               </span>
             ) : null}
-            <span className="text-slate-500"> · qty {item.quantity}</span>
+            <span className="text-muted"> · qty {item.quantity}</span>
           </li>
         ))}
       </ul>
@@ -772,7 +923,7 @@ function MedHistoryCard({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <p className="text-xs font-semibold uppercase tracking-wide text-muted">
       {children}
     </p>
   );
@@ -790,11 +941,11 @@ function ReadonlyBlock({
   const content = children ?? value;
   if (!content) return null;
   return (
-    <div className="rounded-md bg-slate-50 px-2.5 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-md bg-muted-bg px-2.5 py-2">
+      <p className="text-3xs font-semibold uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className="mt-0.5 whitespace-pre-wrap text-xs text-slate-800">
+      <p className="mt-0.5 whitespace-pre-wrap text-xs text-foreground">
         {content}
       </p>
     </div>

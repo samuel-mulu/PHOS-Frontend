@@ -50,7 +50,7 @@ export function LoginForm() {
       noValidate
     >
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-slate-700">
+        <Label htmlFor="email" className="text-foreground">
           Work email
         </Label>
         <Input
@@ -58,7 +58,7 @@ export function LoginForm() {
           type="email"
           autoComplete="username"
           placeholder="you@hiwetclinic.et"
-          className="h-11 border-slate-200 bg-white focus-visible:ring-teal-600/40"
+          className="h-11 border-border bg-card focus-visible:ring-teal-600/40"
           {...register("email")}
         />
         {errors.email ? (
@@ -68,7 +68,7 @@ export function LoginForm() {
         ) : null}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password" className="text-slate-700">
+        <Label htmlFor="password" className="text-foreground">
           Password
         </Label>
         <Input
@@ -76,7 +76,7 @@ export function LoginForm() {
           type="password"
           autoComplete="current-password"
           placeholder="••••••••"
-          className="h-11 border-slate-200 bg-white focus-visible:ring-teal-600/40"
+          className="h-11 border-border bg-card focus-visible:ring-teal-600/40"
           {...register("password")}
         />
         {errors.password ? (
@@ -86,7 +86,7 @@ export function LoginForm() {
         ) : null}
       </div>
 
-      <label className="flex cursor-pointer items-start gap-2.5 text-sm text-slate-700">
+      <label className="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
         <input
           type="checkbox"
           className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-800 focus:ring-teal-600"
@@ -95,7 +95,7 @@ export function LoginForm() {
         />
         <span>
           Remember my password on this device
-          <span className="mt-0.5 block text-[11px] font-normal text-slate-500">
+          <span className="mt-0.5 block text-2xs font-normal text-muted">
             Saves email and password in this browser only. Do not use on shared
             computers.
           </span>

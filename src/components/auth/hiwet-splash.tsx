@@ -98,7 +98,7 @@ function HiwetSplash({ onContinue }: { onContinue: () => void }) {
         >
           Tap to continue
         </span>
-        <span className="mt-3 text-[11px] text-teal-100/60">
+        <span className="mt-3 text-2xs text-teal-100/60">
           Staff sign-in · {HIWET_BRAND.locationEn}
         </span>
       </button>

@@ -42,6 +42,8 @@ export type LabOrder = {
   status: LabOrderStatus;
   priority: EncounterPriority;
   clinicalNotes: string | null;
+  doctorReviewNotes?: string | null;
+  doctorReviewedAt?: string | null;
   createdAt: string;
   patient: Patient;
   doctor?: { id: string; firstName: string; lastName: string };
@@ -152,6 +154,16 @@ export async function enterLabResults(id: string, results: ResultValueInput[]) {
 
 export async function verifyLabOrder(id: string) {
   const { data } = await api.post<LabOrder>(`/lab/orders/${id}/verify`);
+  return data;
+}
+
+export async function saveDoctorLabNotes(
+  id: string,
+  doctorReviewNotes: string,
+) {
+  const { data } = await api.patch<LabOrder>(`/lab/orders/${id}/doctor-notes`, {
+    doctorReviewNotes,
+  });
   return data;
 }
 

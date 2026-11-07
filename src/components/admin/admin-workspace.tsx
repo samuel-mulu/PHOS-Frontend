@@ -19,13 +19,13 @@ export function AdminWorkspace() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-lg font-semibold text-slate-900">Administration</h1>
-        <p className="text-sm text-slate-600">
+        <h1 className="text-lg font-semibold text-foreground">Administration</h1>
+        <p className="text-sm text-muted">
           User and facility configuration using backend RBAC (CEO, ADMIN,
           IT_ADMIN).
         </p>
       </div>
-      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-border pb-2">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -33,7 +33,7 @@ export function AdminWorkspace() {
             className={`rounded-md px-3 py-1.5 text-sm ${
               tab === t.id
                 ? "bg-teal-800 text-white"
-                : "text-slate-600 hover:bg-slate-100"
+                : "text-muted hover:bg-muted-bg"
             }`}
             onClick={() => setTab(t.id)}
           >

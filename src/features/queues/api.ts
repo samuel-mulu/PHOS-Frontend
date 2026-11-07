@@ -34,6 +34,15 @@ export type QueueEntry = {
     patient: Patient;
     service?: { name: string } | null;
     type: string;
+    /** Present on cashier queue rows. */
+    invoice?: {
+      id: string;
+      status: string;
+      totalCents: number;
+      paidCents: number;
+      waivedCents?: number;
+      deferredCents?: number;
+    } | null;
   };
 };
 

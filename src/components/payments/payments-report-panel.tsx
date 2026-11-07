@@ -130,10 +130,10 @@ export function PaymentsReportPanel({
     <div className={cn("space-y-4", className)}>
       {showHeading ? (
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">
+          <h2 className="text-sm font-semibold text-foreground">
             Cashier &amp; front desk collections
           </h2>
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-muted">
             Payments recorded at cashier and front desk · default is this month ·
             print PDF or export CSV
           </p>
@@ -155,7 +155,7 @@ export function PaymentsReportPanel({
                 "rounded-md px-3 py-1.5 text-xs font-medium",
                 preset === id
                   ? "bg-teal-800 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                  : "bg-muted-bg text-foreground hover:bg-muted-bg",
               )}
               onClick={() => applyPreset(id)}
             >
@@ -215,7 +215,7 @@ export function PaymentsReportPanel({
         ) : null}
       </div>
       {query.data ? (
-        <p className="text-xs text-slate-500">Period: {periodLabel}</p>
+        <p className="text-xs text-muted">Period: {periodLabel}</p>
       ) : null}
 
       {query.isLoading ? <LoadingBlock label="Loading payment report" /> : null}
@@ -225,7 +225,7 @@ export function PaymentsReportPanel({
 
       {query.data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <SummaryTile label="Payments" value={String(query.data.totals.count)} />
             <SummaryTile
               label="Collected"
@@ -240,14 +240,18 @@ export function PaymentsReportPanel({
               value={formatCents(query.data.totals.netCents)}
               emphasize
             />
+            <SummaryTile
+              label="Of which old debt"
+              value={formatCents(query.data.totals.debtCollectedCents ?? 0)}
+            />
           </div>
 
           {methodRows.length > 0 ? (
-            <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+            <div className="flex flex-wrap gap-2 text-xs text-muted">
               {methodRows.map(([method, stats]) => (
                 <span
                   key={method}
-                  className="rounded-md bg-slate-100 px-2 py-1 tabular-nums"
+                  className="rounded-md bg-muted-bg px-2 py-1 tabular-nums"
                 >
                   {paymentMethodLabel(method)}: {stats.count} ·{" "}
                   {formatCents(stats.amountCents)}
@@ -259,10 +263,10 @@ export function PaymentsReportPanel({
           <ExpandablePanel
             title={
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">
+                <h2 className="text-sm font-semibold text-foreground">
                   Payment detail
                 </h2>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-muted">
                   {format(new Date(query.data.period.from), "dd MMM yyyy")} -{" "}
                   {format(new Date(query.data.period.to), "dd MMM yyyy")}
                 </p>
@@ -293,12 +297,17 @@ export function PaymentsReportPanel({
                       </DataTableCell>
                       <DataTableCell className="font-medium">
                         {row.paymentNumber}
+                        {row.isDebtPayment ? (
+                          <div className="text-2xs font-semibold text-amber-800">
+                            Debt payment
+                          </div>
+                        ) : null}
                       </DataTableCell>
                       <DataTableCell>
-                        <div className="font-medium text-slate-900">
+                        <div className="font-medium text-foreground">
                           {patientName(row)}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-muted">
                           {row.patient.patientNumber}
                         </div>
                       </DataTableCell>
@@ -317,7 +326,7 @@ export function PaymentsReportPanel({
                       <DataTableCell className="tabular-nums font-medium">
                         {formatCents(row.netCents)}
                       </DataTableCell>
-                      <DataTableCell className="text-slate-600">
+                      <DataTableCell className="text-muted">
                         {row.recordedBy.firstName} {row.recordedBy.lastName}
                       </DataTableCell>
                     </DataTableRow>
@@ -344,14 +353,14 @@ function SummaryTile({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200 bg-white px-3 py-2",
+        "rounded-md border border-border bg-card px-3 py-2",
         emphasize && "border-teal-200 bg-teal-50/40",
       )}
     >
-      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+      <div className="text-2xs font-medium uppercase tracking-wide text-muted">
         {label}
       </div>
-      <div className="mt-0.5 text-base font-semibold tabular-nums text-slate-900">
+      <div className="mt-0.5 text-base font-semibold tabular-nums text-foreground">
         {value}
       </div>
     </div>

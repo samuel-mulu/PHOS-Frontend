@@ -11,6 +11,9 @@ export const triageSchema = z.object({
   heightCm: z.string().optional(),
   painScore: z.string().optional(),
   bloodGlucoseMgDl: z.string().optional(),
+  pregnancySuspected: z.enum(["", "yes", "no"]).optional(),
+  mchNeeded: z.enum(["", "yes", "no"]).optional(),
+  fpNeeded: z.enum(["", "yes", "no"]).optional(),
   notes: z.string().optional(),
 });
 

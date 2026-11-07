@@ -128,7 +128,7 @@ export function BillingWorkspace({
         return;
       }
 
-      if (invoice.status === "VOIDED" || invoice.status === "CANCELLED") {
+      if (invoice.status === "VOID" || invoice.status === "CANCELLED") {
         toast.error("This invoice was voided - cannot collect payment");
         return;
       }
@@ -172,7 +172,7 @@ export function BillingWorkspace({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {!embedded ? (
-        <h1 className="text-xl font-semibold text-slate-900">Billing</h1>
+        <h1 className="text-xl font-semibold text-foreground">Billing</h1>
       ) : null}
 
       {highlightEncounterId && highlight.data ? (
@@ -180,16 +180,16 @@ export function BillingWorkspace({
           <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
             Ready to bill
           </p>
-          <div className="flex flex-wrap items-center gap-2 text-base text-slate-900">
+          <div className="flex flex-wrap items-center gap-2 text-base text-foreground">
             <span className="font-semibold">
               {highlight.data.patient.firstName}{" "}
               {highlight.data.patient.lastName}
             </span>
-            <span className="text-slate-500">
+            <span className="text-muted">
               · {highlight.data.encounterNumber}
             </span>
             {highlight.data.service ? (
-              <span className="text-slate-600">
+              <span className="text-muted">
                 · {highlight.data.service.name}
               </span>
             ) : null}
@@ -239,11 +239,11 @@ export function BillingWorkspace({
         </div>
       ) : null}
 
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
         <h2 className="text-sm font-semibold">Open visits</h2>
         {encounters.isLoading ? <LoadingBlock /> : null}
         {activeVisits.length === 0 && encounters.isSuccess ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             No open visits. Start one from Reception.
           </p>
         ) : null}
@@ -252,18 +252,18 @@ export function BillingWorkspace({
             <li
               key={enc.id}
               className={cn(
-                "flex flex-wrap items-center justify-between gap-2 rounded-md border border-slate-200 p-3",
+                "flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3",
                 enc.id === highlightEncounterId &&
                   "border-teal-400 bg-teal-50/40",
               )}
             >
               <div>
-                <p className="font-medium text-slate-900">
+                <p className="font-medium text-foreground">
                   {enc.patient
                     ? `${enc.patient.firstName} ${enc.patient.lastName}`
                     : enc.encounterNumber}
                 </p>
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-muted">
                   {enc.encounterNumber}
                   {enc.service ? ` · ${enc.service.name}` : ""}
                   <span className="ml-1 inline-flex align-middle">
@@ -288,13 +288,13 @@ export function BillingWorkspace({
         <div className="space-y-3">
           <button
             type="button"
-            className="text-xs font-medium text-slate-500 underline"
+            className="text-xs font-medium text-muted underline"
             onClick={() => setShowAdvanced((v) => !v)}
           >
             {showAdvanced ? "Hide advanced" : "Advanced options"}
           </button>
           {showAdvanced ? (
-            <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm">
               <h2 className="text-sm font-semibold">Create by encounter ID</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -341,7 +341,7 @@ export function BillingWorkspace({
                 {create.isPending ? "Creating…" : "Create draft invoice"}
               </Button>
               {preview.data ? (
-                <p className="text-xs text-slate-600">
+                <p className="text-xs text-muted">
                   {preview.data.encounterNumber} · {preview.data.status} ·{" "}
                   {preview.data.service?.name}
                 </p>
@@ -352,7 +352,7 @@ export function BillingWorkspace({
       ) : null}
 
       {!embedded ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm space-y-3">
           <h2 className="text-sm font-semibold">Open invoice</h2>
           <InvoiceLookup />
         </div>

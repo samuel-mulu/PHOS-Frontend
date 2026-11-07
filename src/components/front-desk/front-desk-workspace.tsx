@@ -42,7 +42,7 @@ function resolveTab(raw: string | null): Tab {
 function RedBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-3xs font-bold leading-none text-white">
       {count > 99 ? "99+" : count}
     </span>
   );
@@ -97,13 +97,11 @@ export function FrontDeskWorkspace() {
   return (
     <div className="space-y-4">
       <nav
-        className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 px-1 pb-2"
+        className="sticky top-0 z-10 -mx-1 flex flex-wrap gap-2 border-b border-border bg-muted-bg px-1 pb-2"
         aria-label="Front desk"
       >
         {TABS.map((t) => {
           const badge = badgeFor(t.id);
-          const emphasize =
-            (t.id === "payments" || t.id === "reception") && badge > 0;
           return (
             <button
               key={t.id}
@@ -111,10 +109,8 @@ export function FrontDeskWorkspace() {
               className={cn(
                 "inline-flex items-center rounded-md px-4 py-2 text-sm font-medium transition-colors",
                 tab === t.id
-                  ? "bg-teal-800 text-white"
-                  : emphasize
-                    ? "bg-red-50 text-red-900 ring-1 ring-red-200 hover:bg-red-100"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                  ? "bg-teal-700 text-white shadow-sm dark:bg-primary"
+                  : "bg-slate-100 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-muted-bg dark:text-foreground dark:ring-border dark:hover:bg-hover-strong",
               )}
               onClick={() => onTab(t.id)}
             >

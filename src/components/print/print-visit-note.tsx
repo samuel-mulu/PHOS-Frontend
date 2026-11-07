@@ -179,31 +179,26 @@ export function PrintVisitNote({
 
   return (
     <div className="relative">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={openDialog}
-      >
+      <Button type="button" size="sm" onClick={openDialog}>
         Print visit note
       </Button>
       {open ? (
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/55"
             aria-label="Close"
             onClick={() => setOpen(false)}
           />
           <div
             role="dialog"
             aria-modal="true"
-            className="relative w-full max-w-md rounded-lg bg-white p-5 shadow-xl"
+            className="relative w-full max-w-md rounded-lg border border-border bg-card p-5 text-foreground shadow-xl"
           >
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-base font-semibold text-foreground">
               Print visit note
             </h3>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-muted">
               Choose which visit to print. Sections reflect that visit&apos;s
               saved consultation notes.
             </p>
@@ -224,7 +219,7 @@ export function PrintVisitNote({
                 ))}
               </select>
               {chart.isLoading && !chart.data ? (
-                <p className="text-[11px] text-slate-500">Loading visits…</p>
+                <p className="text-2xs text-slate-500">Loading visits…</p>
               ) : null}
             </div>
 
@@ -240,7 +235,7 @@ export function PrintVisitNote({
                       />
                       {VISIT_NOTE_SECTION_LABEL[key]}
                       {!visitNoteSectionText(consultation, key) ? (
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-2xs text-slate-400">
                           (empty)
                         </span>
                       ) : null}
@@ -249,7 +244,7 @@ export function PrintVisitNote({
                 ),
               )}
             </ul>
-            <p className="mt-2 text-[11px] text-slate-500">
+            <p className="mt-2 text-2xs text-slate-500">
               Printing visit {visitNumber}. Unsaved notes on this screen are not
               included until you save the consultation.
             </p>

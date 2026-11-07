@@ -43,8 +43,6 @@ import {
 import { useDateSort } from "@/lib/queues/use-date-sort";
 import { DateSortToggle } from "@/components/shared/date-sort-toggle";
 import { ExpandablePanel } from "@/components/shared/table-layout";
-import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
-import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
 import { DoctorAppointmentsPanel } from "@/components/doctor/doctor-appointments-panel";
 
@@ -61,7 +59,7 @@ function isAtLab(entry: QueueEntry) {
 function RedBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-3xs font-bold leading-none text-white">
       {count > 99 ? "99+" : count}
     </span>
   );
@@ -115,7 +113,7 @@ function SummaryCard({
 }) {
   const t = SUMMARY_TONE[tone];
   const className = cn(
-    "rounded-lg border border-slate-200 border-l-4 bg-white p-4 text-left shadow-sm transition-shadow",
+    "rounded-lg border border-border border-l-4 bg-card p-4 text-left shadow-sm transition-shadow",
     t.bar,
     onClick && "hover:shadow-md",
     active && "ring-1 ring-teal-700",
@@ -132,9 +130,9 @@ function SummaryCard({
         >
           {t.icon}
         </span>
-        <p className="text-xs font-medium text-slate-500">{label}</p>
+        <p className="text-xs font-medium text-muted">{label}</p>
       </div>
-      <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">
+      <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
         {value}
       </p>
     </>
@@ -278,16 +276,14 @@ export function DoctorQueueWorkspace() {
     <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
-          <h1 className="text-xl font-semibold text-slate-900">Doctor</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-xl font-semibold text-foreground">Doctor</h1>
+          <p className="text-sm text-muted">
             Waiting for consultation is the default. Switch tabs at the top -
             they stay with Full screen.
           </p>
           <HmisClinicNav />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <PrintPatientLabReport />
-          <PrintFullLabActivity />
           <DateSortToggle value={direction} onChange={setDirection} />
         </div>
       </div>
@@ -403,19 +399,19 @@ export function DoctorQueueWorkspace() {
               description="Patients you send to lab appear here until results come back."
             />
           ) : (
-            <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+            <ul className="divide-y divide-border rounded-md border border-border">
               {waitingForLab.map((e) => (
                 <li
                   key={e.id}
                   className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
                 >
                   <div className="min-w-0">
-                    <p className="font-medium text-slate-900">
+                    <p className="font-medium text-foreground">
                       {e.patient
                         ? `${e.patient.firstName} ${e.patient.lastName}`
                         : e.encounterNumber}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted">
                       {e.visitNumber != null ? `Visit ${e.visitNumber} · ` : ""}
                       {e.encounterNumber} · at lab
                     </p>
@@ -471,7 +467,7 @@ export function DoctorQueueWorkspace() {
             />
           ) : (
             <div className="space-y-3">
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted">
                 {format(new Date(), "EEEE, dd MMM yyyy")} ·{" "}
                 {recentlyCompleted.length} completed visit
                 {recentlyCompleted.length === 1 ? "" : "s"}
@@ -487,16 +483,16 @@ export function DoctorQueueWorkspace() {
                   return (
                     <li
                       key={e.id}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm shadow-sm"
+                      className="rounded-lg border border-border bg-card px-3 py-3 text-sm shadow-sm"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-900">
+                          <p className="font-semibold text-foreground">
                             {e.patient
                               ? `${e.patient.firstName} ${e.patient.lastName}`
                               : e.encounterNumber}
                           </p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-muted">
                             {e.patient?.patientNumber
                               ? `${e.patient.patientNumber} · `
                               : ""}
@@ -515,12 +511,12 @@ export function DoctorQueueWorkspace() {
                           </Link>
                         </div>
                       </div>
-                      <dl className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+                      <dl className="mt-2 grid gap-1 text-xs text-muted sm:grid-cols-2">
                         <div>
-                          <dt className="text-slate-400">Completed</dt>
-                          <dd className="font-medium text-slate-800">
+                          <dt className="text-muted">Completed</dt>
+                          <dd className="font-medium text-foreground">
                             {format(new Date(doneAt), "HH:mm")}
-                            <span className="font-normal text-slate-500">
+                            <span className="font-normal text-muted">
                               {" "}
                               · started{" "}
                               {format(new Date(e.startedAt), "HH:mm")}
@@ -528,14 +524,14 @@ export function DoctorQueueWorkspace() {
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-slate-400">Service</dt>
-                          <dd className="font-medium text-slate-800">
+                          <dt className="text-muted">Service</dt>
+                          <dd className="font-medium text-foreground">
                             {e.service?.name ?? e.department?.name ?? "-"}
                           </dd>
                         </div>
                         <div className="sm:col-span-2">
-                          <dt className="text-slate-400">Chief complaint</dt>
-                          <dd className="text-slate-800">
+                          <dt className="text-muted">Chief complaint</dt>
+                          <dd className="text-foreground">
                             {e.consultation?.chiefComplaint?.trim() ||
                               e.reason?.trim() ||
                               "-"}
@@ -543,10 +539,10 @@ export function DoctorQueueWorkspace() {
                         </div>
                         {primaryDx || e.consultation?.assessment ? (
                           <div className="sm:col-span-2">
-                            <dt className="text-slate-400">
+                            <dt className="text-muted">
                               {primaryDx ? "Diagnosis" : "Assessment"}
                             </dt>
-                            <dd className="text-slate-800">
+                            <dd className="text-foreground">
                               {primaryDx ||
                                 e.consultation?.assessment?.trim() ||
                                 "-"}
@@ -592,8 +588,8 @@ function TabButton({
           : emphasize && badge > 0
             ? "bg-red-50 text-red-900 ring-1 ring-red-200 hover:bg-red-100"
             : muted
-              ? "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+              ? "bg-muted-bg text-muted hover:bg-muted-bg"
+              : "bg-muted-bg text-foreground hover:bg-muted-bg",
       )}
     >
       {label}
@@ -637,7 +633,7 @@ function LabReadyTable({
                 <span className="font-medium">
                   {p.firstName} {p.lastName}
                 </span>
-                <p className="text-xs text-slate-500">{p.patientNumber}</p>
+                <p className="text-xs text-muted">{p.patientNumber}</p>
                 <StatusBadge label="From lab" tone="red" className="mt-1" />
               </DataTableCell>
               <DataTableCell>
@@ -646,10 +642,10 @@ function LabReadyTable({
                     Visit {entry.encounter.visitNumber}
                   </p>
                 ) : null}
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   {entry.encounter.encounterNumber}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   {entry.encounter.service?.name ??
                     entry.encounter.type.replaceAll("_", " ")}
                 </p>
@@ -661,7 +657,7 @@ function LabReadyTable({
                     {labOrderStatusBadge(order.status)}
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-500">Verified</span>
+                  <span className="text-xs text-muted">Verified</span>
                 )}
               </DataTableCell>
               <DataTableCell>
@@ -706,7 +702,7 @@ function LabReadyTable({
                     : "Patient"}
                 </span>
                 {enc.patient?.patientNumber ? (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-muted">
                     {enc.patient.patientNumber}
                   </p>
                 ) : null}
@@ -718,8 +714,8 @@ function LabReadyTable({
                     Visit {enc.visitNumber}
                   </p>
                 ) : null}
-                <p className="text-xs text-slate-500">{enc.encounterNumber}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">{enc.encounterNumber}</p>
+                <p className="text-xs text-muted">
                   {enc.service?.name ?? enc.type}
                 </p>
               </DataTableCell>
@@ -730,7 +726,7 @@ function LabReadyTable({
                     {labOrderStatusBadge(order.status)}
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-500">Verified</span>
+                  <span className="text-xs text-muted">Verified</span>
                 )}
               </DataTableCell>
               <DataTableCell>{encounterStatusBadge(enc.status)}</DataTableCell>
@@ -789,7 +785,7 @@ function QueueTable({
                 <span className="font-medium">
                   {p.firstName} {p.lastName}
                 </span>
-                <p className="text-xs text-slate-500">{p.patientNumber}</p>
+                <p className="text-xs text-muted">{p.patientNumber}</p>
               </DataTableCell>
               <DataTableCell>
                 {entry.encounter.visitNumber != null ? (
@@ -797,17 +793,17 @@ function QueueTable({
                     Visit {entry.encounter.visitNumber}
                   </p>
                 ) : null}
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   {entry.encounter.encounterNumber}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   {entry.encounter.service?.name ??
                     entry.encounter.type.replaceAll("_", " ")}
                 </p>
               </DataTableCell>
               <DataTableCell>
                 {doctor ? (
-                  <span className="text-sm font-medium text-slate-800">
+                  <span className="text-sm font-medium text-foreground">
                     Dr. {doctor.firstName} {doctor.lastName}
                   </span>
                 ) : (

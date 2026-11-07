@@ -27,6 +27,8 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
   useEffect(() => {
     if (existing.data) {
       const t = existing.data as Record<string, unknown>;
+      const yesNo = (v: unknown): "" | "yes" | "no" =>
+        v === true ? "yes" : v === false ? "no" : "";
       form.reset({
         temperature: t.temperature != null ? String(t.temperature) : "",
         systolic: t.systolic != null ? String(t.systolic) : "",
@@ -40,6 +42,9 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
         painScore: t.painScore != null ? String(t.painScore) : "",
         bloodGlucoseMgDl:
           t.bloodGlucoseMgDl != null ? String(t.bloodGlucoseMgDl) : "",
+        pregnancySuspected: yesNo(t.pregnancySuspected),
+        mchNeeded: yesNo(t.mchNeeded),
+        fpNeeded: yesNo(t.fpNeeded),
         notes: (t.notes as string) ?? "",
       });
     }
@@ -66,10 +71,10 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
         encounterStatus={encounter.data.status}
       />
       <form
-        className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+        className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm"
         onSubmit={form.handleSubmit((values) => record.mutate(values))}
       >
-        <h2 className="text-sm font-semibold text-slate-800">Vitals</h2>
+        <h2 className="text-sm font-semibold text-foreground">Vitals</h2>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           <VitalField label="Temp (°C)" error={form.formState.errors.temperature?.message}>
             <Input type="number" step="0.1" {...form.register("temperature")} />
@@ -106,8 +111,45 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
           </VitalField>
         </div>
         {bmi ? (
-          <p className="text-sm text-slate-600">BMI (approx.): {bmi}</p>
+          <p className="text-sm text-muted">BMI (approx.): {bmi}</p>
         ) : null}
+        <div className="space-y-3 border-t border-border pt-4">
+          <h2 className="text-sm font-semibold text-foreground">
+            MCH / Family planning
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <VitalField label="Pregnancy suspected">
+              <select
+                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
+                {...form.register("pregnancySuspected")}
+              >
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </VitalField>
+            <VitalField label="MCH needed">
+              <select
+                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
+                {...form.register("mchNeeded")}
+              >
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </VitalField>
+            <VitalField label="FP needed">
+              <select
+                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
+                {...form.register("fpNeeded")}
+              >
+                <option value="">—</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </VitalField>
+          </div>
+        </div>
         <div>
           <Label className="mb-1 block">Notes</Label>
           <Textarea rows={3} {...form.register("notes")} />
@@ -115,7 +157,7 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
         <Button type="submit" disabled={record.isPending}>
           {record.isPending ? "Saving…" : "Complete triage"}
         </Button>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted">
           Submitting sends the patient to the doctor queue (backend workflow).
         </p>
       </form>

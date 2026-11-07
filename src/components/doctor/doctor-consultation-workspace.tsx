@@ -34,9 +34,17 @@ import {
   useDoctorLabOrderCounts,
 } from "@/components/doctor/doctor-lab-orders-panel";
 import { DoctorUltrasoundPanel } from "@/components/doctor/doctor-ultrasound-panel";
+import { DoctorMaternalHealthPanel } from "@/components/doctor/doctor-maternal-health-panel";
+import { DoctorFamilyPlanningPanel } from "@/components/doctor/doctor-family-planning-panel";
 import { labOrderStatusBadge, StatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format/money";
+import {
+  invoiceDueNow,
+  invoiceLineStates,
+  invoicePayLater,
+} from "@/lib/billing/invoice-state";
+import { LineStateBadge } from "@/components/shared/status-badge";
 import { uniquePanelLabels } from "@/lib/lab/panels";
 import { QueueStation } from "@/types/encounter";
 import { useLabOrders } from "@/features/laboratory/hooks";
@@ -58,8 +66,16 @@ import { AppointmentStatus } from "@/types/appointment";
 import { PrintVisitNote } from "@/components/print/print-visit-note";
 import { PrintReferralSheet } from "@/components/print/print-referral-sheet";
 import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
+import { PrintMedicalCertificate } from "@/components/print/print-medical-certificate";
+import { PrintObstetricUsReport } from "@/components/print/print-obstetric-us-report";
 
-type Step = "notes" | "orders" | "history" | "finish";
+type Step =
+  | "notes"
+  | "orders"
+  | "finish"
+  | "maternal"
+  | "familyPlanning"
+  | "history";
 
 function nextStopLabel(status: string): string {
   switch (status) {
@@ -128,6 +144,7 @@ export function DoctorConsultationWorkspace({
       assessment: "",
       plan: "",
       notes: "",
+      labNotes: "",
     },
   });
 
@@ -140,6 +157,7 @@ export function DoctorConsultationWorkspace({
         assessment: consultation.assessment ?? "",
         plan: consultation.plan ?? "",
         notes: consultation.notes ?? "",
+        labNotes: consultation.labNotes ?? "",
       });
     }
   }, [consultation, form]);
@@ -219,6 +237,11 @@ export function DoctorConsultationWorkspace({
               await save.mutateAsync({ ...form.getValues(), referralSheet });
             }}
           />
+          <PrintMedicalCertificate
+            encounter={encounter.data}
+            consultation={consultation}
+          />
+          <PrintObstetricUsReport encounter={encounter.data} />
           <DoctorPatientChartPanel
             patientId={patient.id}
             encounterId={encounterId}
@@ -234,11 +257,11 @@ export function DoctorConsultationWorkspace({
 
       {isFinalized ? (
         <div
-          className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950"
+          className="rounded-lg border border-teal-700/40 bg-teal-950/30 px-4 py-3 text-sm text-teal-50 dark:border-teal-600/40"
           role="status"
         >
-          <p className="font-semibold">Consultation completed</p>
-          <p className="mt-1">
+          <p className="font-semibold text-teal-100">Consultation completed</p>
+          <p className="mt-1 text-teal-100/85">
             Patient left your queue and was sent to{" "}
             <strong>{nextStopLabel(encounterStatus)}</strong>.
           </p>
@@ -247,7 +270,6 @@ export function DoctorConsultationWorkspace({
               type="button"
               size="sm"
               variant="outline"
-              className="border-teal-300 bg-white"
               onClick={() => setHistoryOpen(true)}
             >
               View history (read-only)
@@ -263,7 +285,7 @@ export function DoctorConsultationWorkspace({
 
       {labCounts.ready > 0 && !isFinalized && workflowStep !== "orders" ? (
         <div
-          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-950"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-red-700/50 bg-red-950/40 px-3 py-2 text-sm text-red-100"
           role="status"
         >
           <span>
@@ -273,8 +295,6 @@ export function DoctorConsultationWorkspace({
           <Button
             type="button"
             size="sm"
-            variant="outline"
-            className="border-red-300 bg-white"
             onClick={() => {
               setOrderSubTab("lab");
               void goToStep("orders");
@@ -286,7 +306,7 @@ export function DoctorConsultationWorkspace({
       ) : null}
 
       <nav
-        className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
+        className="flex flex-nowrap gap-2 overflow-x-auto border-b border-border pb-2"
         aria-label="Doctor workflow"
       >
         {(
@@ -294,6 +314,8 @@ export function DoctorConsultationWorkspace({
             ["notes", "1. Notes"],
             ["orders", "2. Orders"],
             ["finish", "3. Finish"],
+            ["maternal", "Maternal"],
+            ["familyPlanning", "FP"],
             ["history", "History"],
           ] as const
         ).map(([id, label]) => (
@@ -301,16 +323,14 @@ export function DoctorConsultationWorkspace({
             key={id}
             type="button"
             className={cn(
-              "relative rounded-md px-3 py-1.5 text-sm font-medium",
+              "relative shrink-0 rounded-md px-3 py-1.5 text-sm font-medium",
               workflowStep === id
-                ? "bg-teal-800 text-white"
-                : id === "history"
-                  ? "bg-slate-50 text-slate-600 hover:bg-slate-100"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                ? "bg-teal-700 text-white shadow-sm dark:bg-primary"
+                : "bg-slate-100 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-muted-bg dark:text-foreground dark:ring-border dark:hover:bg-hover-strong",
               id === "orders" &&
                 labCounts.ready > 0 &&
                 workflowStep !== "orders" &&
-                "ring-1 ring-emerald-500",
+                "ring-1 ring-red-500",
             )}
             onClick={() => void goToStep(id)}
           >
@@ -318,7 +338,7 @@ export function DoctorConsultationWorkspace({
             {id === "orders" && labCounts.ready > 0 ? (
               <span
                 className={cn(
-                  "ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                  "ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1 text-3xs font-bold",
                   workflowStep === "orders"
                     ? "bg-white/20 text-white"
                     : "bg-red-600 text-white",
@@ -331,7 +351,7 @@ export function DoctorConsultationWorkspace({
         ))}
       </nav>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted">
         {workflowStep === "notes"
           ? "1 · Document this visit, then go to Orders."
           : workflowStep === "orders"
@@ -340,39 +360,66 @@ export function DoctorConsultationWorkspace({
               : "2 · Lab, medicines, send to cashier, or book a follow-up appointment."
             : workflowStep === "finish"
               ? "3 · Send to pharmacy if needed, then complete this visit."
-              : "Past visits and results (read-only) - also via History at the top."}
+              : workflowStep === "maternal"
+                ? "Maternal · Obstetric history, ANC, labor, and delivery for this patient."
+                : workflowStep === "familyPlanning"
+                  ? "FP · Family planning counseling, method, and follow-up."
+                  : "Past visits and results (read-only) - also via History at the top."}
       </p>
 
       {ensuringDraft ? (
-        <p className="text-sm text-slate-600">Saving notes…</p>
+        <p className="text-sm text-muted">Saving notes…</p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-12">
         <aside className="space-y-3 lg:col-span-3">
           <Panel title="Triage (this visit)">
             {triage ? (
-              <ul className="space-y-1 text-xs text-slate-700">
-                {triage.temperature != null ? (
-                  <li>Temp: {String(triage.temperature)} °C</li>
-                ) : null}
-                {triage.systolic != null ? (
-                  <li>
-                    BP: {String(triage.systolic)}/{String(triage.diastolic)}
-                  </li>
-                ) : null}
-                {triage.heartRate != null ? (
-                  <li>Pulse: {String(triage.heartRate)}</li>
-                ) : null}
-                {triage.spo2 != null ? (
-                  <li>SpO2: {String(triage.spo2)}%</li>
-                ) : null}
-                {triage.bloodGlucoseMgDl != null ? (
-                  <li>Glucose: {String(triage.bloodGlucoseMgDl)} mg/dL</li>
-                ) : null}
-                {triage.notes ? <li>Notes: {String(triage.notes)}</li> : null}
-              </ul>
+              <div className="space-y-2">
+                {(triage.mchNeeded === true ||
+                  triage.fpNeeded === true ||
+                  triage.pregnancySuspected === true) && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {triage.pregnancySuspected === true ? (
+                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-3xs font-semibold text-rose-900">
+                        Pregnancy suspected
+                      </span>
+                    ) : null}
+                    {triage.mchNeeded === true ? (
+                      <span className="rounded-full bg-teal-100 px-2 py-0.5 text-3xs font-semibold text-teal-900">
+                        MCH needed
+                      </span>
+                    ) : null}
+                    {triage.fpNeeded === true ? (
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-3xs font-semibold text-sky-900">
+                        FP needed
+                      </span>
+                    ) : null}
+                  </div>
+                )}
+                <ul className="space-y-1 text-xs text-foreground">
+                  {triage.temperature != null ? (
+                    <li>Temp: {String(triage.temperature)} °C</li>
+                  ) : null}
+                  {triage.systolic != null ? (
+                    <li>
+                      BP: {String(triage.systolic)}/{String(triage.diastolic)}
+                    </li>
+                  ) : null}
+                  {triage.heartRate != null ? (
+                    <li>Pulse: {String(triage.heartRate)}</li>
+                  ) : null}
+                  {triage.spo2 != null ? (
+                    <li>SpO2: {String(triage.spo2)}%</li>
+                  ) : null}
+                  {triage.bloodGlucoseMgDl != null ? (
+                    <li>Glucose: {String(triage.bloodGlucoseMgDl)} mg/dL</li>
+                  ) : null}
+                  {triage.notes ? <li>Notes: {String(triage.notes)}</li> : null}
+                </ul>
+              </div>
             ) : (
-              <p className="text-xs text-slate-500">No triage recorded.</p>
+              <p className="text-xs text-muted">No triage recorded.</p>
             )}
           </Panel>
           {consultationId ? (
@@ -386,12 +433,12 @@ export function DoctorConsultationWorkspace({
           ) : (
             <>
               <Panel title="Laboratory">
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   Save notes first to order lab or medicines.
                 </p>
               </Panel>
               <Panel title="Ultrasound">
-                <p className="text-xs text-slate-500">None</p>
+                <p className="text-xs text-muted">None</p>
               </Panel>
             </>
           )}
@@ -400,18 +447,18 @@ export function DoctorConsultationWorkspace({
         <section className="space-y-4 lg:col-span-9">
           {workflowStep === "notes" ? (
             <form
-              className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+              className="space-y-3 rounded-lg border border-border bg-card p-4 shadow-sm"
               onSubmit={form.handleSubmit((values) => save.mutate(values))}
             >
-              <h2 className="text-sm font-semibold text-slate-800">
+              <h2 className="text-sm font-semibold text-foreground">
                 Visit notes
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted">
                 Same sections as the printed visit note. After you save, typing
                 2+ characters shows your recent phrases for that field.
               </p>
               <div>
-                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                <Label className="mb-1 block text-xs font-medium text-foreground">
                   Vitals
                 </Label>
                 <SuggestingTextarea
@@ -424,7 +471,7 @@ export function DoctorConsultationWorkspace({
                 />
               </div>
               <div>
-                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                <Label className="mb-1 block text-xs font-medium text-foreground">
                   Medical Notes / Follow-up Plan / Recommendations
                 </Label>
                 <SuggestingTextarea
@@ -437,7 +484,20 @@ export function DoctorConsultationWorkspace({
                 />
               </div>
               <div>
-                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                <Label className="mb-1 block text-xs font-medium text-foreground">
+                  Lab notes
+                </Label>
+                <SuggestingTextarea
+                  fieldKey="labNotes"
+                  rows={3}
+                  disabled={isFinalized}
+                  placeholder="e.g. CBC pending, correlate with fever; previous Hb low…"
+                  className="min-h-[4.5rem] resize-y"
+                  {...form.register("labNotes")}
+                />
+              </div>
+              <div>
+                <Label className="mb-1 block text-xs font-medium text-foreground">
                   Diagnosis
                 </Label>
                 <SuggestingTextarea
@@ -450,7 +510,7 @@ export function DoctorConsultationWorkspace({
                 />
               </div>
               <div>
-                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                <Label className="mb-1 block text-xs font-medium text-foreground">
                   Ultrasound
                 </Label>
                 <SuggestingTextarea
@@ -463,7 +523,7 @@ export function DoctorConsultationWorkspace({
                 />
               </div>
               <div>
-                <Label className="mb-1 block text-xs font-medium text-slate-700">
+                <Label className="mb-1 block text-xs font-medium text-foreground">
                   Prescription (Rx)
                 </Label>
                 <SuggestingTextarea
@@ -511,7 +571,7 @@ export function DoctorConsultationWorkspace({
                     "rounded-md px-3 py-1.5 text-xs font-medium",
                     orderSubTab === "lab"
                       ? "bg-teal-800 text-white"
-                      : "bg-slate-100 text-slate-700",
+                      : "bg-muted-bg text-foreground",
                   )}
                   onClick={() => setOrderSubTab("lab")}
                 >
@@ -519,7 +579,7 @@ export function DoctorConsultationWorkspace({
                   {labCounts.ready > 0 ? (
                     <span
                       className={cn(
-                        "ml-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                        "ml-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-3xs font-bold",
                         orderSubTab === "lab"
                           ? "bg-white/20 text-white"
                           : "bg-red-600 text-white",
@@ -528,7 +588,7 @@ export function DoctorConsultationWorkspace({
                       {labCounts.ready}
                     </span>
                   ) : labCounts.waiting > 0 && orderSubTab !== "lab" ? (
-                    <span className="ml-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+                    <span className="ml-1.5 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-amber-500 px-1 text-3xs font-bold text-white">
                       {labCounts.waiting}
                     </span>
                   ) : null}
@@ -539,7 +599,7 @@ export function DoctorConsultationWorkspace({
                     "rounded-md px-3 py-1.5 text-xs font-medium",
                     orderSubTab === "rx"
                       ? "bg-teal-800 text-white"
-                      : "bg-slate-100 text-slate-700",
+                      : "bg-muted-bg text-foreground",
                   )}
                   onClick={() => setOrderSubTab("rx")}
                 >
@@ -551,7 +611,7 @@ export function DoctorConsultationWorkspace({
                     "rounded-md px-3 py-1.5 text-xs font-medium",
                     orderSubTab === "ultrasound"
                       ? "bg-teal-800 text-white"
-                      : "bg-slate-100 text-slate-700",
+                      : "bg-muted-bg text-foreground",
                   )}
                   onClick={() => setOrderSubTab("ultrasound")}
                 >
@@ -566,6 +626,7 @@ export function DoctorConsultationWorkspace({
                     .filter(Boolean)
                     .join(" ")}
                   isFinalized={isFinalized}
+                  visitLabNotes={form.watch("labNotes") || consultation?.labNotes}
                   preferResults={
                     labCounts.ready > 0 ||
                     encounter.data?.status === "WAITING_REVIEW"
@@ -630,12 +691,28 @@ export function DoctorConsultationWorkspace({
             </div>
           ) : null}
 
+          {workflowStep === "maternal" ? (
+            <DoctorMaternalHealthPanel
+              patientId={patient.id}
+              encounterId={encounterId}
+              readOnly={isFinalized}
+            />
+          ) : null}
+
+          {workflowStep === "familyPlanning" ? (
+            <DoctorFamilyPlanningPanel
+              patientId={patient.id}
+              encounterId={encounterId}
+              readOnly={isFinalized}
+            />
+          ) : null}
+
           {workflowStep === "history" ? (
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-slate-800">
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-foreground">
                 Patient history (read-only)
               </h2>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-muted">
                 Past visits, which doctor saw them, lab results, and medicines.
                 Nothing here is editable.
               </p>
@@ -687,8 +764,8 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
         {title}
       </h3>
       <div className="mt-2">{children}</div>
@@ -738,8 +815,8 @@ function OrdersCashierAppointment({
   const atCashier = encounterStatus === "WAITING_PAYMENT";
 
   return (
-    <div className="space-y-3 border-t border-slate-200 pt-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="space-y-3 border-t border-border pt-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
         Cashier & appointment
       </h3>
       {atCashier ? (
@@ -761,29 +838,29 @@ function OrdersCashierAppointment({
             title="Send to cashier"
           />
         ) : (
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900">Cashier</h3>
-            <p className="mt-1 text-xs text-slate-600">
+          <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+            <h3 className="text-sm font-semibold text-foreground">Cashier</h3>
+            <p className="mt-1 text-xs text-muted">
               Consultation finalized - desk handles remaining balance.
             </p>
           </div>
         )}
 
-        <div className="rounded-lg border border-sky-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900">
+        <div className="rounded-lg border border-sky-200 bg-card p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground">
             Give appointment
           </h3>
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="mt-1 text-xs text-muted">
             Doctor books the follow-up. Front desk will see it on the
             appointment list.
           </p>
           {followUps.length > 0 ? (
-            <ul className="mt-3 space-y-1.5 text-sm text-slate-800">
+            <ul className="mt-3 space-y-1.5 text-sm text-foreground">
               {followUps.map((a) => (
                 <li key={a.id}>
                   {format(new Date(a.scheduledAt), "dd MMM yyyy, HH:mm")}
                   {a.notes ? (
-                    <span className="text-slate-500"> - {a.notes}</span>
+                    <span className="text-muted"> - {a.notes}</span>
                   ) : null}
                 </li>
               ))}
@@ -873,10 +950,11 @@ function FinishNextSteps({
   );
 
   const inv = invoice.data;
-  const unpaidCents = inv
-    ? Math.max(0, inv.totalCents - inv.paidCents)
-    : 0;
+  // Due now blocks completion; approved "pay later" debt does not.
+  const unpaidCents = invoiceDueNow(inv);
   const hasUnpaid = unpaidCents > 0;
+  const payLaterCents = invoicePayLater(inv);
+  const waivedCents = inv?.waivedCents ?? 0;
   const busy = finalizePending || routePending;
   const atCashier = encounterStatus === "WAITING_PAYMENT";
 
@@ -894,9 +972,9 @@ function FinishNextSteps({
       ) : null}
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-900">Pharmacy</h3>
-          <p className="mt-1 text-xs text-slate-600">
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground">Pharmacy</h3>
+          <p className="mt-1 text-xs text-muted">
             Dispense prescribed medicines.{" "}
             {activeRx.length === 0
               ? "No active prescription yet - add medicines under Orders first, or still send if needed."
@@ -920,9 +998,25 @@ function FinishNextSteps({
           </h3>
           <p className="mt-1 text-sm text-emerald-900">
             {hasUnpaid
-              ? "Collect payment first. You cannot complete while the patient still owes money."
-              : "Payment settled (or no fee). Completing archives this visit and shows it under Completed today."}
+              ? "Collect payment first. You cannot complete while payment is still due at the cashier."
+              : payLaterCents > 0
+                ? "Cashier approved pay later. You can complete - the balance stays on the patient's account."
+                : "Payment settled (or no fee). Completing archives this visit and shows it under Completed today."}
           </p>
+          {payLaterCents > 0 || waivedCents > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {payLaterCents > 0 ? (
+                <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-950">
+                  Pay later · owes {formatCents(payLaterCents)}
+                </span>
+              ) : null}
+              {waivedCents > 0 ? (
+                <span className="rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-800">
+                  Waived {formatCents(waivedCents)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
           {hasUnpaid && !isFinalized ? (
             <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
               Not paid - due {formatCents(unpaidCents)}. Use{" "}
@@ -980,8 +1074,8 @@ function PrescriptionTab({
 
   if (!consultationId) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-slate-600">Save notes first.</p>
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <p className="text-sm text-muted">Save notes first.</p>
         <Button type="button" className="mt-2" onClick={onNeedDraft}>
           Save notes
         </Button>
@@ -1015,21 +1109,21 @@ function PrescriptionTab({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="text-sm font-semibold text-slate-800">Medicines</h2>
+    <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-foreground">Medicines</h2>
 
       {!isFinalized ? (
         <div className="space-y-3">
-          <p className="text-xs font-medium text-slate-600">
+          <p className="text-xs font-medium text-muted">
             Select medicines - save now, or save and send to pharmacy
           </p>
           {medicines.isLoading ? (
             <LoadingBlock label="Loading medicines" />
           ) : null}
-          <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-slate-100 p-2 text-sm">
+          <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border border-border p-2 text-sm">
             {medicines.data?.map((m) => (
               <li key={m.id}>
-                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-slate-50">
+                <label className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-muted-bg">
                   <input
                     type="checkbox"
                     className="h-4 w-4"
@@ -1038,7 +1132,7 @@ function PrescriptionTab({
                   />
                   <span>
                     {m.name}
-                    <span className="ml-1 text-xs text-slate-500">{m.code}</span>
+                    <span className="ml-1 text-xs text-muted">{m.code}</span>
                   </span>
                 </label>
               </li>
@@ -1105,12 +1199,12 @@ function PrescriptionTab({
         </div>
       ) : null}
 
-      <div className="border-t border-slate-100 pt-3">
-        <p className="mb-2 text-xs font-medium text-slate-600">
+      <div className="border-t border-border pt-3">
+        <p className="mb-2 text-xs font-medium text-muted">
           Prescriptions this visit
         </p>
         {myRx.length === 0 ? (
-          <p className="text-sm text-slate-500">None yet.</p>
+          <p className="text-sm text-muted">None yet.</p>
         ) : (
           <ul className="space-y-1 text-sm">
             {myRx.map((p) => (
@@ -1118,7 +1212,7 @@ function PrescriptionTab({
                 <span>
                   {p.prescriptionNumber} - {p.status}
                 </span>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted">
                   {p.items?.map((i) => i.medicine?.name).filter(Boolean).join(", ")}
                 </span>
               </li>
@@ -1178,9 +1272,9 @@ function VisitSideCards({
   const rxItems =
     rx.data?.filter((p) => p.consultationId === consultationId) ?? [];
   const inv = invoice.data;
-  const invoicePaid =
-    inv?.status === "PAID" ||
-    (inv != null && inv.totalCents > 0 && inv.paidCents >= inv.totalCents);
+  const lineStates = new Map(
+    (inv ? invoiceLineStates(inv) : []).map((l) => [l.id, l.state]),
+  );
   const cashierItems =
     inv?.items.filter(
       (item) =>
@@ -1193,39 +1287,37 @@ function VisitSideCards({
     ) ?? [];
   const ultrasoundNotes = ultrasoundPlan?.trim() ?? "";
   const atCashierLab = atCashier && paymentReturnStation === "LAB";
-  const atCashierOther = atCashier && paymentReturnStation !== "LAB";
-  const atCashierDoctor =
-    atCashier &&
-    (paymentReturnStation === "DOCTOR" || !paymentReturnStation);
 
   return (
     <>
       <Panel title="Laboratory">
         {labItems.length === 0 ? (
-          <p className="text-xs text-slate-500">None</p>
+          <p className="text-xs text-muted">None</p>
         ) : (
           <ul className="space-y-1.5 text-xs">
             {labItems.map((o) => {
-              const billed = inv?.items.some((item) =>
+              const billedLine = inv?.items.find((item) =>
                 item.description.includes(o.orderNumber),
               );
               const waitingPay =
                 atCashierLab && o.status === LabOrderStatus.ORDERED;
-              const paidViaCashier = Boolean(billed) && !waitingPay;
+              const lineState = billedLine
+                ? lineStates.get(billedLine.id)
+                : undefined;
               const names = uniquePanelLabels(
                 o.items.map((i) => i.labTest),
               );
               return (
                 <li key={o.id} className="flex flex-wrap items-center gap-1.5">
-                  <span className="font-medium text-slate-800">
+                  <span className="font-medium text-foreground">
                     {names || o.orderNumber}
                   </span>
                   {waitingPay ? (
                     <StatusBadge label="At cashier" tone="amber" />
                   ) : (
                     <>
-                      {paidViaCashier ? (
-                        <StatusBadge label="Paid" tone="green" />
+                      {lineState ? (
+                        <LineStateBadge state={lineState} atCashier={false} />
                       ) : null}
                       {labOrderStatusBadge(o.status)}
                     </>
@@ -1238,36 +1330,26 @@ function VisitSideCards({
       </Panel>
       <Panel title="Ultrasound">
         {ultrasoundItems.length === 0 && !ultrasoundNotes ? (
-          <p className="text-xs text-slate-500">None</p>
+          <p className="text-xs text-muted">None</p>
         ) : (
           <div className="space-y-2 text-xs">
             {ultrasoundItems.length > 0 ? (
               <ul className="space-y-1.5">
                 {ultrasoundItems.map((item) => {
-                  const state: "Paid" | "At cashier" | "Due" = invoicePaid
-                    ? "Paid"
-                    : atCashierDoctor
-                      ? "At cashier"
-                      : "Due";
+                  const state = lineStates.get(item.id) ?? "DUE";
                   return (
                     <li
                       key={item.id}
                       className="flex flex-wrap items-start justify-between gap-1.5"
                     >
-                      <span className="font-medium text-slate-800">
+                      <span className="font-medium text-foreground">
                         {item.description}
                       </span>
                       <span className="flex shrink-0 items-center gap-1">
-                        <span className="tabular-nums text-slate-600">
+                        <span className="tabular-nums text-muted">
                           {formatCents(item.totalCents)}
                         </span>
-                        {state === "Paid" ? (
-                          <StatusBadge label="Paid" tone="green" />
-                        ) : state === "At cashier" ? (
-                          <StatusBadge label="At cashier" tone="amber" />
-                        ) : (
-                          <StatusBadge label="Due" tone="slate" />
-                        )}
+                        <LineStateBadge state={state} atCashier={atCashier} />
                       </span>
                     </li>
                   );
@@ -1275,8 +1357,8 @@ function VisitSideCards({
               </ul>
             ) : null}
             {ultrasoundNotes ? (
-              <p className="whitespace-pre-wrap text-slate-700">
-                <span className="font-semibold text-slate-800">Notes: </span>
+              <p className="whitespace-pre-wrap text-foreground">
+                <span className="font-semibold text-foreground">Notes: </span>
                 {ultrasoundNotes.length > 120
                   ? `${ultrasoundNotes.slice(0, 120)}…`
                   : ultrasoundNotes}
@@ -1287,7 +1369,7 @@ function VisitSideCards({
       </Panel>
       <Panel title="Medicines">
         {rxItems.length === 0 ? (
-          <p className="text-xs text-slate-500">None</p>
+          <p className="text-xs text-muted">None</p>
         ) : (
           <ul className="text-xs">
             {rxItems.map((p) => (
@@ -1300,45 +1382,29 @@ function VisitSideCards({
       </Panel>
       <Panel title="Cashier">
         {cashierItems.length === 0 ? (
-          <p className="text-xs text-slate-500">None</p>
+          <p className="text-xs text-muted">None</p>
         ) : (
           <ul className="space-y-1.5 text-xs">
             {cashierItems.map((item) => {
-              const state: "Paid" | "At cashier" | "Due" = invoicePaid
-                ? "Paid"
-                : atCashierLab
-                  ? "Paid"
-                  : atCashierOther
-                    ? item.type === "CONSULTATION" && (inv?.paidCents ?? 0) > 0
-                      ? "Paid"
-                      : "At cashier"
-                    : item.type === "CONSULTATION" && (inv?.paidCents ?? 0) > 0
-                      ? "Paid"
-                      : "Due";
+              const state = lineStates.get(item.id) ?? "DUE";
               return (
                 <li
                   key={item.id}
                   className="flex flex-wrap items-start justify-between gap-1.5"
                 >
-                  <span className="text-slate-800">
+                  <span className="text-foreground">
                     {item.description}
                     {item.quantity > 1 ? (
-                      <span className="ml-1 text-slate-500">
+                      <span className="ml-1 text-muted">
                         ×{item.quantity}
                       </span>
                     ) : null}
                   </span>
                   <span className="flex shrink-0 items-center gap-1">
-                    <span className="tabular-nums text-slate-600">
+                    <span className="tabular-nums text-muted">
                       {formatCents(item.totalCents)}
                     </span>
-                    {state === "Paid" ? (
-                      <StatusBadge label="Paid" tone="green" />
-                    ) : state === "At cashier" ? (
-                      <StatusBadge label="At cashier" tone="amber" />
-                    ) : (
-                      <StatusBadge label="Due" tone="slate" />
-                    )}
+                    <LineStateBadge state={state} atCashier={atCashier} />
                   </span>
                 </li>
               );

@@ -17,7 +17,8 @@ import { formatCents } from "@/lib/format/money";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { canIssueInvoice, canTakePayment } from "@/lib/permissions";
 import { Role } from "@/types/role";
-import { invoiceStatusBadge } from "@/components/shared/status-badge";
+import { invoiceStateBadge } from "@/components/shared/status-badge";
+import { invoiceBalance, invoicePayLater } from "@/lib/billing/invoice-state";
 
 export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   const invoice = useInvoice(invoiceId);
@@ -31,7 +32,8 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
   }
 
   const inv = invoice.data;
-  const balance = inv.totalCents - inv.paidCents;
+  const balance = invoiceBalance(inv);
+  const payLater = invoicePayLater(inv);
   const role = user?.role;
   const canIssue =
     inv.status === "DRAFT" && role != null && canIssueInvoice(role);
@@ -66,13 +68,13 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
         encounterStatus={inv.encounter.status}
       />
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap justify-between gap-2">
           <div>
             <p className="text-lg font-semibold">{inv.invoiceNumber}</p>
-            <div className="mt-1 flex items-center gap-2 text-sm text-slate-600">
+            <div className="mt-1 flex items-center gap-2 text-sm text-muted">
               <span>Status</span>
-              {invoiceStatusBadge(inv.status)}
+              {invoiceStateBadge(inv)}
             </div>
           </div>
           <div className="text-right text-sm">
@@ -80,7 +82,15 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             <p>Discount: {formatCents(inv.discountCents)}</p>
             <p className="font-semibold">Total: {formatCents(inv.totalCents)}</p>
             <p>Paid: {formatCents(inv.paidCents)}</p>
+            {inv.waivedCents > 0 ? (
+              <p>Waived (free): {formatCents(inv.waivedCents)}</p>
+            ) : null}
             <p className="text-teal-800">Balance: {formatCents(balance)}</p>
+            {payLater > 0 ? (
+              <p className="font-medium text-amber-800">
+                Pay later approved: {formatCents(payLater)}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -129,11 +139,11 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
       </div>
 
       {inv.payments.length > 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <h3 className="text-sm font-semibold text-slate-800">Payments</h3>
+        <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+          <h3 className="text-sm font-semibold text-foreground">Payments</h3>
           <ul className="mt-2 space-y-2 text-sm">
             {inv.payments.map((p) => (
-              <li key={p.id} className="rounded border border-slate-100 p-2">
+              <li key={p.id} className="rounded border border-border p-2">
                 {p.paymentNumber} - {formatCents(p.amountCents)} ({p.method}) -{" "}
                 {p.status}
               </li>

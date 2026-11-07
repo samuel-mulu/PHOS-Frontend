@@ -13,15 +13,18 @@ import { Button } from "@/components/ui/button";
 import { HmisReportPanel } from "@/components/reports/hmis-report-panel";
 import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
 import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
+import { ReceivablesReportPanel } from "@/components/payments/receivables-report-panel";
 import { ExpensesReportPanel } from "@/components/expenses/expenses-report-panel";
+import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
+import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 
 function StatCard({ label, value }: { label: string; value: number | string }) {
   return (
     <Card className="p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
     </Card>
   );
 }
@@ -37,8 +40,8 @@ function Breakdown({
   if (!entries.length) return null;
   return (
     <Card className="p-4">
-      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-      <ul className="mt-3 space-y-1 text-sm text-slate-700">
+      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+      <ul className="mt-3 space-y-1 text-sm text-foreground">
         {entries.map(([status, count]) => (
           <li key={status} className="flex justify-between gap-4">
             <span>{status.replaceAll("_", " ")}</span>
@@ -76,6 +79,7 @@ export function ReportsWorkspace() {
   const isHfr = view === "hfr";
   const isFull = view === "full";
   const isPayments = view === "payments";
+  const isDebts = view === "debts";
   const isExpenses = view === "expenses";
   const query = useOperationalSnapshot(isHfr);
 
@@ -83,19 +87,23 @@ export function ReportsWorkspace() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <h1 className="text-lg font-semibold text-slate-900">
+          <h1 className="text-lg font-semibold text-foreground">
             {isPayments
               ? "Cashier & front desk report"
-              : isExpenses
+              : isDebts
+                ? "Unpaid & debts"
+                : isExpenses
                 ? "Expense report"
                 : isHfr
                 ? "Health facility report"
                 : "HMIS clinic report"}
           </h1>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-muted">
             {isPayments
               ? "Collections by day, month, or custom range - print PDF for records."
-              : isExpenses
+              : isDebts
+                ? "Who still owes (pay later, part paid), aging, and pay later / waived totals."
+                : isExpenses
                 ? "Outgoing expenses with clinic net (collections minus spend)."
                 : isHfr
                 ? "Operational counts for this facility (HFR)."
@@ -103,26 +111,44 @@ export function ReportsWorkspace() {
           </p>
           <HmisClinicNav />
         </div>
-        {isHfr && query.data ? (
-          <Button type="button" variant="outline" onClick={() => downloadOperationalCsv(query.data!)}>
-            Export CSV
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap items-center gap-2">
+          {!isPayments && !isDebts && !isExpenses ? (
+            <>
+              <PrintPatientLabReport />
+              <PrintFullLabActivity />
+            </>
+          ) : null}
+          {isHfr && query.data ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => downloadOperationalCsv(query.data!)}
+            >
+              Export CSV
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {isPayments ? (
         <PaymentsReportPanel
           showHeading={false}
-          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="rounded-lg border border-border bg-card p-4 shadow-sm"
+        />
+      ) : null}
+      {isDebts ? (
+        <ReceivablesReportPanel
+          showHeading={false}
+          className="rounded-lg border border-border bg-card p-4 shadow-sm"
         />
       ) : null}
       {isExpenses ? (
         <ExpensesReportPanel
           showHeading={false}
-          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="rounded-lg border border-border bg-card p-4 shadow-sm"
         />
       ) : null}
-      {!isHfr && !isPayments && !isExpenses ? (
+      {!isHfr && !isPayments && !isDebts && !isExpenses ? (
         <HmisReportPanel full={isFull} />
       ) : null}
 

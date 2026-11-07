@@ -10,23 +10,39 @@ import { fetchDashboardStats } from "@/features/reports/dashboard";
 import { fetchNotificationSummary } from "@/features/notifications/api";
 import { useTranslation } from "@/i18n/context";
 import { cn } from "@/lib/utils";
+import { formatCents } from "@/lib/format/money";
 
-function StatCard({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
-  return (
+function StatCard({
+  label,
+  value,
+  highlight,
+  display,
+  href,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+  /** Formatted text instead of the raw number (e.g. money). */
+  display?: string;
+  href?: string;
+}) {
+  const card = (
     <Card
       className={cn(
         "p-4",
         highlight && value > 0 && "border-amber-300 bg-amber-50/50",
+        href && "transition-colors hover:border-teal-400",
       )}
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
-        {value}
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+        {display ?? value}
       </p>
     </Card>
   );
+  return href ? <Link href={href}>{card}</Link> : card;
 }
 
 export function OperationalDashboard() {
@@ -60,9 +76,9 @@ export function OperationalDashboard() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">{t("dashboard.title")}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t("dashboard.subtitle")}</p>
-        <p className="mt-1 text-xs text-slate-400">
+        <h1 className="text-xl font-semibold text-foreground">{t("dashboard.title")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("dashboard.subtitle")}</p>
+        <p className="mt-1 text-xs text-muted">
           Updated {format(new Date(s.asOf), "HH:mm:ss")}
         </p>
       </div>
@@ -87,9 +103,25 @@ export function OperationalDashboard() {
         <StatCard label={t("dashboard.appointmentsToday")} value={s.appointmentsToday} />
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Owed by patients"
+          value={s.outstandingCents ?? 0}
+          display={formatCents(s.outstandingCents ?? 0)}
+          highlight
+          href="/reports?view=debts"
+        />
+        <StatCard label="Pay later today" value={s.deferredTodayCount ?? 0} />
+        <StatCard
+          label="Waived today"
+          value={s.waivedTodayCents ?? 0}
+          display={formatCents(s.waivedTodayCents ?? 0)}
+        />
+      </div>
+
       <Card className="space-y-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-slate-900">{t("dashboard.alerts")}</h2>
+          <h2 className="text-sm font-semibold text-foreground">{t("dashboard.alerts")}</h2>
           <Link href="/notifications">
             <Button type="button" size="sm" variant="outline">
               {t("dashboard.openAlerts")}
@@ -97,7 +129,7 @@ export function OperationalDashboard() {
           </Link>
         </div>
         {alerts.isLoading ? (
-          <p className="text-sm text-slate-500">…</p>
+          <p className="text-sm text-muted">…</p>
         ) : alerts.data ? (
           <div className="flex flex-wrap gap-3 text-sm">
             <span className="rounded-md bg-red-100 px-2 py-1 font-medium text-red-900">
@@ -106,10 +138,10 @@ export function OperationalDashboard() {
             <span className="rounded-md bg-amber-100 px-2 py-1 font-medium text-amber-900">
               High {byP?.HIGH ?? 0}
             </span>
-            <span className="rounded-md bg-slate-100 px-2 py-1 font-medium text-slate-800">
+            <span className="rounded-md bg-muted-bg px-2 py-1 font-medium text-foreground">
               Normal {byP?.NORMAL ?? 0}
             </span>
-            <span className="text-slate-500">({alerts.data.total} total unread)</span>
+            <span className="text-muted">({alerts.data.total} total unread)</span>
           </div>
         ) : null}
       </Card>

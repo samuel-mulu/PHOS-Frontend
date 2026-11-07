@@ -71,8 +71,8 @@ export function AdminLabTestsPanel() {
 
       <Card className="space-y-3 p-4">
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">Add lab test</h2>
-          <p className="text-xs text-slate-500">
+          <h2 className="text-sm font-semibold text-foreground">Add lab test</h2>
+          <p className="text-xs text-muted">
             New tests appear on the doctor order chips when enabled.
           </p>
         </div>
@@ -167,10 +167,10 @@ export function AdminLabTestsPanel() {
       <Card className="space-y-3 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-foreground">
               Lab catalog ({tests.data?.length ?? 0})
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted">
               Toggle off to hide from doctor ordering. Price is billed when ordered.
             </p>
           </div>
@@ -182,7 +182,7 @@ export function AdminLabTestsPanel() {
           />
         </div>
 
-        <ul className="divide-y divide-slate-100 rounded-md border border-slate-200">
+        <ul className="divide-y divide-border rounded-md border border-border">
           {rows.map((t) => {
             const editing = editId === t.id;
             return (
@@ -190,7 +190,7 @@ export function AdminLabTestsPanel() {
                 key={t.id}
                 className={cn(
                   "flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between",
-                  !t.active && "bg-slate-50 opacity-75",
+                  !t.active && "bg-muted-bg opacity-75",
                 )}
               >
                 <div className="min-w-0 flex-1">
@@ -239,13 +239,13 @@ export function AdminLabTestsPanel() {
                     </div>
                   ) : (
                     <>
-                      <p className="text-sm font-medium text-slate-900">
+                      <p className="text-sm font-medium text-foreground">
                         {t.name}{" "}
-                        <span className="font-normal text-slate-500">
+                        <span className="font-normal text-muted">
                           ({t.code})
                         </span>
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted">
                         {t.category ?? "Uncategorized"} · {" "}
                         {centsToEtb(t.priceCents)} ETB
                         {t.unit ? ` · ${t.unit}` : ""}
@@ -285,7 +285,7 @@ export function AdminLabTestsPanel() {
             );
           })}
           {rows.length === 0 ? (
-            <li className="px-3 py-6 text-center text-sm text-slate-500">
+            <li className="px-3 py-6 text-center text-sm text-muted">
               No tests match.
             </li>
           ) : null}

@@ -35,15 +35,15 @@ export function ReconciliationWorkspace() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Cash reconciliation</h1>
-        <p className="text-sm text-slate-600">
+        <h1 className="text-xl font-semibold text-foreground">Cash reconciliation</h1>
+        <p className="text-sm text-muted">
           Open and close cashier shifts. Expected cash is calculated on the server at close.
         </p>
       </div>
 
       {!session.data ? (
         <form
-          className="space-y-3 rounded-lg border bg-white p-4 shadow-sm"
+          className="space-y-3 rounded-lg border bg-card p-4 shadow-sm"
           onSubmit={(e) => {
             e.preventDefault();
             open.mutate(floatCents);
@@ -64,9 +64,9 @@ export function ReconciliationWorkspace() {
           </Button>
         </form>
       ) : (
-        <div className="space-y-4 rounded-lg border bg-white p-4 shadow-sm">
+        <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
           <h2 className="text-sm font-semibold">Active session</h2>
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-foreground">
             Opened {new Date(session.data.openedAt).toLocaleString()}
           </p>
           <p className="text-sm">

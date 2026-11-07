@@ -29,7 +29,7 @@ export function PatientNumberScan({
 
   return (
     <div className="space-y-2">
-      <Label htmlFor="patient-scan" className="text-xs text-slate-600">
+      <Label htmlFor="patient-scan" className="text-xs text-muted">
         Patient number / QR
       </Label>
       <div className="flex gap-2">

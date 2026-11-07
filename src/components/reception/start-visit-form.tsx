@@ -13,6 +13,7 @@ import {
   useServices,
 } from "@/features/facilities/hooks";
 import { useDoctors } from "@/features/users/use-doctors";
+import { usePatientBalance } from "@/features/patients/hooks";
 import {
   createEncounter,
   fetchEncounters,
@@ -92,6 +93,7 @@ export function StartVisitForm({
   const queryClient = useQueryClient();
   const facilities = useFacilities();
   const doctors = useDoctors();
+  const balance = usePatientBalance(patient.id);
   const openVisits = useQuery({
     queryKey: ["encounters", "open", patient.id],
     queryFn: () => fetchEncounters({ patientId: patient.id, open: true }),
@@ -226,18 +228,33 @@ export function StartVisitForm({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full bg-teal-800 px-3 py-1 text-xs font-semibold text-white">
+        <span className="rounded-full border border-border bg-muted-bg px-3 py-1 text-xs font-semibold text-foreground dark:border-slate-600 dark:bg-slate-800">
           {kindMeta.label}
         </span>
       </div>
 
-      {blockingVisit ? (
+      {!blockingVisit && (balance.data?.outstandingCents ?? 0) > 0 ? (
         <div
           className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950"
+          role="status"
+        >
+          <p className="font-semibold">
+            This patient owes {formatCents(balance.data!.outstandingCents)} from
+            earlier visits
+          </p>
+          <p className="mt-1 opacity-90">
+            The visit can still start. Ask them to pay at the cashier (Debts tab).
+          </p>
+        </div>
+      ) : null}
+
+      {blockingVisit ? (
+        <div
+          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950 dark:border-amber-700/60 dark:bg-amber-950/40 dark:text-amber-100"
           role="alert"
         >
           <p className="font-semibold">Cannot start a new visit yet</p>
-          <p className="mt-1">{incompleteVisitMessage(blockingVisit)}</p>
+          <p className="mt-1 opacity-90">{incompleteVisitMessage(blockingVisit)}</p>
         </div>
       ) : null}
 
@@ -261,7 +278,7 @@ export function StartVisitForm({
 
       <Field label="Assign doctor">
         <select
-          className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+          className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground"
           value={assignedDoctorId}
           onChange={(e) => setAssignedDoctorId(e.target.value)}
         >
@@ -273,7 +290,7 @@ export function StartVisitForm({
           ))}
         </select>
         {doctors.isSuccess && (doctors.data?.length ?? 0) === 0 ? (
-          <p className="mt-1 text-xs text-amber-800">
+          <p className="mt-1 text-xs text-amber-800 dark:text-amber-200/90">
             No active doctor users yet. Admin → Users to create a DOCTOR account.
           </p>
         ) : null}
@@ -282,7 +299,7 @@ export function StartVisitForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Facility">
           <select
-            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+            className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground"
             value={facilityId}
             onChange={(e) => setFacilityId(e.target.value)}
           >
@@ -296,7 +313,7 @@ export function StartVisitForm({
         </Field>
         <Field label="Department">
           <select
-            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+            className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground"
             value={departmentId}
             disabled={!facilityId}
             onChange={(e) => setDepartmentId(e.target.value)}
@@ -314,13 +331,13 @@ export function StartVisitForm({
       <div>
         <Label className="mb-2 block text-xs">Clinic services (optional)</Label>
         {!departmentId ? (
-          <p className="text-xs text-slate-500">Pick a department first</p>
+          <p className="text-xs text-muted">Pick a department first</p>
         ) : activeServices.length === 0 ? (
-          <p className="text-xs text-amber-800">
+          <p className="text-xs text-amber-800 dark:text-amber-200/90">
             No services yet. Admin → Facilities & services.
           </p>
         ) : (
-          <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-slate-100 p-2">
+          <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-border p-2 dark:border-slate-700">
             {activeServices.map((s) => {
               const on = selectedServiceIds.includes(s.id);
               return (
@@ -330,16 +347,16 @@ export function StartVisitForm({
                   className={cn(
                     "rounded-md border px-3 py-1.5 text-left text-xs font-medium transition-colors",
                     on
-                      ? "border-teal-700 bg-teal-800 text-white"
-                      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
+                      ? "border-teal-600 bg-teal-700 text-white dark:bg-primary"
+                      : "border-border bg-card text-foreground hover:bg-hover",
                   )}
                   onClick={() => toggleService(s.id)}
                 >
                   <span className="block">{s.name}</span>
                   <span
                     className={cn(
-                      "text-[11px]",
-                      on ? "text-teal-100" : "text-slate-500",
+                      "text-2xs",
+                      on ? "text-teal-50/90" : "text-muted",
                     )}
                   >
                     {s.priceCents === 0
@@ -356,7 +373,7 @@ export function StartVisitForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Priority">
           <select
-            className="h-10 w-full rounded-md border border-slate-200 px-3 text-sm"
+            className="h-10 w-full rounded-md border border-border bg-input px-3 text-sm text-foreground"
             value={priority}
             onChange={(e) => setPriority(e.target.value as EncounterPriority)}
           >
@@ -372,8 +389,8 @@ export function StartVisitForm({
         </Field>
       </div>
 
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <label className="flex items-center gap-2 text-sm font-medium text-slate-900">
+      <div className="space-y-3 rounded-lg border border-border bg-muted-bg p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-foreground">
           <input
             type="checkbox"
             className="h-4 w-4"
@@ -386,7 +403,7 @@ export function StartVisitForm({
 
         {collectPayment && totalCents > 0 ? (
           <>
-            <p className="text-lg font-semibold tabular-nums text-slate-900">
+            <p className="text-lg font-semibold tabular-nums text-foreground">
               {formatCents(totalCents)}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -397,8 +414,8 @@ export function StartVisitForm({
                   className={cn(
                     "rounded-md border px-3 py-1.5 text-sm font-medium",
                     payMethod === m
-                      ? "border-teal-700 bg-teal-800 text-white"
-                      : "border-slate-200 bg-white text-slate-700",
+                      ? "border-teal-600 bg-teal-700 text-white dark:bg-primary"
+                      : "border-border bg-card text-foreground",
                   )}
                   onClick={() => setPayMethod(m)}
                 >
@@ -457,13 +474,13 @@ function DestButton({
       className={cn(
         "rounded-md border px-3 py-3 text-left text-sm transition-colors",
         active
-          ? "border-teal-700 bg-teal-800 text-white"
-          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50",
+          ? "border-teal-600 bg-teal-700 text-white shadow-sm dark:bg-primary"
+          : "border-border bg-card text-foreground hover:bg-hover",
       )}
       onClick={onClick}
     >
       <span className="block font-semibold">{title}</span>
-      <span className={cn("text-xs", active ? "text-teal-100" : "text-slate-500")}>
+      <span className={cn("text-xs", active ? "text-teal-50/90" : "text-muted")}>
         {subtitle}
       </span>
     </button>

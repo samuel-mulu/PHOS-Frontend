@@ -93,11 +93,11 @@ export function ReceptionWorkspace({
   return (
     <div className="mx-auto max-w-7xl space-y-4">
       {!embedded ? (
-        <h1 className="text-xl font-semibold text-slate-900">Reception</h1>
+        <h1 className="text-xl font-semibold text-foreground">Reception</h1>
       ) : null}
 
       <nav
-        className="sticky top-0 z-10 flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 pb-2"
+        className="sticky top-0 z-10 flex flex-wrap gap-2 border-b border-border bg-muted-bg pb-2"
         aria-label="Reception views"
       >
         <button
@@ -105,8 +105,8 @@ export function ReceptionWorkspace({
           className={cn(
             "rounded-md px-3 py-1.5 text-sm font-medium",
             subTab === "find"
-              ? "bg-teal-800 text-white"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+              ? "bg-teal-700 text-white shadow-sm dark:bg-primary"
+              : "bg-slate-100 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-muted-bg dark:text-foreground dark:ring-border dark:hover:bg-hover-strong",
           )}
           onClick={() => setSubTab("find")}
         >
@@ -117,10 +117,8 @@ export function ReceptionWorkspace({
           className={cn(
             "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium",
             subTab === "triage"
-              ? "bg-teal-800 text-white"
-              : triageWaiting > 0
-                ? "bg-red-50 text-red-900 ring-1 ring-red-200 hover:bg-red-100"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+              ? "bg-teal-700 text-white shadow-sm dark:bg-primary"
+              : "bg-slate-100 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-muted-bg dark:text-foreground dark:ring-border dark:hover:bg-hover-strong",
           )}
           onClick={() => setSubTab("triage")}
         >
@@ -128,7 +126,7 @@ export function ReceptionWorkspace({
           {triageWaiting > 0 ? (
             <span
               className={cn(
-                "ml-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                "ml-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1.5 py-0.5 text-3xs font-bold",
                 subTab === "triage"
                   ? "bg-white/25 text-white"
                   : "bg-red-600 text-white",
@@ -143,8 +141,8 @@ export function ReceptionWorkspace({
           className={cn(
             "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium",
             subTab === "doctors"
-              ? "bg-teal-800 text-white"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+              ? "bg-teal-700 text-white shadow-sm dark:bg-primary"
+              : "bg-slate-100 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-200 dark:bg-muted-bg dark:text-foreground dark:ring-border dark:hover:bg-hover-strong",
           )}
           onClick={() => setSubTab("doctors")}
         >
@@ -152,7 +150,7 @@ export function ReceptionWorkspace({
           {doctorQueueCount > 0 ? (
             <span
               className={cn(
-                "ml-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                "ml-1.5 inline-flex min-w-[1.15rem] items-center justify-center rounded-full px-1.5 py-0.5 text-3xs font-bold",
                 subTab === "doctors"
                   ? "bg-white/25 text-white"
                   : "bg-teal-800 text-white",
@@ -204,7 +202,7 @@ export function ReceptionWorkspace({
           <div className="fixed inset-0 z-[80] flex items-stretch justify-center p-2 sm:p-4">
             <button
               type="button"
-              className="absolute inset-0 bg-black/40"
+              className="absolute inset-0 bg-black/55"
               aria-label="Close"
               onClick={() => setRegisterOpen(false)}
             />
@@ -212,9 +210,9 @@ export function ReceptionWorkspace({
               role="dialog"
               aria-modal="true"
               aria-labelledby="new-patient-dialog-title"
-              className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+              className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-xl"
             >
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+              <div className="flex items-center justify-between border-b border-border px-5 py-3">
                 <h3
                   id="new-patient-dialog-title"
                   className="text-lg font-semibold"
@@ -256,7 +254,7 @@ export function ReceptionWorkspace({
           <div className="fixed inset-0 z-[80] flex items-stretch justify-center p-2 sm:p-4">
             <button
               type="button"
-              className="absolute inset-0 bg-black/40"
+              className="absolute inset-0 bg-black/55"
               aria-label="Close"
               onClick={closeSchedule}
             />
@@ -264,12 +262,12 @@ export function ReceptionWorkspace({
               role="dialog"
               aria-modal="true"
               aria-labelledby="schedule-appt-title"
-              className="relative flex max-h-[96vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+              className="relative flex max-h-[96vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-xl"
             >
-              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+              <div className="flex items-center justify-between border-b border-border px-5 py-3">
                 <h3
                   id="schedule-appt-title"
-                  className="text-lg font-semibold text-slate-900"
+                  className="text-lg font-semibold text-foreground"
                 >
                   Add appointment
                 </h3>
@@ -329,7 +327,7 @@ export function ReceptionWorkspace({
           <div className="fixed inset-0 z-[80] flex items-stretch justify-center p-2 sm:p-4">
             <button
               type="button"
-              className="absolute inset-0 bg-black/40"
+              className="absolute inset-0 bg-black/55"
               aria-label="Close"
               onClick={closeVisit}
             />
@@ -337,12 +335,12 @@ export function ReceptionWorkspace({
               role="dialog"
               aria-modal="true"
               aria-labelledby="start-visit-dialog-title"
-              className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+              className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-xl"
             >
-              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200 px-5 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border px-5 py-3">
                 <h3
                   id="start-visit-dialog-title"
-                  className="text-lg font-semibold text-slate-900"
+                  className="text-lg font-semibold text-foreground"
                 >
                   {visitKind === "NEW"
                     ? "New patient - bill & start"

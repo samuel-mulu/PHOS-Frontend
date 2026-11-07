@@ -11,10 +11,10 @@ export function RouteForbidden() {
   const home = user ? getRoleHomePath(user.role) : "/login";
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-lg border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+    <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-lg border border-border bg-card px-6 py-12 text-center shadow-sm">
       <ShieldOff className="h-10 w-10 text-amber-600" aria-hidden />
-      <h1 className="text-lg font-semibold text-slate-900">Access denied</h1>
-      <p className="text-sm text-slate-600">
+      <h1 className="text-lg font-semibold text-foreground">Access denied</h1>
+      <p className="text-sm text-muted">
         Your role does not include this workspace. The server may also return 403
         if you attempt restricted actions.
       </p>

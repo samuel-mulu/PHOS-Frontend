@@ -47,11 +47,11 @@ export function DoctorAppointmentsPanel() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted">
           Same schedule front desk sees. Book follow-ups from Orders on a visit.
           Desk starts the visit when the patient arrives.
         </p>
-        <div className="flex gap-1.5 rounded-md border border-slate-200 bg-white p-1">
+        <div className="flex gap-1.5 rounded-md border border-border bg-card p-1">
           {(
             [
               ["today", "Today"],
@@ -66,7 +66,7 @@ export function DoctorAppointmentsPanel() {
                 "rounded px-3 py-1.5 text-xs font-medium",
                 filter === id
                   ? "bg-teal-800 text-white"
-                  : "text-slate-600 hover:bg-slate-50",
+                  : "text-muted hover:bg-muted-bg",
               )}
               onClick={() => setFilter(id)}
             >
@@ -120,13 +120,13 @@ export function DoctorAppointmentsPanel() {
                         ? "text-sky-800"
                         : a.status === AppointmentStatus.CHECKED_IN
                           ? "text-emerald-800"
-                          : "text-slate-600",
+                          : "text-muted",
                     )}
                   >
                     {a.status.replaceAll("_", " ")}
                   </span>
                 </DataTableCell>
-                <DataTableCell className="max-w-[14rem] truncate text-slate-600">
+                <DataTableCell className="max-w-[14rem] truncate text-muted">
                   {a.notes ?? "-"}
                 </DataTableCell>
               </DataTableRow>

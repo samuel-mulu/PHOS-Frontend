@@ -39,7 +39,7 @@ import { cn } from "@/lib/utils";
 const PRIORITY_STYLES: Record<AlertPriority, string> = {
   CRITICAL: "bg-red-100 text-red-900",
   HIGH: "bg-amber-100 text-amber-900",
-  NORMAL: "bg-slate-100 text-slate-700",
+  NORMAL: "bg-muted-bg text-foreground",
 };
 
 export function NotificationCenter() {
@@ -61,8 +61,8 @@ export function NotificationCenter() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-900">Notifications</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-lg font-semibold text-foreground">Notifications</h1>
+          <p className="text-sm text-muted">
             Alert center with Critical / High / Normal priority. Payment requests
             from doctors appear as High priority.
           </p>
@@ -152,7 +152,7 @@ export function NotificationCenter() {
                     key={n.id}
                     className={cn(unread && "bg-teal-50/50")}
                   >
-                    <DataTableCell className="whitespace-nowrap text-xs text-slate-600">
+                    <DataTableCell className="whitespace-nowrap text-xs text-muted">
                       {format(new Date(n.createdAt), "MMM d, HH:mm")}
                     </DataTableCell>
                     <DataTableCell className="text-xs">
@@ -168,10 +168,10 @@ export function NotificationCenter() {
                     <DataTableCell className="text-xs">
                       {notificationCategory(n.type)}
                     </DataTableCell>
-                    <DataTableCell className="font-medium text-slate-900">
+                    <DataTableCell className="font-medium text-foreground">
                       {n.title}
                     </DataTableCell>
-                    <DataTableCell className="max-w-md text-sm text-slate-600">
+                    <DataTableCell className="max-w-md text-sm text-muted">
                       {n.message}
                     </DataTableCell>
                     <DataTableCell stickyRight className="text-right">
@@ -194,7 +194,7 @@ export function NotificationCenter() {
                             Mark read
                           </Button>
                         ) : (
-                          <span className="text-xs text-slate-400">Read</span>
+                          <span className="text-xs text-muted">Read</span>
                         )}
                       </div>
                     </DataTableCell>

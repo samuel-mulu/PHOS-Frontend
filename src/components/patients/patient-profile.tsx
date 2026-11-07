@@ -14,8 +14,10 @@ import {
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/hooks";
-import { usePatientChart } from "@/features/patients/hooks";
+import { usePatientBalance, usePatientChart } from "@/features/patients/hooks";
 import { formatAge } from "@/lib/format/age";
+import { formatCents } from "@/lib/format/money";
+import { invoiceStateBadge } from "@/components/shared/status-badge";
 import { canEditPatient } from "@/lib/permissions";
 import { uniquePanelLabels } from "@/lib/lab/panels";
 import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
@@ -25,6 +27,7 @@ import { PatientQrBadge } from "./patient-qr-badge";
 export function PatientProfile({ patientId }: { patientId: string }) {
   const { data, isLoading, isError, refetch } = usePatientChart(patientId);
   const { data: user } = useCurrentUser();
+  const balance = usePatientBalance(patientId);
   const [editOpen, setEditOpen] = useState(false);
 
   if (isLoading) return <LoadingBlock label="Loading patient chart" />;
@@ -43,13 +46,13 @@ export function PatientProfile({ patientId }: { patientId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-lg border border-teal-200 bg-white p-5 shadow-sm md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-4 rounded-lg border border-teal-200 bg-card p-5 shadow-sm md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-teal-700">
             {p.patientNumber}
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">{fullName}</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="mt-1 text-2xl font-semibold text-foreground">{fullName}</h1>
+          <p className="mt-1 text-sm text-muted">
             {p.sex}
             {age ? ` · ${age}` : ""}
             {p.phone ? ` · ${p.phone}` : ""}
@@ -57,6 +60,14 @@ export function PatientProfile({ patientId }: { patientId: string }) {
           {p.allergies ? (
             <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">
               Allergies: {p.allergies}
+            </p>
+          ) : null}
+          {(balance.data?.outstandingCents ?? 0) > 0 ? (
+            <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-950">
+              Owes {formatCents(balance.data!.outstandingCents)} ·{" "}
+              {balance.data!.invoices.length} unpaid invoice
+              {balance.data!.invoices.length === 1 ? "" : "s"} - collect at
+              cashier (Debts)
             </p>
           ) : null}
           {canEdit ? (
@@ -106,7 +117,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
 
       <ChartSection title="Encounters">
         {data.encounters.length === 0 ? (
-          <p className="text-sm text-slate-500">No encounters.</p>
+          <p className="text-sm text-muted">No encounters.</p>
         ) : (
           <DataTable>
             <DataTableHead>
@@ -152,7 +163,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
         }
       >
         {data.labOrders.length === 0 ? (
-          <p className="text-sm text-slate-500">No lab orders.</p>
+          <p className="text-sm text-muted">No lab orders.</p>
         ) : (
           <DataTable>
             <DataTableHead>
@@ -186,18 +197,18 @@ export function PatientProfile({ patientId }: { patientId: string }) {
 
       <ChartSection title="Prescriptions">
         {data.prescriptions.length === 0 ? (
-          <p className="text-sm text-slate-500">No prescriptions.</p>
+          <p className="text-sm text-muted">No prescriptions.</p>
         ) : (
           <ul className="space-y-2 text-sm">
             {data.prescriptions.map((rx) => (
               <li
                 key={rx.id}
-                className="rounded border border-slate-100 px-3 py-2"
+                className="rounded border border-border px-3 py-2"
               >
                 <span className="font-medium">{rx.status}</span>
                 {" · "}
                 {format(new Date(rx.createdAt), "dd MMM yyyy")}
-                <span className="text-slate-600">
+                <span className="text-muted">
                   {" - "}
                   {rx.items
                     .map((i) => `${i.medicine.name} ×${i.quantity}`)
@@ -211,23 +222,55 @@ export function PatientProfile({ patientId }: { patientId: string }) {
 
       <ChartSection title="Billing">
         {data.invoices.length === 0 ? (
-          <p className="text-sm text-slate-500">No invoices.</p>
+          <p className="text-sm text-muted">No invoices.</p>
         ) : (
           <DataTable>
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell>Invoice</DataTableHeaderCell>
+                <DataTableHeaderCell>Date</DataTableHeaderCell>
                 <DataTableHeaderCell>Status</DataTableHeaderCell>
                 <DataTableHeaderCell>Total</DataTableHeaderCell>
+                <DataTableHeaderCell>Paid</DataTableHeaderCell>
+                <DataTableHeaderCell>Waived</DataTableHeaderCell>
+                <DataTableHeaderCell>Owed</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <DataTableBody>
               {data.invoices.map((inv) => (
                 <DataTableRow key={inv.id}>
                   <DataTableCell>{inv.invoiceNumber}</DataTableCell>
-                  <DataTableCell>{inv.status}</DataTableCell>
+                  <DataTableCell className="tabular-nums">
+                    {format(new Date(inv.createdAt), "dd MMM yyyy")}
+                  </DataTableCell>
                   <DataTableCell>
-                    ETB {(inv.totalCents / 100).toFixed(2)}
+                    {invoiceStateBadge({
+                      status: inv.status,
+                      totalCents: inv.totalCents,
+                      paidCents: inv.paidCents ?? 0,
+                      waivedCents: inv.waivedCents,
+                      deferredCents: inv.deferredCents,
+                    })}
+                  </DataTableCell>
+                  <DataTableCell className="tabular-nums">
+                    {formatCents(inv.totalCents)}
+                  </DataTableCell>
+                  <DataTableCell className="tabular-nums">
+                    {formatCents(inv.paidCents ?? 0)}
+                  </DataTableCell>
+                  <DataTableCell className="tabular-nums text-muted">
+                    {(inv.waivedCents ?? 0) > 0
+                      ? formatCents(inv.waivedCents ?? 0)
+                      : "-"}
+                  </DataTableCell>
+                  <DataTableCell
+                    className={
+                      (inv.balanceCents ?? 0) > 0
+                        ? "tabular-nums font-semibold text-amber-800"
+                        : "tabular-nums"
+                    }
+                  >
+                    {formatCents(inv.balanceCents ?? 0)}
                   </DataTableCell>
                 </DataTableRow>
               ))}
@@ -238,7 +281,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
 
       <ChartSection title="Appointments">
         {data.appointments.length === 0 ? (
-          <p className="text-sm text-slate-500">No appointments on file.</p>
+          <p className="text-sm text-muted">No appointments on file.</p>
         ) : (
           <DataTable>
             <DataTableHead>
@@ -274,9 +317,9 @@ function ChartSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
         {action}
       </div>
       {children}
@@ -292,8 +335,8 @@ function InfoCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+    <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       <dl className="mt-3 space-y-2 text-sm">{children}</dl>
     </div>
   );
@@ -302,8 +345,8 @@ function InfoCard({
 function InfoRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right text-slate-900">{value ?? "-"}</dd>
+      <dt className="text-muted">{label}</dt>
+      <dd className="text-right text-foreground">{value ?? "-"}</dd>
     </div>
   );
 }

@@ -40,7 +40,7 @@ type LabTab = "new" | "results" | "send" | "done";
 function RedBadge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-3xs font-bold leading-none text-white">
       {count > 99 ? "99+" : count}
     </span>
   );
@@ -121,8 +121,8 @@ export function LabDashboard() {
     <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Laboratory</h1>
-          <p className="text-sm text-slate-600">
+          <h1 className="text-xl font-semibold text-foreground">Laboratory</h1>
+          <p className="text-sm text-muted">
             1) Receive sample → 2) Enter results → 3) Send to doctor. Opening an
             order does not move it; only those actions do.
           </p>
@@ -134,7 +134,7 @@ export function LabDashboard() {
       </div>
 
       <nav
-        className="flex flex-wrap gap-2 border-b border-slate-200 pb-2"
+        className="flex flex-wrap gap-2 border-b border-border pb-2"
         aria-label="Lab queues"
       >
         <TabButton
@@ -175,7 +175,7 @@ export function LabDashboard() {
         )}
         title={
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-foreground">
               {tab === "new"
                 ? "New from doctor"
                 : tab === "results"
@@ -184,7 +184,7 @@ export function LabDashboard() {
                     ? "Results ready - send to doctor"
                     : "Already sent to doctor"}
             </h2>
-            <p className="text-xs font-normal text-slate-500">
+            <p className="text-xs font-normal text-muted">
               {tab === "new"
                 ? "All new lab orders from doctors. If the patient is at the lab station, Call appears here too. Stays until you Mark sample received."
                 : tab === "results"
@@ -230,7 +230,7 @@ export function LabDashboard() {
                 : tab === "results"
                   ? "After Mark sample received, enter values here."
                   : tab === "send"
-                    ? "After all results are saved, send them to the doctor here."
+                    ? "After at least one result is saved, send them to the doctor here."
                     : "Verified returns show here."
             }
           />
@@ -285,8 +285,8 @@ function TabButton({
           : emphasize && badge > 0
             ? "bg-red-50 text-red-900 ring-1 ring-red-200 hover:bg-red-100"
             : muted
-              ? "bg-slate-50 text-slate-600 hover:bg-slate-100"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+              ? "bg-muted-bg text-muted hover:bg-muted-bg"
+              : "bg-muted-bg text-foreground hover:bg-muted-bg",
       )}
     >
       {label}
@@ -338,13 +338,13 @@ function OrdersTable({
                 <span className="font-medium">
                   {o.patient.firstName} {o.patient.lastName}
                 </span>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   {o.patient.patientNumber}
                 </p>
               </DataTableCell>
               <DataTableCell>
                 <p className="font-medium">{o.orderNumber}</p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   {format(new Date(o.createdAt), "dd MMM HH:mm")}
                   {o.doctor
                     ? ` · Dr. ${o.doctor.firstName} ${o.doctor.lastName}`
@@ -362,7 +362,7 @@ function OrdersTable({
                       ? "text-red-700"
                       : o.priority === "URGENT"
                         ? "text-amber-700"
-                        : "text-slate-600",
+                        : "text-muted",
                   )}
                 >
                   {o.priority}
@@ -375,12 +375,12 @@ function OrdersTable({
                       <p className="text-xs font-medium text-teal-800">
                         At lab
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted">
                         {formatWaitingSince(entry.enteredAt)}
                       </p>
                     </div>
                   ) : (
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted">
                       Order only
                     </span>
                   )}

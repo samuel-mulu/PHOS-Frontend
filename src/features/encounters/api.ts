@@ -56,6 +56,7 @@ export type EncounterDetail = Encounter & {
     assessment: string | null;
     plan: string | null;
     notes: string | null;
+    labNotes?: string | null;
     diagnoses: Array<{
       id: string;
       label: string;

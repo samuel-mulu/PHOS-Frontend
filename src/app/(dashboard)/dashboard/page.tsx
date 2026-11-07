@@ -15,7 +15,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4">
       {home !== "/dashboard" ? (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           {user.firstName} ·{" "}
           <Link href={home} className="font-medium text-teal-700 underline">
             Open your primary workspace

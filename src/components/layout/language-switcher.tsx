@@ -8,7 +8,7 @@ export function LanguageSwitcher({ compact }: { compact?: boolean }) {
   const { locale, setLocale, t } = useTranslation();
 
   return (
-    <label className="flex items-center gap-1.5 text-xs text-slate-400">
+    <label className="flex items-center gap-1.5 text-xs text-muted">
       {!compact ? <span className="sr-only">Language</span> : null}
       <select
         className="rounded border border-slate-700 bg-slate-800 px-2 py-1 text-slate-100"

@@ -145,9 +145,9 @@ function SuggestionList({
     <ul
       id={listId}
       role="listbox"
-      className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white py-1 text-sm shadow-lg"
+      className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-border bg-card py-1 text-sm shadow-lg"
     >
-      <li className="px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+      <li className="px-3 py-1 text-3xs font-medium uppercase tracking-wide text-muted">
         Your recent phrases
       </li>
       {suggestions.map((item, index) => (
@@ -156,8 +156,8 @@ function SuggestionList({
             type="button"
             aria-selected={index === activeIndex}
             className={cn(
-              "w-full px-3 py-2 text-left text-slate-800 hover:bg-teal-50",
-              index === activeIndex && "bg-teal-50",
+              "w-full px-3 py-2 text-left text-foreground hover:bg-teal-50 dark:hover:bg-teal-400/10",
+              index === activeIndex && "bg-teal-50 dark:bg-teal-950",
             )}
             onMouseDown={(e) => {
               e.preventDefault();

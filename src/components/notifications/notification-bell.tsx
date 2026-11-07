@@ -56,7 +56,7 @@ export function NotificationBell() {
         type="button"
         variant="ghost"
         size="sm"
-        className="relative text-slate-700"
+        className="relative text-foreground"
         aria-label={
           count > 0 ? `${count} unread notifications` : "Notifications"
         }
@@ -65,7 +65,7 @@ export function NotificationBell() {
       >
         <Bell className="h-5 w-5" aria-hidden />
         {count > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-3xs font-bold leading-none text-white">
             {count > 99 ? "99+" : count}
           </span>
         ) : null}
@@ -73,11 +73,11 @@ export function NotificationBell() {
 
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-1 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+          className="absolute right-0 z-50 mt-1 w-[min(100vw-2rem,22rem)] overflow-hidden rounded-lg border border-border bg-card shadow-lg"
           role="menu"
         >
-          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-            <p className="text-sm font-semibold text-slate-900">Notifications</p>
+          <div className="flex items-center justify-between border-b border-border px-3 py-2">
+            <p className="text-sm font-semibold text-foreground">Notifications</p>
             <Link
               href="/notifications"
               className="text-xs font-medium text-teal-800 hover:underline"
@@ -88,7 +88,7 @@ export function NotificationBell() {
           </div>
 
           {items.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-slate-500">
+            <p className="px-3 py-6 text-center text-sm text-muted">
               No unread alerts
             </p>
           ) : (
@@ -103,7 +103,7 @@ export function NotificationBell() {
                   >
                     <button
                       type="button"
-                      className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-slate-50"
+                      className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-muted-bg"
                       onClick={() => {
                         if (!n.readAt) markRead.mutate(n.id);
                         setOpen(false);
@@ -114,22 +114,22 @@ export function NotificationBell() {
                       <span className="flex items-center gap-2">
                         <span
                           className={cn(
-                            "rounded px-1 py-0.5 text-[10px] font-semibold",
+                            "rounded px-1 py-0.5 text-3xs font-semibold",
                             pri === "CRITICAL" && "bg-red-100 text-red-800",
                             pri === "HIGH" && "bg-amber-100 text-amber-900",
-                            pri === "NORMAL" && "bg-slate-100 text-slate-700",
+                            pri === "NORMAL" && "bg-muted-bg text-foreground",
                           )}
                         >
                           {priorityLabel(pri)}
                         </span>
-                        <span className="text-[10px] text-slate-400">
+                        <span className="text-3xs text-muted">
                           {format(new Date(n.createdAt), "MMM d, HH:mm")}
                         </span>
                       </span>
-                      <span className="text-sm font-medium text-slate-900">
+                      <span className="text-sm font-medium text-foreground">
                         {n.title}
                       </span>
-                      <span className="line-clamp-2 text-xs text-slate-600">
+                      <span className="line-clamp-2 text-xs text-muted">
                         {n.message}
                       </span>
                     </button>

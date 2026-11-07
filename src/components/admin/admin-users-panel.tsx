@@ -92,7 +92,7 @@ export function AdminUsersPanel() {
     <div className="space-y-4">
       {showCreate ? (
         <form
-          className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-2"
+          className="grid gap-3 rounded-lg border border-border bg-muted-bg p-4 sm:grid-cols-2"
           onSubmit={(e) => {
             e.preventDefault();
             createUser.mutate(
@@ -163,7 +163,7 @@ export function AdminUsersPanel() {
             <Label htmlFor="cu-role">Role</Label>
             <select
               id="cu-role"
-              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-card px-3 py-2 text-sm"
               value={draft.role}
               onChange={(e) =>
                 setDraft({ ...draft, role: e.target.value as Role })
@@ -180,7 +180,7 @@ export function AdminUsersPanel() {
             <Label htmlFor="cu-dept">Department</Label>
             <select
               id="cu-dept"
-              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-card px-3 py-2 text-sm"
               value={draft.departmentId}
               onChange={(e) =>
                 setDraft({ ...draft, departmentId: e.target.value })
@@ -221,7 +221,7 @@ export function AdminUsersPanel() {
             );
           }}
         >
-          <p className="sm:col-span-2 text-sm font-medium text-slate-900">
+          <p className="sm:col-span-2 text-sm font-medium text-foreground">
             Edit {editing.email}
           </p>
           <div>
@@ -252,7 +252,7 @@ export function AdminUsersPanel() {
             <Label htmlFor="eu-role">Role</Label>
             <select
               id="eu-role"
-              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-card px-3 py-2 text-sm"
               value={editDraft.role}
               onChange={(e) =>
                 setEditDraft({ ...editDraft, role: e.target.value as Role })
@@ -269,7 +269,7 @@ export function AdminUsersPanel() {
             <Label htmlFor="eu-dept">Department</Label>
             <select
               id="eu-dept"
-              className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-slate-300 bg-card px-3 py-2 text-sm"
               value={editDraft.departmentId}
               onChange={(e) =>
                 setEditDraft({ ...editDraft, departmentId: e.target.value })
@@ -337,7 +337,7 @@ export function AdminUsersPanel() {
                   </DataTableCell>
                   <DataTableCell>
                     <select
-                      className="rounded border border-slate-300 bg-white px-2 py-1 text-xs"
+                      className="rounded border border-slate-300 bg-card px-2 py-1 text-xs"
                       value={user.status}
                       disabled={updateStatus.isPending}
                       onChange={(e) =>

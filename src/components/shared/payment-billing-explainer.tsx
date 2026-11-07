@@ -17,7 +17,7 @@ export function PaymentBillingExplainer({
 
   if (invoiceNumber) {
     return (
-      <p className="text-xs text-slate-600">
+      <p className="text-xs text-muted">
         Invoice {invoiceNumber}
         {invoiceStatus ? ` · ${invoiceStatus}` : ""}
       </p>
@@ -25,7 +25,7 @@ export function PaymentBillingExplainer({
   }
 
   return (
-    <p className="text-xs text-slate-500">
+    <p className="text-xs text-muted">
       No invoice yet - desk will bill this visit.
     </p>
   );

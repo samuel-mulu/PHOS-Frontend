@@ -11,6 +11,10 @@ export type DashboardStats = {
   activeLabOrders: number;
   pendingInvoices: number;
   appointmentsToday: number;
+  /** Still owed across open invoices (pay later + part paid). */
+  outstandingCents?: number;
+  deferredTodayCount?: number;
+  waivedTodayCents?: number;
 };
 
 export async function fetchDashboardStats() {

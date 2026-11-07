@@ -12,6 +12,7 @@ export type VisitNoteSection = VisitPrintSectionKey;
 export const VISIT_NOTE_SECTION_LABEL: Record<VisitNoteSection, string> = {
   vitals: VISIT_SECTION_STYLE.vitals.label,
   notes: VISIT_SECTION_STYLE.notes.label,
+  labNotes: VISIT_SECTION_STYLE.labNotes.label,
   diagnosis: VISIT_SECTION_STYLE.diagnosis.label,
   ultrasound: VISIT_SECTION_STYLE.ultrasound.label,
   prescription: VISIT_SECTION_STYLE.prescription.label,
@@ -20,6 +21,7 @@ export const VISIT_NOTE_SECTION_LABEL: Record<VisitNoteSection, string> = {
 export const DEFAULT_VISIT_NOTE_SECTIONS: Record<VisitNoteSection, boolean> = {
   vitals: true,
   notes: true,
+  labNotes: true,
   diagnosis: true,
   ultrasound: true,
   prescription: true,
@@ -28,6 +30,7 @@ export const DEFAULT_VISIT_NOTE_SECTIONS: Record<VisitNoteSection, boolean> = {
 export type VisitNoteConsultation = {
   physicalExam?: string | null;
   notes?: string | null;
+  labNotes?: string | null;
   assessment?: string | null;
   plan?: string | null;
   historyPresentIllness?: string | null;
@@ -70,6 +73,8 @@ export function visitNoteSectionText(
       return consultation.physicalExam?.trim() ?? "";
     case "notes":
       return consultation.notes?.trim() ?? "";
+    case "labNotes":
+      return consultation.labNotes?.trim() ?? "";
     case "diagnosis":
       return consultation.assessment?.trim() ?? "";
     case "ultrasound":

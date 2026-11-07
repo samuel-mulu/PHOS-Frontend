@@ -102,7 +102,7 @@ export function PatientSearchList({
             : "relative max-w-md flex-1"
         }
       >
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
         <Input
           className="pl-9"
           placeholder="Search by number, name, phone, ID…"
@@ -173,7 +173,7 @@ export function PatientSearchList({
                   <DataTableCell>
                     <Link
                       href={`/patients/${p.id}`}
-                      className="font-medium text-teal-700 hover:underline"
+                      className="font-medium text-teal-800 hover:underline dark:text-slate-200 dark:hover:text-teal-300"
                     >
                       {p.patientNumber}
                     </Link>
@@ -227,7 +227,7 @@ export function PatientSearchList({
               ))}
             </DataTableBody>
           </DataTable>
-          <div className="flex items-center justify-between text-sm text-slate-600">
+          <div className="flex items-center justify-between text-sm text-muted">
             <span>
               Page {query.data.page} of {totalPages} ({query.data.total} total)
             </span>

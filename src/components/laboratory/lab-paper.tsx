@@ -56,7 +56,7 @@ function flagClass(flag: string | null | undefined) {
   if (flag === "CRITICAL" || flag === "ABNORMAL") return "text-red-700 font-semibold";
   if (flag === "HIGH" || flag === "LOW") return "text-amber-800 font-semibold";
   if (flag === "NORMAL") return "text-emerald-800";
-  return "text-slate-500";
+  return "text-muted";
 }
 
 export function LabPaper({
@@ -81,12 +81,12 @@ export function LabPaper({
       {groups.map((group) => (
         <section
           key={group.category}
-          className="overflow-hidden rounded-lg border border-slate-200 bg-white"
+          className="overflow-hidden rounded-lg border border-border bg-card"
         >
-          <h3 className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-800">
+          <h3 className="border-b border-border bg-muted-bg px-3 py-2 text-xs font-bold uppercase tracking-wide text-foreground">
             {paperTitle(group.category)}
           </h3>
-          <div className="divide-y divide-slate-100 font-mono text-[13px]">
+          <div className="divide-y divide-border font-mono text-[calc(0.8125rem*var(--text-scale))]">
             {group.items.map((line) => {
               const draft = drafts?.[line.id];
               const value =
@@ -102,9 +102,9 @@ export function LabPaper({
                   key={line.id}
                   className="grid items-center gap-2 px-3 py-1.5 sm:grid-cols-[minmax(0,1.4fr)_minmax(5.5rem,0.7fr)_auto_minmax(0,1fr)]"
                 >
-                  <span className="font-sans text-sm text-slate-800">
+                  <span className="font-sans text-sm text-foreground">
                     {line.name}
-                    <span className="ml-1 text-[10px] text-slate-400">
+                    <span className="ml-1 text-3xs text-muted">
                       {line.code}
                     </span>
                   </span>
@@ -117,21 +117,25 @@ export function LabPaper({
                         onChange?.(line.id, { value: e.target.value })
                       }
                     />
+                  ) : value ? (
+                    <span className="min-h-8 border-b border-dotted border-slate-400 px-1 py-1 font-semibold tabular-nums text-foreground">
+                      {value}
+                    </span>
                   ) : (
-                    <span className="min-h-8 border-b border-dotted border-slate-400 px-1 py-1 font-semibold tabular-nums text-slate-900">
-                      {value || "______"}
+                    <span className="min-h-8 px-1 py-1 text-xs font-sans italic text-muted">
+                      Not added
                     </span>
                   )}
-                  <span className="shrink-0 text-xs text-slate-500">
+                  <span className="shrink-0 text-xs text-muted">
                     {line.unit ?? ""}
                   </span>
-                  <span className="flex flex-wrap items-center justify-end gap-2 text-xs text-slate-500">
+                  <span className="flex flex-wrap items-center justify-end gap-2 text-xs text-muted">
                     {line.referenceRange ? (
                       <span>({line.referenceRange})</span>
                     ) : null}
                     {mode === "edit" ? (
                       <select
-                        className="h-8 rounded border border-slate-200 bg-white px-1 text-[11px]"
+                        className="h-8 rounded border border-border bg-card px-1 text-2xs"
                         value={flag}
                         onChange={(e) =>
                           onChange?.(line.id, { flag: e.target.value })

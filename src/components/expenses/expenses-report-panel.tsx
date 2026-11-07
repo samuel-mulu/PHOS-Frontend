@@ -151,10 +151,10 @@ export function ExpensesReportPanel({
     <div className={cn("space-y-4", className)}>
       {showHeading ? (
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">
+          <h2 className="text-sm font-semibold text-foreground">
             Expense report
           </h2>
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-muted">
             Recorded expenses by category · compare to collections for net cash
             · print PDF or CSV
           </p>
@@ -177,7 +177,7 @@ export function ExpensesReportPanel({
                 "rounded-md px-3 py-1.5 text-xs font-medium",
                 preset === id
                   ? "bg-teal-800 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200",
+                  : "bg-muted-bg text-foreground hover:bg-muted-bg",
               )}
               onClick={() => applyPreset(id)}
             >
@@ -240,7 +240,7 @@ export function ExpensesReportPanel({
       </div>
 
       {query.data ? (
-        <p className="text-xs text-slate-500">Period: {periodLabel}</p>
+        <p className="text-xs text-muted">Period: {periodLabel}</p>
       ) : null}
 
       {query.isLoading ? <LoadingBlock label="Loading expense report" /> : null}
@@ -283,11 +283,11 @@ export function ExpensesReportPanel({
           </div>
 
           {categoryRows.length > 0 ? (
-            <div className="flex flex-wrap gap-2 text-xs text-slate-600">
+            <div className="flex flex-wrap gap-2 text-xs text-muted">
               {categoryRows.map((c) => (
                 <span
                   key={c.categoryId}
-                  className="rounded-md bg-slate-100 px-2 py-1 tabular-nums"
+                  className="rounded-md bg-muted-bg px-2 py-1 tabular-nums"
                 >
                   {c.name}: {c.count} · {formatCents(c.amountCents)}
                 </span>
@@ -298,10 +298,10 @@ export function ExpensesReportPanel({
           <ExpandablePanel
             title={
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">
+                <h2 className="text-sm font-semibold text-foreground">
                   Expense detail
                 </h2>
-                <p className="text-xs text-slate-600">{periodLabel}</p>
+                <p className="text-xs text-muted">{periodLabel}</p>
               </div>
             }
           >
@@ -341,13 +341,13 @@ export function ExpensesReportPanel({
                         <DataTableCell className="tabular-nums">
                           {formatCents(row.amountCents)}
                         </DataTableCell>
-                        <DataTableCell className="max-w-[200px] truncate text-slate-600">
+                        <DataTableCell className="max-w-[200px] truncate text-muted">
                           {note || "-"}
                         </DataTableCell>
-                        <DataTableCell className="text-slate-600">
+                        <DataTableCell className="text-muted">
                           {row.receiptReference ?? "-"}
                         </DataTableCell>
-                        <DataTableCell className="text-slate-600">
+                        <DataTableCell className="text-muted">
                           {row.recordedBy.firstName} {row.recordedBy.lastName}
                         </DataTableCell>
                       </DataTableRow>
@@ -375,14 +375,14 @@ function SummaryTile({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200 bg-white px-3 py-2",
+        "rounded-md border border-border bg-card px-3 py-2",
         emphasize && "border-teal-200 bg-teal-50/40",
       )}
     >
-      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+      <div className="text-2xs font-medium uppercase tracking-wide text-muted">
         {label}
       </div>
-      <div className="mt-0.5 text-base font-semibold tabular-nums text-slate-900">
+      <div className="mt-0.5 text-base font-semibold tabular-nums text-foreground">
         {value}
       </div>
     </div>

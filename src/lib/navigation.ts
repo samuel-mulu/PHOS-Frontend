@@ -79,7 +79,14 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/nurse",
     label: "Triage",
     icon: Activity,
-    roles: [Role.CEO, Role.ADMIN, Role.NURSE],
+    roles: [
+      Role.CEO,
+      Role.ADMIN,
+      Role.NURSE,
+      Role.FRONT_DESK,
+      Role.RECEPTIONIST,
+      Role.CASHIER,
+    ],
   },
   {
     href: "/doctor",

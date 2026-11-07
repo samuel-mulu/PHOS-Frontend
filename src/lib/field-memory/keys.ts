@@ -2,6 +2,7 @@
 export type ConsultationFieldMemoryKey =
   | "physicalExam"
   | "notes"
+  | "labNotes"
   | "assessment"
   | "plan"
   | "historyPresentIllness";
@@ -17,11 +18,16 @@ export type FieldMemoryKey =
   | "referral.actionTaken"
   | "referral.reasonForReferral"
   | "referral.referredBy"
-  | "referral.feedback";
+  | "referral.feedback"
+  | "certificate.diagnosis"
+  | "certificate.recommendations"
+  | "obstetricUs.index"
+  | "obstetricUs.recommendation";
 
 export const CONSULTATION_FIELD_MEMORY_KEYS: ConsultationFieldMemoryKey[] = [
   "physicalExam",
   "notes",
+  "labNotes",
   "assessment",
   "plan",
   "historyPresentIllness",

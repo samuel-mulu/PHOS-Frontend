@@ -134,7 +134,9 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
       .map((group) => {
         const rows = group.items
           .map((item) => {
-            const value = item.result?.value ?? "-";
+            const value = item.result?.value?.trim()
+              ? item.result.value
+              : "Not added";
             const flag = item.result?.flag ?? "";
             const unit = item.result?.unit ?? item.labTest.unit ?? "";
             const range =
@@ -282,7 +284,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
                   />
                   Doctor vitals
                   {encounter.isLoading ? (
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-2xs text-slate-400">
                       (loading…)
                     </span>
                   ) : null}
@@ -293,7 +295,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Lab panels
                     </p>
-                    <div className="flex gap-2 text-[11px]">
+                    <div className="flex gap-2 text-2xs">
                       <button
                         type="button"
                         className="text-teal-700 underline"
@@ -310,7 +312,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
                       </button>
                     </div>
                   </div>
-                  <p className="mb-2 text-[11px] text-slate-500">
+                  <p className="mb-2 text-2xs text-slate-500">
                     Tap a panel to include or exclude it from the report.
                   </p>
                   <div className="flex flex-wrap gap-1.5">
@@ -349,7 +351,7 @@ export function PrintLabReport({ order }: { order: LabOrder }) {
                   />
                   <span>
                     Statistics - range &amp; recommend
-                    <span className="mt-0.5 block text-[11px] font-normal text-slate-500">
+                    <span className="mt-0.5 block text-2xs font-normal text-slate-500">
                       Adds reference range and clinical recommend columns (not
                       daily/weekly charts).
                     </span>

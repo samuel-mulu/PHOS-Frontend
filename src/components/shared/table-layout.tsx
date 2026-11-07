@@ -118,12 +118,12 @@ export function ExpandablePanel({
   );
 
   const header = (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-card px-4 py-3">
       <div className="min-w-0 flex-1">
         {typeof title === "string" ? (
           <h2
             id={titleId}
-            className="truncate text-sm font-semibold text-slate-900"
+            className="truncate text-sm font-semibold text-foreground"
           >
             {title}
           </h2>
@@ -149,7 +149,7 @@ export function ExpandablePanel({
         {toolbar ? (
           <div
             className={cn(
-              "shrink-0 space-y-3 border-b border-slate-100 bg-slate-50/80 px-4 py-3",
+              "shrink-0 space-y-3 border-b border-border bg-muted-bg/80 px-4 py-3",
               !fullscreen && "bg-transparent px-0 py-0 border-0",
             )}
           >
@@ -172,7 +172,7 @@ export function ExpandablePanel({
   if (fullscreen && mounted) {
     return createPortal(
       <div
-        className="fixed inset-0 z-[70] flex flex-col bg-slate-100"
+        className="fixed inset-0 z-[70] flex flex-col bg-background"
         role="dialog"
         aria-modal="true"
         aria-labelledby={typeof title === "string" ? titleId : undefined}
@@ -187,7 +187,7 @@ export function ExpandablePanel({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm",
+        "overflow-hidden rounded-lg border border-border bg-card text-foreground shadow-sm",
         className,
       )}
     >

@@ -31,17 +31,17 @@ export function PatientEditDialog({
           role="dialog"
           aria-modal="true"
           aria-labelledby="edit-patient-dialog-title"
-          className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+          className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-card shadow-xl"
         >
-          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+          <div className="flex items-center justify-between border-b border-border px-5 py-3">
             <div>
               <h3
                 id="edit-patient-dialog-title"
-                className="text-lg font-semibold text-slate-900"
+                className="text-lg font-semibold text-foreground"
               >
                 Edit patient
               </h3>
-              <p className="text-xs text-slate-500">{patient.patientNumber}</p>
+              <p className="text-xs text-muted">{patient.patientNumber}</p>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={onClose}>
               Close

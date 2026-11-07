@@ -18,10 +18,10 @@ export function DateSortToggle({
       role="group"
       aria-label="Sort by date"
     >
-      <span className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+      <span className="text-2xs font-medium uppercase tracking-wide text-muted">
         Sort
       </span>
-      <div className="inline-flex rounded-md border border-slate-200 bg-slate-50 p-0.5">
+      <div className="inline-flex rounded-md border border-border bg-muted-bg p-0.5">
         <SortOption
           active={value === "latest"}
           onClick={() => onChange("latest")}
@@ -59,10 +59,10 @@ function SortOption({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "rounded px-2 py-0.5 text-[11px] font-semibold transition-colors",
+        "rounded px-2 py-0.5 text-2xs font-semibold transition-colors",
         active
-          ? "bg-white text-teal-800 shadow-sm"
-          : "text-slate-500 hover:text-slate-700",
+          ? "bg-card text-teal-800 shadow-sm dark:text-teal-300"
+          : "text-muted hover:text-foreground",
       )}
     >
       {children}

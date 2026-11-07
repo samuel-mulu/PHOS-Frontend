@@ -70,7 +70,9 @@ function orderSectionHtml(order: LabOrder, includeStats: boolean): string {
     .map((group) => {
       const rows = group.items
         .map((item) => {
-          const value = item.result?.value ?? "-";
+          const value = item.result?.value?.trim()
+            ? item.result.value
+            : "Not added";
           const flag = item.result?.flag ?? "";
           const unit = item.result?.unit ?? item.labTest.unit ?? "";
           const range =
@@ -112,6 +114,16 @@ function orderSectionHtml(order: LabOrder, includeStats: boolean): string {
       <div class="muted">Ordered by ${escapeHtml(doctor)} · ${escapeHtml(order.priority)} · ${escapeHtml(order.status.replaceAll("_", " "))}</div>
     </div>
     ${tables || `<p class="note">No tests on this order.</p>`}
+    ${
+      order.clinicalNotes
+        ? `<p class="note">Order notes: ${escapeHtml(order.clinicalNotes)}</p>`
+        : ""
+    }
+    ${
+      order.doctorReviewNotes
+        ? `<p class="note"><strong>Doctor lab notes:</strong> ${escapeHtml(order.doctorReviewNotes)}</p>`
+        : ""
+    }
   </section>`;
 }
 
@@ -119,7 +131,7 @@ export function PrintPatientLabReport({
   patientId: initialPatientId,
   patientLabel,
   triggerLabel = "Patient lab report",
-  variant = "outline",
+  variant = "default",
   size = "sm",
 }: {
   /** When set (e.g. patient profile), skip search and load this patient. */
@@ -271,7 +283,7 @@ export function PrintPatientLabReport({
           <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
             <button
               type="button"
-              className="absolute inset-0 bg-black/40"
+              className="absolute inset-0 bg-black/55"
               aria-label="Close"
               onClick={() => setOpen(false)}
             />
@@ -279,15 +291,15 @@ export function PrintPatientLabReport({
               role="dialog"
               aria-modal="true"
               aria-labelledby="patient-lab-report-title"
-              className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-5 shadow-xl"
+              className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-lg border border-border bg-card p-5 text-foreground shadow-xl"
             >
               <h3
                 id="patient-lab-report-title"
-                className="text-base font-semibold text-slate-900"
+                className="text-base font-semibold text-foreground"
               >
                 Patient lab report
               </h3>
-              <p className="mt-1 text-xs text-slate-600">
+              <p className="mt-1 text-xs text-muted">
                 Select a patient and date range, then print their lab results in
                 one report.
               </p>
@@ -405,7 +417,7 @@ export function PrintPatientLabReport({
                     Lab orders
                   </p>
                   {orders.length > 0 ? (
-                    <div className="flex gap-2 text-[11px]">
+                    <div className="flex gap-2 text-2xs">
                       <button
                         type="button"
                         className="text-teal-700 underline"

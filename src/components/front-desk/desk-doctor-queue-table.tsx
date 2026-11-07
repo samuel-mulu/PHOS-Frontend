@@ -59,10 +59,10 @@ export function DeskDoctorQueueTable() {
     <ExpandablePanel
       title={
         <div>
-          <h2 className="text-sm font-semibold text-slate-900">
+          <h2 className="text-sm font-semibold text-foreground">
             Doctor queue
           </h2>
-          <p className="text-xs font-normal text-slate-500">
+          <p className="text-xs font-normal text-muted">
             Read-only. After you assign a visit, watch where the patient is -
             doctor, lab, cashier, ultrasound return, results.
           </p>
@@ -71,11 +71,11 @@ export function DeskDoctorQueueTable() {
       toolbar={
         <div className="flex flex-wrap items-center gap-2">
           <DateSortToggle value={direction} onChange={setDirection} />
-          <Label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          <Label className="text-2xs font-semibold uppercase tracking-wide text-muted">
             Filter by doctor
           </Label>
           <select
-            className="h-9 rounded-md border border-slate-200 bg-white px-2 text-sm"
+            className="h-9 rounded-md border border-border bg-card px-2 text-sm"
             value={doctorId}
             onChange={(e) => setDoctorId(e.target.value)}
             aria-label="Filter by doctor"
@@ -138,7 +138,7 @@ export function DeskDoctorQueueTable() {
                         : "-"}
                     </span>
                     {p?.patientNumber ? (
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted">
                         {p.patientNumber}
                       </p>
                     ) : null}
@@ -149,7 +149,7 @@ export function DeskDoctorQueueTable() {
                         Visit {enc.visitNumber}
                       </p>
                     ) : null}
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted">
                       {enc.encounterNumber}
                     </p>
                   </DataTableCell>
@@ -160,7 +160,7 @@ export function DeskDoctorQueueTable() {
                   </DataTableCell>
                   <DataTableCell>
                     <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium text-slate-900">
+                      <span className="text-sm font-medium text-foreground">
                         {location}
                       </span>
                       {encounterStatusBadge(enc.status)}

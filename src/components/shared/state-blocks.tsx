@@ -17,11 +17,11 @@ export function EmptyState({
   description?: string;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-6 py-12 text-center">
-      <Inbox className="h-8 w-8 text-slate-400" aria-hidden />
-      <p className="text-sm font-medium text-slate-800">{title}</p>
+    <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted-bg/50 px-6 py-12 text-center">
+      <Inbox className="h-8 w-8 text-muted" aria-hidden />
+      <p className="text-sm font-medium text-foreground">{title}</p>
       {description ? (
-        <p className="max-w-sm text-sm text-slate-500">{description}</p>
+        <p className="max-w-sm text-sm text-muted">{description}</p>
       ) : null}
     </div>
   );
@@ -35,9 +35,9 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-red-200 bg-red-50 px-6 py-10 text-center">
-      <AlertCircle className="h-8 w-8 text-red-600" aria-hidden />
-      <p className="text-sm text-red-800">{message}</p>
+    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-red-200 bg-red-50 px-6 py-10 text-center dark:border-red-900 dark:bg-red-950/40">
+      <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" aria-hidden />
+      <p className="text-sm text-red-800 dark:text-red-200">{message}</p>
       {onRetry ? (
         <Button variant="outline" size="sm" onClick={onRetry}>
           Try again

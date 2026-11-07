@@ -45,6 +45,7 @@ export const HIWET_BRAND = {
 export type VisitPrintSectionKey =
   | "vitals"
   | "notes"
+  | "labNotes"
   | "diagnosis"
   | "ultrasound"
   | "prescription";
@@ -72,6 +73,13 @@ export const VISIT_SECTION_STYLE: Record<
     bar: "#a855f7",
     title: "#7e22ce",
     tint: "#faf5ff",
+  },
+  labNotes: {
+    label: "Lab notes",
+    icon: "🔬",
+    bar: "#0d9488",
+    title: "#0f766e",
+    tint: "#f0fdfa",
   },
   diagnosis: {
     label: "Diagnosis",

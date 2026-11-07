@@ -88,26 +88,26 @@ export function PaymentRequestPanel({
   return (
     <div
       className={cn(
-        "rounded-lg border border-sky-200 bg-white p-4 shadow-sm",
+        "rounded-lg border border-sky-200 bg-card p-4 shadow-sm",
         className,
       )}
     >
       <div className="flex items-center gap-2">
         <CreditCard className="h-4 w-4 text-sky-700" aria-hidden />
-        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       </div>
-      <p className="mt-1 text-xs text-slate-500">
+      <p className="mt-1 text-xs text-muted">
         Pick a priced service, or add another. Patient pays at cashier, then
         returns to {returnLabel}.
       </p>
 
       <div className="mt-3 space-y-3">
         <div>
-          <Label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <Label className="mb-1 block text-3xs font-semibold uppercase tracking-wide text-muted">
             Service
           </Label>
           <select
-            className="h-10 w-full rounded-md border border-slate-200 bg-white px-2 text-sm"
+            className="h-10 w-full rounded-md border border-border bg-card px-2 text-sm"
             value={serviceId}
             disabled={disabled || request.isPending}
             onChange={(e) => applyService(e.target.value)}
@@ -124,7 +124,7 @@ export function PaymentRequestPanel({
 
         {isCustom ? (
           <div>
-            <Label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <Label className="mb-1 block text-3xs font-semibold uppercase tracking-wide text-muted">
               Service name
             </Label>
             <Input
@@ -137,7 +137,7 @@ export function PaymentRequestPanel({
         ) : null}
 
         <div>
-          <Label className="mb-1 block text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <Label className="mb-1 block text-3xs font-semibold uppercase tracking-wide text-muted">
             Amount (ETB)
           </Label>
           <Input

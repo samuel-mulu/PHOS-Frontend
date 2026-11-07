@@ -40,7 +40,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold tracking-wide">{APP_NAME}</p>
-            <p className="mt-0.5 text-xs text-slate-400">Clinical workstation</p>
+            <p className="mt-0.5 text-xs text-muted">Clinical workstation</p>
           </div>
         </div>
       </div>
@@ -65,7 +65,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
                   <Icon className="h-4 w-4 shrink-0" aria-hidden />
                   <span className="flex-1">{item.label}</span>
                   {item.href === "/notifications" && unreadNotifications > 0 ? (
-                    <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                    <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-3xs font-semibold text-white">
                       {unreadNotifications > 99 ? "99+" : unreadNotifications}
                     </span>
                   ) : null}
@@ -75,7 +75,7 @@ export function AppSidebar({ onNavigate }: { onNavigate?: () => void }) {
           })}
         </ul>
       </nav>
-      <div className="shrink-0 border-t border-slate-800 px-4 py-3 text-xs text-slate-400">
+      <div className="shrink-0 border-t border-slate-800 px-4 py-3 text-xs text-muted">
         <p className="font-medium text-slate-200">
           {user.firstName} {user.lastName}
         </p>

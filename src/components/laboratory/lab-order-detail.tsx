@@ -11,20 +11,83 @@ import { labOrderStatusBadge } from "@/components/shared/status-badge";
 import {
   useEnterLabResults,
   useLabOrder,
+  usePatientLabOrders,
   useReceiveLabOrder,
   useVerifyLabOrder,
 } from "@/features/laboratory/hooks";
 import { useCurrentUser } from "@/features/auth/hooks";
 import { LabOrderStatus } from "@/types/lab";
 import { Role } from "@/types/role";
-import type { ResultValueInput } from "@/features/laboratory/api";
+import type { LabOrder, ResultValueInput } from "@/features/laboratory/api";
 import { PrintLabReport } from "@/components/print/print-lab-report";
+import { LabCashierCard } from "@/components/laboratory/lab-cashier-card";
 import { LabPaper, labItemsToPaperLines } from "@/components/laboratory/lab-paper";
 import { uniquePanelLabels } from "@/lib/lab/panels";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Draft = { value: string; flag: string; notes: string };
+
+function PreviousPatientLabs({
+  currentOrderId,
+  orders,
+}: {
+  currentOrderId: string;
+  orders: LabOrder[];
+}) {
+  const previous = orders.filter(
+    (o) =>
+      o.id !== currentOrderId &&
+      (o.status === LabOrderStatus.VERIFIED ||
+        o.status === LabOrderStatus.RESULT_ENTERED),
+  );
+  if (previous.length === 0) return null;
+
+  return (
+    <section className="rounded-lg border border-border bg-muted-bg/70 p-4 shadow-sm">
+      <h2 className="text-sm font-semibold text-foreground">
+        Previous Lab Results & Doctor Notes
+      </h2>
+      <p className="mt-0.5 text-xs text-muted">
+        Earlier results for this patient — use when correlating new work.
+      </p>
+      <div className="mt-3 space-y-3">
+        {previous.slice(0, 5).map((order) => (
+          <article
+            key={order.id}
+            className="rounded-md border border-border bg-card p-3"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-medium text-foreground">
+                {order.orderNumber}
+              </p>
+              <span className="text-xs text-muted">
+                {format(new Date(order.createdAt), "dd MMM yyyy HH:mm")}
+              </span>
+            </div>
+            <div className="mt-2">
+              <LabPaper
+                mode="view"
+                lines={labItemsToPaperLines(order.items)}
+              />
+            </div>
+            {order.clinicalNotes ? (
+              <p className="mt-2 text-xs text-muted">
+                Order notes: {order.clinicalNotes}
+              </p>
+            ) : null}
+            {order.doctorReviewNotes ? (
+              <p className="mt-1.5 rounded bg-emerald-50 px-2 py-1.5 text-xs text-emerald-950">
+                <span className="font-semibold">Doctor lab notes: </span>
+                {order.doctorReviewNotes}
+              </p>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 function stepIndex(status: string): number {
   switch (status) {
@@ -46,6 +109,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
   const router = useRouter();
   const { data: user } = useCurrentUser();
   const order = useLabOrder(orderId);
+  const patientLabs = usePatientLabOrders(order.data?.patient?.id);
   const receive = useReceiveLabOrder(orderId);
   const enter = useEnterLabResults(orderId);
   const verify = useVerifyLabOrder(orderId);
@@ -115,6 +179,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
   const resultsReady = o.status === LabOrderStatus.RESULT_ENTERED;
   const showSend = canVerify && resultsReady;
   const isDone = o.status === LabOrderStatus.VERIFIED;
+  const canSavePartial = filledCount >= 1;
   const allFilled = filledCount === o.items.length;
 
   function updateDraft(itemId: string, patch: Partial<Draft>) {
@@ -147,8 +212,8 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
       })
       .filter(Boolean) as ResultValueInput[];
 
-    if (results.length < o.items.length) {
-      toast.error("Enter a value for every test the doctor ordered");
+    if (results.length < 1) {
+      toast.error("Enter at least one test result before saving");
       return null;
     }
     return results;
@@ -193,8 +258,8 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
 
   const steps = [
     { label: "1. Receive sample", hint: "Confirm specimen arrived" },
-    { label: "2. Enter results", hint: "See and edit all test values" },
-    { label: "3. Send to doctor", hint: "After results are saved" },
+    { label: "2. Enter results", hint: "At least one value is enough" },
+    { label: "3. Send to doctor", hint: "After ≥1 result is saved" },
   ];
 
   const sendViewOnTop = showSend && !resultsEditMode;
@@ -204,17 +269,17 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
     showSend || isDone ? (
       <section
         className={cn(
-          "rounded-lg border bg-white p-4 shadow-sm",
-          showSend ? "border-red-200 ring-1 ring-red-100" : "border-slate-200",
+          "rounded-lg border bg-card p-4 shadow-sm",
+          showSend ? "border-red-200 ring-1 ring-red-100" : "border-border",
         )}
       >
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-semibold text-foreground">
           {isDone ? "Sent to doctor" : "Step 3 - Send to doctor"}
         </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <p className="mt-1 text-sm text-muted">
           {isDone
             ? "Patient is on the doctor’s Lab results ready queue."
-            : "Results are saved. Review the summary below, edit if needed, then send to the doctor."}
+            : "Results are saved (partial OK). Blank tests show as Not added. Review, then send to the doctor."}
         </p>
 
         {showSend ? (
@@ -265,34 +330,63 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
     ) : null;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="mx-auto max-w-6xl space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PatientIdentityBar patient={o.patient} encounterStatus={o.status} />
         {isDone ? <PrintLabReport order={o} /> : null}
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm text-sm">
+      <div className="grid gap-4 lg:grid-cols-12">
+        <aside className="space-y-3 lg:col-span-3">
+          {o.encounterId ? (
+            <LabCashierCard
+              encounterId={o.encounterId}
+              orderNumber={o.orderNumber}
+              orderStatus={o.status}
+            />
+          ) : (
+            <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Cashier
+              </h3>
+              <p className="mt-2 text-xs text-muted">None</p>
+            </div>
+          )}
+        </aside>
+
+        <div className="space-y-4 lg:col-span-9">
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm text-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold">{o.orderNumber}</span>
           {labOrderStatusBadge(o.status)}
-          <span className="text-slate-600">· {o.priority}</span>
+          <span className="text-muted">· {o.priority}</span>
         </div>
-        <p className="mt-1 text-slate-600">
+        <p className="mt-1 text-muted">
           Ordered {format(new Date(o.createdAt), "dd MMM yyyy HH:mm")}
           {o.doctor
             ? ` · Dr. ${o.doctor.firstName} ${o.doctor.lastName}`
             : ""}
         </p>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-muted">
           {o.items.length} line{o.items.length === 1 ? "" : "s"} from doctor:{" "}
           {uniquePanelLabels(o.items.map((i) => i.labTest))}
         </p>
         {o.clinicalNotes ? (
           <p className="mt-2 rounded bg-amber-50 p-2 text-amber-950 ring-1 ring-amber-100">
-            Clinical notes: {o.clinicalNotes}
+            Clinical notes from doctor: {o.clinicalNotes}
+          </p>
+        ) : null}
+        {o.doctorReviewNotes ? (
+          <p className="mt-2 rounded bg-emerald-50 p-2 text-emerald-950 ring-1 ring-emerald-100">
+            Doctor lab notes: {o.doctorReviewNotes}
           </p>
         ) : null}
       </div>
+
+      <PreviousPatientLabs
+        currentOrderId={o.id}
+        orders={patientLabs.data?.orders ?? []}
+      />
 
       <ol className="grid gap-2 sm:grid-cols-3">
         {steps.map((s, i) => {
@@ -306,20 +400,20 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
                 done
                   ? "border-teal-200 bg-teal-50"
                   : current
-                    ? "border-teal-700 bg-white ring-1 ring-teal-700"
-                    : "border-slate-200 bg-slate-50",
+                    ? "border-teal-700 bg-card ring-1 ring-teal-700"
+                    : "border-border bg-muted-bg",
               )}
             >
               <p
                 className={cn(
                   "text-sm font-semibold",
-                  done || current ? "text-teal-900" : "text-slate-500",
+                  done || current ? "text-teal-900" : "text-muted",
                 )}
               >
                 {s.label}
                 {done ? " ✓" : ""}
               </p>
-              <p className="text-xs text-slate-500">{s.hint}</p>
+              <p className="text-xs text-muted">{s.hint}</p>
             </li>
           );
         })}
@@ -329,11 +423,11 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
 
       {/* Step 1 */}
       {canReceive ? (
-        <section className="rounded-lg border border-teal-200 bg-white p-4 shadow-sm">
-          <h2 className="text-sm font-semibold text-slate-900">
+        <section className="rounded-lg border border-teal-200 bg-card p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-foreground">
             Step 1 - Receive sample
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted">
             Then you will enter results on this page.
           </p>
           <Button
@@ -364,22 +458,22 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
       <section
         ref={resultsSectionRef}
         className={cn(
-          "rounded-lg border bg-white p-4 shadow-sm",
+          "rounded-lg border bg-card p-4 shadow-sm",
           canEditResults && !isDone
             ? "border-teal-200 ring-1 ring-teal-100"
-            : "border-slate-200",
+            : "border-border",
         )}
       >
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-foreground">
               {isDone
                 ? "Final results (sent to doctor)"
                 : "Step 2 - Results (primary)"}
             </h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted">
               {canEditResults
-                ? `See and edit every test · ${filledCount}/${o.items.length} filled`
+                ? `Enter any available results · ${filledCount}/${o.items.length} filled (partial OK)`
                 : canReceive
                   ? "Unlocks after sample is received"
                   : "Read-only"}
@@ -418,7 +512,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           />
         )}
         {!canEditResults && !isDone ? (
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-muted">
             {canReceive
               ? "Mark sample received above first."
               : "Waiting for lab staff."}
@@ -429,7 +523,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              disabled={enter.isPending || !allFilled}
+              disabled={enter.isPending || !canSavePartial}
               onClick={saveResults}
             >
               {enter.isPending
@@ -440,9 +534,14 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
                     ? "Save result edits"
                     : "Save results"}
             </Button>
-            {!allFilled ? (
-              <span className="text-xs text-slate-500">
-                Fill all {o.items.length} tests to save
+            {!canSavePartial ? (
+              <span className="text-xs text-muted">
+                Enter at least one result to save
+              </span>
+            ) : !allFilled ? (
+              <span className="text-xs text-amber-800">
+                {filledCount}/{o.items.length} filled · blank tests show as Not
+                added when sent
               </span>
             ) : resultsReady && resultsEditMode ? (
               <span className="text-xs text-teal-700">
@@ -453,7 +552,7 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
                 Edits stay here until you send in step 3
               </span>
             ) : (
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-muted">
                 After save, step 3 unlocks to send to doctor
               </span>
             )}
@@ -472,6 +571,8 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           needed to enter results.
         </p>
       ) : null}
+        </div>
+      </div>
     </div>
   );
 }

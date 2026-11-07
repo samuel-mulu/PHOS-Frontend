@@ -11,6 +11,8 @@ export type PaymentReportRow = {
   refundedCents: number;
   netCents: number;
   referenceNumber: string | null;
+  /** Collected against an earlier pay-later debt. */
+  isDebtPayment?: boolean;
   invoice: { id: string; invoiceNumber: string };
   patient: {
     id: string;
@@ -29,6 +31,7 @@ export type PaymentReport = {
     amountCents: number;
     refundedCents: number;
     netCents: number;
+    debtCollectedCents?: number;
     byMethod: Record<string, { count: number; amountCents: number }>;
   };
   rows: PaymentReportRow[];

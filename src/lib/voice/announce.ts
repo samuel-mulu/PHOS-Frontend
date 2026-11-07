@@ -125,6 +125,16 @@ export function buildPaymentCompleteMessage(
   return `${name} ክፍያ ተጠናቋል። እባክዎ ወደ ${dest} ይመለሱ።`;
 }
 
+/** Released from cashier without full payment (pay later / waived): just send back. */
+export function buildReturnToStationMessage(
+  patientNameText: string,
+  returnStation: CallStation | null | undefined,
+): string {
+  const name = patientNameText.trim() || "ታካሚ";
+  if (!returnStation) return `${name} ተጠናቋል።`;
+  return `${name} እባክዎ ወደ ${stationCallLabelAm(returnStation)} ይመለሱ።`;
+}
+
 /**
  * Speak Amharic (am-ET) using the local speech engine - works offline when
  * an Amharic voice is installed on the device.

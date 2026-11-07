@@ -21,6 +21,10 @@ export type Invoice = {
   discountCents: number;
   totalCents: number;
   paidCents: number;
+  /** Forgiven (free) - not owed. */
+  waivedCents: number;
+  /** Approved pay later - owed as debt. */
+  deferredCents: number;
   issuedAt: string | null;
   patient: Patient;
   encounter: { id: string; encounterNumber: string; status: string };
@@ -66,5 +70,21 @@ export async function issueInvoice(id: string) {
 
 export async function voidInvoice(id: string) {
   const { data } = await api.post<Invoice>(`/invoices/${id}/void`);
+  return data;
+}
+
+export async function deferInvoice(
+  id: string,
+  body: { idempotencyKey: string; reason: string },
+) {
+  const { data } = await api.post(`/invoices/${id}/defer`, body);
+  return data;
+}
+
+export async function waiveInvoice(
+  id: string,
+  body: { idempotencyKey: string; amountCents: number; reason: string },
+) {
+  const { data } = await api.post(`/invoices/${id}/waive`, body);
   return data;
 }

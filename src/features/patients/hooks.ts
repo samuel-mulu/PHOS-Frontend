@@ -9,6 +9,7 @@ import type { Patient, PatientDuplicateMatch } from "@/types/patient";
 import {
   createPatient,
   fetchPatient,
+  fetchPatientBalance,
   fetchPatientChart,
   fetchPatients,
   lookupPatientByNumber,
@@ -41,6 +42,16 @@ export function usePatientChart(id: string) {
     queryKey: ["patients", id, "chart"],
     queryFn: () => fetchPatientChart(id),
     enabled: Boolean(id),
+  });
+}
+
+/** What the patient still owes across all visits (pay later / partial). */
+export function usePatientBalance(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ["patients", id, "balance"],
+    queryFn: () => fetchPatientBalance(id!),
+    enabled: Boolean(id),
+    staleTime: 15_000,
   });
 }
 

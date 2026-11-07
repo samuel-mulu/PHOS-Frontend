@@ -55,13 +55,13 @@ export function QueueBoard({
 
   const titleNode = (
     <div className="flex flex-wrap items-center gap-2">
-      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       {items.length > 0 ? (
         <span className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-1 text-xs font-bold text-white">
           {items.length} waiting
         </span>
       ) : (
-        <span className="text-xs text-slate-500">0 waiting</span>
+        <span className="text-xs text-muted">0 waiting</span>
       )}
     </div>
   );
@@ -160,11 +160,11 @@ function QueueRow({
         <span className="font-medium">
           {p.firstName} {p.lastName}
         </span>
-        <p className="text-xs text-slate-500">{p.patientNumber}</p>
+        <p className="text-xs text-muted">{p.patientNumber}</p>
       </DataTableCell>
       <DataTableCell>
         <p>{entry.encounter.encounterNumber}</p>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-muted">
           {entry.encounter.service?.name ??
             entry.encounter.type.replaceAll("_", " ")}
         </p>

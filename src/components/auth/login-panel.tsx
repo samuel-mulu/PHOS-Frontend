@@ -8,7 +8,7 @@ import { HIWET_BRAND } from "@/lib/print/hiwet-brand";
 
 export function LoginPanel() {
   return (
-    <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-white/60 bg-white/80 shadow-2xl shadow-teal-900/10 backdrop-blur-md lg:grid-cols-[1.05fr_1fr]">
+    <div className="grid w-full max-w-5xl overflow-hidden rounded-2xl border border-white/60 bg-white/80 shadow-2xl shadow-teal-900/10 backdrop-blur-md dark:border-border dark:bg-card/90 lg:grid-cols-[1.05fr_1fr]">
       <aside className="relative hidden flex-col justify-between bg-gradient-to-br from-teal-800 via-teal-900 to-teal-950 p-8 text-white lg:flex">
         <div
           className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-cyan-400/10 blur-3xl"
@@ -60,10 +60,10 @@ export function LoginPanel() {
             height={56}
             className="mb-4 h-14 w-14 rounded-full object-cover ring-2 ring-teal-100 lg:hidden"
           />
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Welcome back
           </h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1 text-sm text-muted">
             Sign in to <span className="font-medium text-teal-800">PHOS</span>{" "}
             at {HIWET_BRAND.nameEn}
           </p>
@@ -71,7 +71,7 @@ export function LoginPanel() {
         <Suspense fallback={<LoginFormSkeleton />}>
           <LoginForm />
         </Suspense>
-        <p className="mt-8 text-center text-[11px] leading-relaxed text-slate-500 lg:text-left">
+        <p className="mt-8 text-center text-2xs leading-relaxed text-muted lg:text-left">
           Authorized personnel only. Contact your clinic administrator if you
           need access or a password reset.
         </p>

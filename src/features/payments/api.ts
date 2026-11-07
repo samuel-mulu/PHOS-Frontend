@@ -10,6 +10,7 @@ export type Payment = {
   method: PaymentMethod;
   status: string;
   referenceNumber: string | null;
+  isDebtPayment?: boolean;
 };
 
 export async function createPayment(body: {
@@ -18,6 +19,9 @@ export async function createPayment(body: {
   amountCents: number;
   method: PaymentMethod;
   referenceNumber?: string;
+  /** Partial payment: send the patient back (rest = pay later) or keep waiting. */
+  afterPayment?: "RELEASE" | "WAIT";
+  deferReason?: string;
 }) {
   const { data } = await api.post<Payment>("/payments", body);
   return data;

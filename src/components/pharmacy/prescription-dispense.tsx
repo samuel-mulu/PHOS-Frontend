@@ -63,9 +63,9 @@ export function PrescriptionDispense({
         }}
         encounterStatus={p.status}
       />
-      <p className="text-sm font-medium text-slate-800">{p.prescriptionNumber}</p>
+      <p className="text-sm font-medium text-foreground">{p.prescriptionNumber}</p>
       {p.notes ? (
-        <p className="rounded bg-slate-50 p-2 text-sm text-slate-700">{p.notes}</p>
+        <p className="rounded bg-muted-bg p-2 text-sm text-foreground">{p.notes}</p>
       ) : null}
 
       <div className="space-y-3">
@@ -75,12 +75,12 @@ export function PrescriptionDispense({
           return (
             <div
               key={item.id}
-              className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+              className="rounded-lg border border-border bg-card p-4 shadow-sm"
             >
               <p className="font-medium">
                 {item.medicine.code} - {item.medicine.name}
               </p>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-muted">
                 {item.dose} · {item.route} · {item.frequency} · {item.duration}
               </p>
               <p className="mt-1 text-sm">
@@ -91,7 +91,7 @@ export function PrescriptionDispense({
                 Available stock (backend): {available}
               </p>
               {item.instructions ? (
-                <p className="text-xs text-slate-500">{item.instructions}</p>
+                <p className="text-xs text-muted">{item.instructions}</p>
               ) : null}
               {canDispense && remaining > 0 ? (
                 <div className="mt-2 max-w-[120px]">
@@ -120,7 +120,7 @@ export function PrescriptionDispense({
           {dispense.isPending ? "Dispensing…" : "Confirm dispense"}
         </Button>
       ) : (
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           Prescription is fully dispensed or closed.
         </p>
       )}

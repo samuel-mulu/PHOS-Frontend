@@ -107,7 +107,7 @@ export function AdminCatalogPanel() {
       <QueryStaleBanner query={facilities} />
 
       <Card className="space-y-3 p-4">
-        <h2 className="text-sm font-semibold text-slate-900">New facility</h2>
+        <h2 className="text-sm font-semibold text-foreground">New facility</h2>
         <form
           className="grid gap-3 sm:grid-cols-3"
           onSubmit={(e) => {
@@ -161,7 +161,7 @@ export function AdminCatalogPanel() {
           <Label htmlFor="sel-fac">Facility</Label>
           <select
             id="sel-fac"
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-slate-300 bg-card px-3 py-2 text-sm"
             value={selectedFacility}
             onChange={(e) => {
               setFacilityId(e.target.value);
@@ -174,12 +174,12 @@ export function AdminCatalogPanel() {
               </option>
             ))}
           </select>
-          <ul className="mt-3 space-y-1 text-sm text-slate-700">
+          <ul className="mt-3 space-y-1 text-sm text-foreground">
             {(departments.data ?? []).map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-2">
                 <span>
                   {d.name}{" "}
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-muted">
                     {d.active ? "Active" : "Inactive"}
                   </span>
                 </span>
@@ -198,7 +198,7 @@ export function AdminCatalogPanel() {
           </ul>
           {selectedFacility ? (
             <form
-              className="mt-4 grid gap-2 border-t border-slate-100 pt-4"
+              className="mt-4 grid gap-2 border-t border-border pt-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 deptCreate.mutate({
@@ -208,7 +208,7 @@ export function AdminCatalogPanel() {
                 });
               }}
             >
-              <p className="text-xs font-medium text-slate-600">New department</p>
+              <p className="text-xs font-medium text-muted">New department</p>
               <Input
                 placeholder="Code"
                 required
@@ -234,13 +234,13 @@ export function AdminCatalogPanel() {
 
         <Card className="p-4">
           <Label htmlFor="sel-dept">Clinic services (Hiwet)</Label>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted">
             Add or edit medical services and prices. Front desk can start a
             visit with no fee, or pick one or more services to charge.
           </p>
           <select
             id="sel-dept"
-            className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-md border border-slate-300 bg-card px-3 py-2 text-sm"
             value={selectedDept}
             onChange={(e) => setDepartmentId(e.target.value)}
           >
@@ -250,7 +250,7 @@ export function AdminCatalogPanel() {
               </option>
             ))}
           </select>
-          <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto text-sm text-slate-700">
+          <ul className="mt-3 max-h-64 space-y-1 overflow-y-auto text-sm text-foreground">
             {(services.data ?? []).map((s) => (
               <ServicePriceRow
                 key={s.id}
@@ -263,7 +263,7 @@ export function AdminCatalogPanel() {
           </ul>
           {selectedDept ? (
             <form
-              className="mt-4 grid gap-2 border-t border-slate-100 pt-4"
+              className="mt-4 grid gap-2 border-t border-border pt-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 const etb = Number.parseFloat(svcForm.priceEtb);
@@ -287,7 +287,7 @@ export function AdminCatalogPanel() {
                 });
               }}
             >
-              <p className="text-xs font-medium text-slate-600">New service</p>
+              <p className="text-xs font-medium text-muted">New service</p>
               <div className="flex max-h-24 flex-wrap gap-1 overflow-y-auto">
                 {(
                   [
@@ -308,7 +308,7 @@ export function AdminCatalogPanel() {
                   <button
                     key={code}
                     type="button"
-                    className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
+                    className="rounded border border-border px-2 py-1 text-2xs text-foreground hover:bg-muted-bg"
                     onClick={() =>
                       setSvcForm({
                         code,

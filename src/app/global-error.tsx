@@ -9,9 +9,9 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-100 p-8 text-center font-sans text-slate-900">
+      <body className="flex min-h-screen flex-col items-center justify-center gap-4 bg-muted-bg p-8 text-center font-sans text-foreground">
         <h1 className="text-lg font-semibold">Application error</h1>
-        <p className="max-w-md text-sm text-slate-600">
+        <p className="max-w-md text-sm text-muted">
           {error.message || "The application failed to render."}
         </p>
         <button

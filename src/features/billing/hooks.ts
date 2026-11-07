@@ -4,8 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { normalizeApiError } from "@/lib/api/errors";
+import { newIdempotencyKey } from "@/lib/idempotency";
 import {
   createInvoice,
+  deferInvoice,
+  waiveInvoice,
   fetchInvoice,
   issueInvoice,
   voidInvoice,
@@ -76,6 +79,40 @@ export function useVoidInvoice(invoiceId: string) {
       void queryClient.setQueryData(["invoices", invoiceId], data);
       toast.success("Invoice voided");
     },
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
+}
+
+function invalidateMoney(
+  queryClient: ReturnType<typeof useQueryClient>,
+  invoiceId: string,
+) {
+  void queryClient.invalidateQueries({ queryKey: ["invoices", invoiceId] });
+  void queryClient.invalidateQueries({ queryKey: ["encounters"] });
+  void queryClient.invalidateQueries({ queryKey: ["queues"] });
+  void queryClient.invalidateQueries({ queryKey: ["patients"] });
+  void queryClient.invalidateQueries({ queryKey: ["reports"] });
+  void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
+}
+
+/** Pay later: patient leaves the cashier; amount due becomes debt. */
+export function useDeferInvoice(invoiceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reason: string) =>
+      deferInvoice(invoiceId, { idempotencyKey: newIdempotencyKey(), reason }),
+    onSuccess: () => invalidateMoney(queryClient, invoiceId),
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
+}
+
+/** Waive (free): forgive part or all of what is owed. */
+export function useWaiveInvoice(invoiceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { amountCents: number; reason: string }) =>
+      waiveInvoice(invoiceId, { idempotencyKey: newIdempotencyKey(), ...body }),
+    onSuccess: () => invalidateMoney(queryClient, invoiceId),
     onError: (e) => toast.error(normalizeApiError(e).message),
   });
 }

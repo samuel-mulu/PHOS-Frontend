@@ -14,6 +14,8 @@ export function useCreatePayment(invoiceId: string) {
       amountCents: number;
       method: PaymentMethod;
       referenceNumber?: string;
+      afterPayment?: "RELEASE" | "WAIT";
+      deferReason?: string;
     }) =>
       createPayment({
         idempotencyKey: newIdempotencyKey(),
@@ -26,6 +28,8 @@ export function useCreatePayment(invoiceId: string) {
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["reports", "dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["payments", "report"] });
+      void queryClient.invalidateQueries({ queryKey: ["patients"] });
+      void queryClient.invalidateQueries({ queryKey: ["reports", "receivables"] });
       toast.success("Payment recorded");
     },
     onError: (e) => {

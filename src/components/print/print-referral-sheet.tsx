@@ -132,29 +132,29 @@ export function PrintReferralSheet({
 
   return (
     <div className="relative">
-      <Button type="button" variant="outline" size="sm" onClick={openDialog}>
+      <Button type="button" size="sm" onClick={openDialog}>
         Referral sheet
       </Button>
       {open ? (
         <div className="fixed inset-0 z-[90] flex items-end justify-center p-0 sm:items-center sm:p-4">
           <button
             type="button"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-black/55"
             aria-label="Close"
             onClick={() => setOpen(false)}
           />
           <div
             role="dialog"
             aria-modal="true"
-            className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-xl bg-white shadow-xl sm:rounded-lg"
+            className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-xl border border-border bg-card text-foreground shadow-xl sm:rounded-lg"
           >
-            <div className="border-b border-slate-200 px-5 py-4">
-              <h3 className="text-base font-semibold text-slate-900">
+            <div className="border-b border-border px-5 py-4">
+              <h3 className="text-base font-semibold text-foreground">
                 Referral sheet
               </h3>
-              <p className="mt-1 text-xs text-slate-600">
+              <p className="mt-1 text-xs text-muted">
                 Fill in referral details for{" "}
-                <span className="font-medium">{patientName}</span>
+                <span className="font-medium text-foreground">{patientName}</span>
                 {age != null ? ` · ${age} yrs` : ""} · {sex}. Prints with the
                 same Hiwet header, services sidebar, and footer as visit notes.
               </p>

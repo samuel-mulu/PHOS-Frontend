@@ -98,8 +98,8 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
   return (
     <div className={cn("space-y-4", className)}>
       <div>
-        <h2 className="text-sm font-semibold text-slate-900">Record expense</h2>
-        <p className="text-xs text-slate-600">
+        <h2 className="text-sm font-semibold text-foreground">Record expense</h2>
+        <p className="text-xs text-muted">
           Outgoing payments (supplies, utilities, etc.) - receipt reference is
           optional text for now.
         </p>
@@ -110,13 +110,13 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
       ) : categories.isError ? (
         <ErrorState message="Could not load expense categories." />
       ) : (
-        <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-2">
+        <div className="grid gap-4 rounded-lg border border-border bg-card p-4 shadow-sm lg:grid-cols-2">
           <div className="space-y-3">
             <div>
               <Label htmlFor="exp-cat">Category</Label>
               <select
                 id="exp-cat"
-                className="mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
               >
@@ -152,7 +152,7 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
               </div>
             </div>
             <div>
-              <p className="mb-2 text-xs font-medium text-slate-600">
+              <p className="mb-2 text-xs font-medium text-muted">
                 Paid via
               </p>
               <div className="flex flex-wrap gap-2">
@@ -164,7 +164,7 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
                       "rounded-md border px-3 py-1.5 text-xs font-medium",
                       method === m
                         ? "border-teal-700 bg-teal-800 text-white"
-                        : "border-slate-200 bg-white text-slate-700",
+                        : "border-border bg-card text-foreground",
                     )}
                     onClick={() => setMethod(m)}
                   >
@@ -230,10 +230,10 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
       <ExpandablePanel
         title={
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
+            <h2 className="text-sm font-semibold text-foreground">
               This month (recorded)
             </h2>
-            <p className="text-xs font-normal text-slate-500">
+            <p className="text-xs font-normal text-muted">
               {format(new Date(`${monthStart}T12:00:00`), "MMM yyyy")} · void
               mistakes with a reason
             </p>
@@ -318,7 +318,7 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
           setVoidReason("");
         }}
       >
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-foreground">
           Void <strong>{voidTarget?.expenseNumber}</strong>? This stays in the
           audit trail but is excluded from totals.
         </p>

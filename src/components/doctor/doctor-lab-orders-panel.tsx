@@ -19,13 +19,14 @@ import {
   useCreateLabOrder,
   useLabOrders,
   useLabTests,
+  usePatientLabOrders,
+  useSaveDoctorLabNotes,
 } from "@/features/laboratory/hooks";
 import { EncounterPriority } from "@/types/encounter";
 import { LabOrderStatus } from "@/types/lab";
 import { sortByCreatedAt } from "@/lib/queues/sort";
 import { useDateSort } from "@/lib/queues/use-date-sort";
 import { DateSortToggle } from "@/components/shared/date-sort-toggle";
-import { PrintFullLabActivity } from "@/components/print/print-full-lab-activity";
 import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import { LabPaper, labItemsToPaperLines } from "@/components/laboratory/lab-paper";
 import { groupByPanel, uniquePanelLabels } from "@/lib/lab/panels";
@@ -38,15 +39,30 @@ const WAITING_STATUSES: LabOrderStatus[] = [
 ];
 
 /** Full verified result - primary thing the doctor needs to see. */
-function ReadyResultCard({ order }: { order: LabOrder }) {
+function ReadyResultCard({
+  order,
+  allowNotes = true,
+}: {
+  order: LabOrder;
+  allowNotes?: boolean;
+}) {
+  const saveNotes = useSaveDoctorLabNotes(order.id);
+  const [notes, setNotes] = useState(order.doctorReviewNotes ?? "");
+
+  useEffect(() => {
+    setNotes(order.doctorReviewNotes ?? "");
+  }, [order.id, order.doctorReviewNotes, order.doctorReviewedAt]);
+
+  const dirty = notes.trim() !== (order.doctorReviewNotes ?? "").trim();
+
   return (
     <article className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-900">
+          <p className="text-sm font-semibold text-foreground">
             {order.orderNumber}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             Ready {format(new Date(order.createdAt), "dd MMM HH:mm")} ·{" "}
             {order.priority}
           </p>
@@ -59,11 +75,77 @@ function ReadyResultCard({ order }: { order: LabOrder }) {
       </div>
 
       {order.clinicalNotes ? (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-muted">
           Order notes: {order.clinicalNotes}
         </p>
       ) : null}
+
+      {allowNotes ? (
+        <div className="mt-2 flex flex-wrap items-end gap-2">
+          <div className="min-w-[12rem] flex-1">
+            <Label className="mb-0.5 block text-2xs font-medium text-muted">
+              Lab notes
+            </Label>
+            <Input
+              className="h-8 text-sm"
+              placeholder="Short review note…"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={saveNotes.isPending || !dirty}
+            onClick={() => saveNotes.mutate(notes)}
+          >
+            {saveNotes.isPending ? "…" : "Save"}
+          </Button>
+        </div>
+      ) : order.doctorReviewNotes ? (
+        <p className="mt-1.5 text-2xs text-muted">
+          <span className="font-semibold">Lab notes: </span>
+          {order.doctorReviewNotes}
+        </p>
+      ) : null}
     </article>
+  );
+}
+
+function PreviousLabResultsSection({
+  orders,
+  excludeIds,
+}: {
+  orders: LabOrder[];
+  excludeIds: Set<string>;
+}) {
+  const previous = useMemo(
+    () =>
+      orders.filter(
+        (o) =>
+          o.status === LabOrderStatus.VERIFIED && !excludeIds.has(o.id),
+      ),
+    [orders, excludeIds],
+  );
+
+  if (previous.length === 0) return null;
+
+  return (
+    <section className="space-y-3 rounded-lg border border-border bg-muted-bg/60 p-3">
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+          Previous Lab Results & Doctor Notes
+        </h3>
+        <p className="mt-0.5 text-2xs text-muted">
+          Earlier verified results for this patient (read-only here).
+        </p>
+      </div>
+      {previous.slice(0, 8).map((order) => (
+        <ReadyResultCard key={order.id} order={order} allowNotes={false} />
+      ))}
+    </section>
   );
 }
 
@@ -86,10 +168,10 @@ function WaitingOrderCard({
     <article className="rounded-lg border border-amber-200 bg-amber-50/40 p-3 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-medium text-slate-900">
+          <p className="text-sm font-medium text-foreground">
             {order.orderNumber}
           </p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             {uniquePanelLabels(order.items.map((i) => i.labTest))} · Sent{" "}
             {format(new Date(order.createdAt), "dd MMM HH:mm")}
           </p>
@@ -111,6 +193,7 @@ export function DoctorLabOrdersPanel({
   patientId,
   patientLabel,
   isFinalized,
+  visitLabNotes,
   preferResults: _preferResults,
   encounterStatus,
   paymentReturnStation,
@@ -122,6 +205,8 @@ export function DoctorLabOrdersPanel({
   patientId?: string;
   patientLabel?: string;
   isFinalized: boolean;
+  /** From Visit notes — prefill order clinical notes; save notes without sending lab. */
+  visitLabNotes?: string | null;
   /** Kept for callers; results + pending now show together. */
   preferResults?: boolean;
   encounterStatus?: string;
@@ -131,6 +216,7 @@ export function DoctorLabOrdersPanel({
 }) {
   const tests = useLabTests();
   const labs = useLabOrders();
+  const patientLabs = usePatientLabOrders(patientId);
   const create = useCreateLabOrder(consultationId ?? "");
   const { direction, setDirection } = useDateSort("latest");
   const [selected, setSelected] = useState<string[]>([]);
@@ -142,6 +228,12 @@ export function DoctorLabOrdersPanel({
   const [notes, setNotes] = useState("");
   const [orderOpen, setOrderOpen] = useState(false);
   const [cashierLabOpen, setCashierLabOpen] = useState(false);
+
+  useEffect(() => {
+    const fromVisit = visitLabNotes?.trim();
+    if (!fromVisit) return;
+    setNotes((prev) => (prev.trim() ? prev : fromVisit));
+  }, [visitLabNotes]);
   const awaitingCashierLab =
     encounterStatus === "WAITING_PAYMENT" && paymentReturnStation === "LAB";
 
@@ -162,6 +254,8 @@ export function DoctorLabOrdersPanel({
     () => myOrders.filter((o) => o.status === LabOrderStatus.VERIFIED),
     [myOrders],
   );
+  const readyIds = useMemo(() => new Set(ready.map((o) => o.id)), [ready]);
+  const previousPatientOrders = patientLabs.data?.orders ?? [];
   const catalog = tests.data ?? [];
   const panels = useMemo(
     () =>
@@ -232,8 +326,8 @@ export function DoctorLabOrdersPanel({
 
   if (!consultationId) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-sm text-slate-600">Save consult draft first.</p>
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <p className="text-sm text-muted">Save consult draft first.</p>
         <Button type="button" className="mt-2" onClick={onNeedDraft}>
           Save draft
         </Button>
@@ -256,26 +350,25 @@ export function DoctorLabOrdersPanel({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-800">Laboratory</h2>
+        <h2 className="text-sm font-semibold text-foreground">Laboratory</h2>
         <div className="flex flex-wrap items-center gap-2">
           <PrintPatientLabReport
             patientId={patientId}
             patientLabel={patientLabel}
             triggerLabel="Patient lab report"
           />
-          <PrintFullLabActivity />
           {(ready.length > 0 || waiting.length > 0) && (
             <DateSortToggle value={direction} onChange={setDirection} />
           )}
           {ready.length > 0 ? (
-            <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+            <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-2xs font-bold text-white">
               {ready.length} result{ready.length === 1 ? "" : "s"} ready
             </span>
           ) : null}
           {waiting.length > 0 ? (
-            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950">
+            <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-2xs font-semibold text-amber-950">
               {waiting.length} pending
             </span>
           ) : null}
@@ -294,18 +387,26 @@ export function DoctorLabOrdersPanel({
 
       {ready.length > 0 ? (
         <section className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
             Results from lab
           </h3>
+          <p className="text-2xs text-muted">
+            Review results and save Lab notes for this visit.
+          </p>
           {ready.map((order) => (
             <ReadyResultCard key={order.id} order={order} />
           ))}
         </section>
       ) : null}
 
+      <PreviousLabResultsSection
+        orders={previousPatientOrders}
+        excludeIds={readyIds}
+      />
+
       {waiting.length > 0 ? (
         <section className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
             Pending at lab
           </h3>
           {waiting.map((order) => (
@@ -324,12 +425,12 @@ export function DoctorLabOrdersPanel({
         <section
           className={
             ready.length > 0 || waiting.length > 0
-              ? "space-y-2 border-t border-slate-100 pt-3"
+              ? "space-y-2 border-t border-border pt-3"
               : "space-y-2"
           }
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
               Order tests
             </h3>
             {ready.length > 0 || waiting.length > 0 ? (
@@ -345,7 +446,7 @@ export function DoctorLabOrdersPanel({
           </div>
           {orderOpen ? (
             <div className="space-y-3">
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-muted">
                 Open a panel, then tap only the tests you need (e.g. 3 of 10).
                 Use <span className="font-medium">Order all</span> only when you
                 want the full panel.
@@ -376,7 +477,7 @@ export function DoctorLabOrdersPanel({
                           ? "border-teal-700 bg-teal-700 text-white"
                           : selectedCount > 0
                             ? "border-teal-500 bg-teal-50 text-teal-900"
-                            : "border-slate-300 bg-white text-slate-800 hover:border-teal-600 hover:text-teal-800",
+                            : "border-slate-300 bg-card text-foreground hover:border-teal-600 hover:text-teal-800",
                       )}
                     >
                       {panel.label}
@@ -386,13 +487,13 @@ export function DoctorLabOrdersPanel({
                 })}
               </div>
               {openPanel ? (
-                <div className="rounded border border-slate-200 bg-white">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
+                <div className="rounded border border-border bg-card">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">
+                      <p className="text-sm font-semibold text-foreground">
                         {openPanel.label}
                       </p>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-2xs text-muted">
                         {
                           openPanel.items.filter((t) => selected.includes(t.id))
                             .length
@@ -405,7 +506,7 @@ export function DoctorLabOrdersPanel({
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 text-[11px]"
+                        className="h-7 text-2xs"
                         onClick={() =>
                           selectAllInPanel(openPanel.items.map((t) => t.id))
                         }
@@ -416,7 +517,7 @@ export function DoctorLabOrdersPanel({
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 text-[11px]"
+                        className="h-7 text-2xs"
                         disabled={
                           !openPanel.items.some((t) => selected.includes(t.id))
                         }
@@ -441,7 +542,7 @@ export function DoctorLabOrdersPanel({
                             "rounded border px-2 py-2 text-left text-xs font-medium transition-colors",
                             on
                               ? "border-teal-700 bg-teal-700 text-white"
-                              : "border-slate-200 bg-slate-50 text-slate-800 hover:border-teal-500 hover:bg-teal-50",
+                              : "border-border bg-muted-bg text-foreground hover:border-teal-500 hover:bg-teal-50",
                           )}
                         >
                           {t.name}
@@ -451,12 +552,12 @@ export function DoctorLabOrdersPanel({
                   </div>
                 </div>
               ) : (
-                <p className="rounded border border-dashed border-slate-200 bg-white px-3 py-6 text-center text-sm text-slate-500">
+                <p className="rounded border border-dashed border-border bg-card px-3 py-6 text-center text-sm text-muted">
                   Open a panel, then tap the tests you need.
                 </p>
               )}
               {selected.length > 0 ? (
-                <div className="rounded border border-teal-100 bg-teal-50/50 px-3 py-2 text-xs text-slate-700">
+                <div className="rounded border border-teal-100 bg-teal-50/50 px-3 py-2 text-xs text-foreground">
                   <span className="font-semibold text-teal-900">
                     {selected.length} test{selected.length === 1 ? "" : "s"} in
                     order:
@@ -468,7 +569,7 @@ export function DoctorLabOrdersPanel({
                 <div>
                   <Label className="mb-1 block text-xs">Priority</Label>
                   <select
-                    className="h-10 w-full rounded-md border border-slate-200 px-2 text-sm"
+                    className="h-10 w-full rounded-md border border-border px-2 text-sm"
                     value={priority}
                     onChange={(e) =>
                       setPriority(e.target.value as EncounterPriority)
@@ -482,12 +583,15 @@ export function DoctorLabOrdersPanel({
                   </select>
                 </div>
                 <div>
-                  <Label className="mb-1 block text-xs">Clinical notes</Label>
+                  <Label className="mb-1 block text-2xs text-muted">
+                    Notes to lab
+                  </Label>
                   <SuggestingInput
                     fieldKey="lab.clinicalNotes"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Optional"
+                    placeholder="Short note for lab (optional)"
+                    className="h-8 text-sm"
                   />
                 </div>
               </div>
@@ -530,7 +634,7 @@ export function DoctorLabOrdersPanel({
                     : `Send to cashier - lab (${selected.length})`}
                 </Button>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted">
                 Send lab order goes straight to lab. Send to cashier - lab:
                 patient pays first, then lab. Results come back to you.
               </p>
@@ -538,7 +642,7 @@ export function DoctorLabOrdersPanel({
           ) : null}
         </section>
       ) : (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted">
           Consultation finalized - new lab orders are closed.
         </p>
       )}
@@ -556,7 +660,7 @@ export function DoctorLabOrdersPanel({
         }}
         onPrimary={sendCashierLab}
       >
-        <p className="text-slate-600">
+        <p className="text-muted">
           Patient pays this amount at cashier / front desk, then goes to lab.
         </p>
         <ul className="mt-3 space-y-2">
@@ -570,14 +674,14 @@ export function DoctorLabOrdersPanel({
                     {formatCents(total)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted">
                   {group.items.map((t) => t.name).join(", ")}
                 </p>
               </li>
             );
           })}
         </ul>
-        <p className="mt-4 text-base font-semibold text-slate-900">
+        <p className="mt-4 text-base font-semibold text-foreground">
           Total to collect: {formatCents(cashierLabTotalCents)}
         </p>
         {cashierLabTotalCents < 1 ? (

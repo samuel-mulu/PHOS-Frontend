@@ -102,10 +102,10 @@ export function DoctorUltrasoundPanel({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div>
-        <h2 className="text-sm font-semibold text-slate-800">Ultrasound</h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <h2 className="text-sm font-semibold text-foreground">Ultrasound</h2>
+        <p className="mt-1 text-xs text-muted">
           Ultrasound is done here. Patient pays at cashier / front desk, then
           returns to your queue.
         </p>
@@ -124,11 +124,11 @@ export function DoctorUltrasoundPanel({
               </p>
             </div>
             {cashierEnteredAt ? (
-              <span className="rounded-full bg-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950">
+              <span className="rounded-full bg-amber-200 px-2.5 py-0.5 text-2xs font-semibold text-amber-950">
                 Pending {formatWaitingSince(cashierEnteredAt)}
               </span>
             ) : (
-              <span className="rounded-full bg-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-950">
+              <span className="rounded-full bg-amber-200 px-2.5 py-0.5 text-2xs font-semibold text-amber-950">
                 Pending
               </span>
             )}
@@ -138,10 +138,10 @@ export function DoctorUltrasoundPanel({
               {sentLines.map((line, i) => (
                 <li
                   key={`${line.name}-${i}`}
-                  className="flex items-center justify-between gap-3 rounded-md border border-amber-100 bg-white px-3 py-2 text-sm"
+                  className="flex items-center justify-between gap-3 rounded-md border border-amber-100 bg-card px-3 py-2 text-sm"
                 >
-                  <span className="font-medium text-slate-900">{line.name}</span>
-                  <span className="shrink-0 tabular-nums text-slate-700">
+                  <span className="font-medium text-foreground">{line.name}</span>
+                  <span className="shrink-0 tabular-nums text-foreground">
                     {formatCents(line.amountCents)}
                   </span>
                 </li>
@@ -156,16 +156,16 @@ export function DoctorUltrasoundPanel({
       ) : hasSentUltrasound && !atCashier ? (
         <article className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4">
           <p className="text-sm font-semibold text-emerald-950">
-            Ultrasound paid - do the scan here
+            Cleared at cashier - do the scan here
           </p>
           <ul className="mt-3 space-y-1.5">
             {sentLines.map((line, i) => (
               <li
                 key={`${line.name}-${i}`}
-                className="flex items-center justify-between gap-3 rounded-md border border-emerald-100 bg-white px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-3 rounded-md border border-emerald-100 bg-card px-3 py-2 text-sm"
               >
-                <span className="font-medium text-slate-900">{line.name}</span>
-                <span className="shrink-0 tabular-nums text-slate-700">
+                <span className="font-medium text-foreground">{line.name}</span>
+                <span className="shrink-0 tabular-nums text-foreground">
                   {formatCents(line.amountCents)}
                 </span>
               </li>
@@ -175,12 +175,12 @@ export function DoctorUltrasoundPanel({
       ) : null}
 
       {isFinalized ? (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-muted">
           Consultation finalized - new ultrasound charges are closed.
         </p>
       ) : hideOrderForm ? null : (
         <>
-          <p className="text-xs font-medium text-slate-600">Tap to select</p>
+          <p className="text-xs font-medium text-muted">Tap to select</p>
           {services.isLoading ? (
             <LoadingBlock label="Loading ultrasound services" />
           ) : null}
@@ -190,7 +190,7 @@ export function DoctorUltrasoundPanel({
               Ultrasound.
             </p>
           ) : null}
-          <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-slate-100 p-2">
+          <div className="flex max-h-56 flex-wrap gap-2 overflow-y-auto rounded-md border border-border p-2">
             {imaging.map((s) => {
               const on = selected.includes(s.id);
               return (
@@ -210,7 +210,7 @@ export function DoctorUltrasoundPanel({
                   <span
                     className={cn(
                       "ml-1 font-normal",
-                      on ? "text-white/80" : "text-slate-500",
+                      on ? "text-white/80" : "text-muted",
                     )}
                   >
                     {formatCents(s.priceCents)}
@@ -220,7 +220,7 @@ export function DoctorUltrasoundPanel({
             })}
           </div>
           {chosen.length > 0 ? (
-            <p className="text-sm font-medium text-slate-800">
+            <p className="text-sm font-medium text-foreground">
               Total {formatCents(totalCents)}
             </p>
           ) : null}
@@ -234,7 +234,7 @@ export function DoctorUltrasoundPanel({
               ? "Sending…"
               : `Send to cashier - ultrasound${chosen.length ? ` (${chosen.length})` : ""}`}
           </Button>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted">
             Patient pays at cashier / front desk, then returns here. You do the
             ultrasound.
           </p>
@@ -274,7 +274,7 @@ export function DoctorUltrasoundPanel({
           );
         }}
       >
-        <p className="text-slate-600">
+        <p className="text-muted">
           Patient pays this amount at cashier / front desk, then returns here
           for the scan.
         </p>
@@ -291,7 +291,7 @@ export function DoctorUltrasoundPanel({
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-base font-semibold text-slate-900">
+        <p className="mt-4 text-base font-semibold text-foreground">
           Total to collect: {formatCents(totalCents)}
         </p>
       </SimpleDialog>

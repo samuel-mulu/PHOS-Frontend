@@ -47,8 +47,8 @@ export function InventoryWorkspace() {
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Inventory</h1>
-        <p className="text-sm text-slate-600">
+        <h1 className="text-xl font-semibold text-foreground">Inventory</h1>
+        <p className="text-sm text-muted">
           Batches, movements, and stock views from the backend.
         </p>
       </div>
@@ -128,7 +128,7 @@ function LowStockTab() {
   return (
     <ul className="space-y-2 text-sm">
       {low.data.map((m) => (
-        <li key={m.id} className="rounded border bg-white p-3">
+        <li key={m.id} className="rounded border bg-card p-3">
           {m.name} - reorder at {m.reorderLevel}
         </li>
       ))}
@@ -179,7 +179,7 @@ function ReceiveTab({ enabled }: { enabled: boolean }) {
 
   if (!enabled) {
     return (
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted">
         Receive stock requires Storekeeper or Admin role.
       </p>
     );
@@ -187,7 +187,7 @@ function ReceiveTab({ enabled }: { enabled: boolean }) {
 
   return (
     <form
-      className="max-w-md space-y-3 rounded-lg border bg-white p-4 shadow-sm"
+      className="max-w-md space-y-3 rounded-lg border bg-card p-4 shadow-sm"
       onSubmit={(e) => {
         e.preventDefault();
         receive.mutate({
@@ -242,7 +242,7 @@ function AdjustTab({ enabled }: { enabled: boolean }) {
 
   if (!enabled) {
     return (
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted">
         Adjustments require Storekeeper or Admin role.
       </p>
     );
@@ -258,7 +258,7 @@ function AdjustTab({ enabled }: { enabled: boolean }) {
 
   return (
     <form
-      className="max-w-md space-y-3 rounded-lg border bg-white p-4 shadow-sm"
+      className="max-w-md space-y-3 rounded-lg border bg-card p-4 shadow-sm"
       onSubmit={(e) => {
         e.preventDefault();
         adjust.mutate({ batchId, quantity, reason });

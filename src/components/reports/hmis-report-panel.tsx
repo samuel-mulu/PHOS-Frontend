@@ -32,7 +32,7 @@ function MiniTable({
             {headers.map((h) => (
               <th
                 key={h}
-                className="border border-slate-200 bg-slate-50 px-2 py-1.5 text-left font-semibold text-slate-700"
+                className="border border-border bg-muted-bg px-2 py-1.5 text-left font-semibold text-foreground"
               >
                 {h}
               </th>
@@ -45,7 +45,7 @@ function MiniTable({
               {row.map((cell, j) => (
                 <td
                   key={`${i}-${j}`}
-                  className="border border-slate-200 px-2 py-1 tabular-nums text-slate-800"
+                  className="border border-border px-2 py-1 tabular-nums text-foreground"
                 >
                   {cell}
                 </td>
@@ -67,7 +67,7 @@ function Section({
 }) {
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       {children}
     </section>
   );
@@ -131,7 +131,7 @@ function ClinicTables({
             ["SAM <5y", d.samUnder5],
           ]}
         />
-        <p className="text-[11px] text-slate-500">Deaths are not recorded - 0.</p>
+        <p className="text-2xs text-muted">Deaths are not recorded - 0.</p>
       </Section>
 
       <Section title="HIV testing">
@@ -158,7 +158,7 @@ function ClinicTables({
                 ([k, v]) => [k === "total" ? "Total" : k, v],
               )}
             />
-            <p className="text-[11px] text-slate-500">
+            <p className="text-2xs text-muted">
               Method mix is not captured yet - leave blank on the paper HMIS.
             </p>
           </Section>
@@ -178,7 +178,7 @@ function ClinicTables({
             />
           </Section>
           <Section title="EPI (under 1 year)">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-muted">
               Immunization doses are not in PHOS yet - all zeros.
             </p>
           </Section>
@@ -187,7 +187,7 @@ function ClinicTables({
 
       <Section title="Top morbidities by age / sex">
         {clinic.topMorbidities.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             No finalized diagnoses in this period.
           </p>
         ) : (
@@ -262,10 +262,10 @@ export function HmisReportPanel({ full = false }: { full?: boolean }) {
   return (
     <Card className="space-y-4 p-4">
       <div>
-        <h2 className="text-sm font-semibold text-slate-900">
+        <h2 className="text-sm font-semibold text-foreground">
           HMIS Automatic Clinic Report (Live Data)
         </h2>
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-muted">
           Real aggregations from doctor diagnoses and verified lab results →
           Excel / PDF
         </p>
@@ -327,7 +327,7 @@ export function HmisReportPanel({ full = false }: { full?: boolean }) {
               <ClinicTables clinic={report.clinic} full={full} />
             ) : null}
           </div>
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-foreground">
             {report.facility} ·{" "}
             {format(new Date(report.period.from), "dd MMM yyyy")} -{" "}
             {format(new Date(report.period.to), "dd MMM yyyy")}
@@ -341,7 +341,7 @@ export function HmisReportPanel({ full = false }: { full?: boolean }) {
             </p>
           )}
           {report.clinic?.notes?.length ? (
-            <ul className="list-disc space-y-1 pl-5 text-[11px] text-slate-500">
+            <ul className="list-disc space-y-1 pl-5 text-2xs text-muted">
               {report.clinic.notes.map((n) => (
                 <li key={n}>{n}</li>
               ))}

@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/reports?view=full", label: "HMIS-Full", view: "full" },
   { href: "/reports", label: "HMIS", view: "live" },
   { href: "/reports?view=payments", label: "Collections", view: "payments" },
+  { href: "/reports?view=debts", label: "Unpaid & debts", view: "debts" },
   { href: "/reports?view=expenses", label: "Expenses", view: "expenses" },
   { href: "/doctor", label: "HIS", view: "his" },
   { href: "/reports?view=hfr", label: "HFR", view: "hfr" },
@@ -33,6 +34,7 @@ export function HmisClinicNav() {
         else if (item.view === "full") active = onReports && view === "full";
         else if (item.view === "hfr") active = onReports && view === "hfr";
         else if (item.view === "payments") active = onReports && view === "payments";
+        else if (item.view === "debts") active = onReports && view === "debts";
         else if (item.view === "expenses") active = onReports && view === "expenses";
         else if (item.view === "live") {
           active =
@@ -40,6 +42,7 @@ export function HmisClinicNav() {
             view !== "full" &&
             view !== "hfr" &&
             view !== "payments" &&
+            view !== "debts" &&
             view !== "expenses";
         }
         return (
@@ -50,7 +53,7 @@ export function HmisClinicNav() {
               "rounded-full border px-3 py-1 text-xs font-semibold transition-colors",
               active
                 ? "border-teal-700 bg-teal-700 text-white"
-                : "border-slate-200 bg-white text-slate-700 hover:border-teal-400 hover:bg-teal-50",
+                : "border-border bg-card text-foreground hover:border-teal-400 hover:bg-teal-50",
             )}
           >
             {item.label}

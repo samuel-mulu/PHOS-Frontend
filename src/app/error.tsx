@@ -16,8 +16,8 @@ export default function Error({
 
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 p-8 text-center">
-      <h1 className="text-lg font-semibold text-slate-900">Something broke</h1>
-      <p className="max-w-md text-sm text-slate-600">
+      <h1 className="text-lg font-semibold text-foreground">Something broke</h1>
+      <p className="max-w-md text-sm text-muted">
         An unexpected error occurred in this view. Your session and saved server
         data are unchanged.
       </p>

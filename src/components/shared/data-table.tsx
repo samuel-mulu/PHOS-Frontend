@@ -28,7 +28,7 @@ export function DataTable({
   return (
     <div
       className={cn(
-        "overflow-auto rounded-md border border-slate-200",
+        "overflow-auto rounded-md border border-border",
         heightClass,
         className,
       )}
@@ -42,14 +42,18 @@ export function DataTable({
 
 export function DataTableHead({ children }: { children: React.ReactNode }) {
   return (
-    <thead className="sticky top-0 z-[1] bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500 shadow-[0_1px_0_0_rgb(226_232_240)]">
+    <thead className="sticky top-0 z-[1] bg-muted-bg text-left text-xs font-medium uppercase tracking-wide text-muted shadow-[0_1px_0_0_var(--border)]">
       {children}
     </thead>
   );
 }
 
 export function DataTableBody({ children }: { children: React.ReactNode }) {
-  return <tbody className="divide-y divide-slate-100 bg-white">{children}</tbody>;
+  return (
+    <tbody className="divide-y divide-border bg-card">
+      {children}
+    </tbody>
+  );
 }
 
 export function DataTableRow({
@@ -59,7 +63,7 @@ export function DataTableRow({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <tr className={cn("hover:bg-slate-50/80", className)}>{children}</tr>;
+  return <tr className={cn("hover:bg-muted-bg/80 dark:hover:bg-hover", className)}>{children}</tr>;
 }
 
 export function DataTableCell({
@@ -74,9 +78,9 @@ export function DataTableCell({
   return (
     <td
       className={cn(
-        "whitespace-nowrap px-3 py-2.5 text-slate-800",
+        "whitespace-nowrap px-3 py-2.5 text-foreground",
         stickyRight &&
-          "sticky right-0 z-[1] border-l border-slate-100 bg-white shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]",
+          "sticky right-0 z-[1] border-l border-border bg-card shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)] dark:shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)]",
         className,
       )}
     >
@@ -99,7 +103,7 @@ export function DataTableHeaderCell({
       className={cn(
         "whitespace-nowrap px-3 py-2.5",
         stickyRight &&
-          "sticky right-0 z-[2] border-l border-slate-200 bg-slate-50 shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)]",
+          "sticky right-0 z-[2] border-l border-border bg-muted-bg shadow-[-6px_0_8px_-6px_rgba(15,23,42,0.12)] dark:shadow-[-6px_0_8px_-6px_rgba(0,0,0,0.35)]",
         className,
       )}
     >

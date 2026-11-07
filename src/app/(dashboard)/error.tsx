@@ -15,11 +15,11 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <div className="rounded-lg border border-red-200 bg-white p-8 text-center shadow-sm">
-      <h2 className="text-base font-semibold text-slate-900">
+    <div className="rounded-lg border border-red-200 bg-card p-8 text-center shadow-sm">
+      <h2 className="text-base font-semibold text-foreground">
         Workspace error
       </h2>
-      <p className="mt-2 text-sm text-slate-600">
+      <p className="mt-2 text-sm text-muted">
         This screen failed to load. You can retry or use the sidebar to navigate
         elsewhere.
       </p>

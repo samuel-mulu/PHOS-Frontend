@@ -57,10 +57,10 @@ export function AppointmentsPanel() {
 
   const filterBar = (
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-muted">
         Schedule from Reception → Find returning patient → Add appointment.
       </p>
-      <div className="flex gap-1.5 rounded-md border border-slate-200 bg-white p-1">
+      <div className="flex gap-1.5 rounded-md border border-border bg-card p-1">
         {(
           [
             ["today", "Today"],
@@ -74,7 +74,7 @@ export function AppointmentsPanel() {
               "rounded px-3 py-1.5 text-xs font-medium",
               filter === id
                 ? "bg-teal-800 text-white"
-                : "text-slate-600 hover:bg-slate-50",
+                : "text-muted hover:bg-muted-bg",
             )}
             onClick={() => setFilter(id)}
           >
@@ -129,7 +129,7 @@ export function AppointmentsPanel() {
                   <DataTableCell>
                     {a.status.replaceAll("_", " ")}
                   </DataTableCell>
-                  <DataTableCell className="max-w-[12rem] truncate text-slate-600">
+                  <DataTableCell className="max-w-[12rem] truncate text-muted">
                     {a.notes ?? "-"}
                   </DataTableCell>
                   <DataTableCell stickyRight>
@@ -180,12 +180,12 @@ export function AppointmentsPanel() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="appt-visit-dialog-title"
-              className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+              className="relative flex max-h-[96vh] w-full max-w-5xl flex-col overflow-hidden rounded-lg bg-card shadow-xl"
             >
-              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-200 px-5 py-3">
+              <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border px-5 py-3">
                 <h3
                   id="appt-visit-dialog-title"
-                  className="text-lg font-semibold text-slate-900"
+                  className="text-lg font-semibold text-foreground"
                 >
                   Appointment - bill & start
                 </h3>

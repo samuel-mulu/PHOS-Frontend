@@ -2,6 +2,11 @@ import { api } from "@/lib/api/client";
 import { dateOfBirthFromAge } from "@/lib/format/age";
 import type { LabOrder } from "@/features/laboratory/api";
 import type { Appointment } from "@/features/appointments/api";
+import type { FamilyPlanningRecord } from "@/features/family-planning/types";
+import type {
+  AncVisit,
+  ObstetricHistory,
+} from "@/features/maternal/types";
 import type {
   PaginatedPatients,
   Patient,
@@ -46,6 +51,7 @@ export type PatientChartEncounter = {
     assessment?: string | null;
     plan?: string | null;
     notes?: string | null;
+    labNotes?: string | null;
     finalizedAt?: string | null;
     doctor?: PatientChartPerson | null;
     diagnoses: Array<{
@@ -64,10 +70,48 @@ export type PatientChartInvoice = {
   invoiceNumber: string;
   status: string;
   totalCents: number;
+  paidCents?: number;
+  waivedCents?: number;
+  deferredCents?: number;
+  balanceCents?: number;
   createdAt: string;
   items: Array<{ description: string; amountCents: number }>;
   payments: Array<{ amountCents: number; status: string }>;
 };
+
+export type PatientBalanceInvoice = {
+  id: string;
+  invoiceNumber: string;
+  status: string;
+  createdAt: string;
+  encounter: {
+    id: string;
+    encounterNumber: string;
+    visitNumber: number | null;
+    status: string;
+    startedAt: string;
+  };
+  totalCents: number;
+  paidCents: number;
+  waivedCents: number;
+  deferredCents: number;
+  balanceCents: number;
+  dueNowCents: number;
+};
+
+export type PatientBalance = {
+  patientId: string;
+  /** Everything still owed across all visits. */
+  outstandingCents: number;
+  /** Debt from approved pay later (patient already left the cashier). */
+  payLaterCents: number;
+  invoices: PatientBalanceInvoice[];
+};
+
+export async function fetchPatientBalance(id: string) {
+  const { data } = await api.get<PatientBalance>(`/patients/${id}/balance`);
+  return data;
+}
 
 export type PatientChartPrescription = {
   id: string;
@@ -93,6 +137,12 @@ export type PatientChartPrescription = {
   }>;
 };
 
+export type PatientChartMaternal = {
+  obstetricHistory?: ObstetricHistory | null;
+  ancVisits?: AncVisit[];
+  familyPlanningRecords?: FamilyPlanningRecord[];
+};
+
 export type PatientChart = {
   patient: Patient;
   encounters: PatientChartEncounter[];
@@ -100,6 +150,7 @@ export type PatientChart = {
   prescriptions: PatientChartPrescription[];
   invoices: PatientChartInvoice[];
   appointments: Appointment[];
+  maternal?: PatientChartMaternal | null;
 };
 
 export type PatientListParams = {
