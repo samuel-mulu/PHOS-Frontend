@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
 import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
+import { ClinicalNotesThread } from "@/components/shared/clinical-notes-thread";
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
 import { labOrderStatusBadge } from "@/components/shared/status-badge";
 import {
@@ -16,6 +17,7 @@ import {
   useVerifyLabOrder,
 } from "@/features/laboratory/hooks";
 import { useCurrentUser } from "@/features/auth/hooks";
+import { ClinicalMessageKind } from "@/features/clinical-messages/types";
 import { LabOrderStatus } from "@/types/lab";
 import { Role } from "@/types/role";
 import type { LabOrder, ResultValueInput } from "@/features/laboratory/api";
@@ -570,6 +572,16 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           You are signed in as {user?.role ?? "unknown"}. Lab tech or admin is
           needed to enter results.
         </p>
+      ) : null}
+
+      {o.encounterId ? (
+        <ClinicalNotesThread
+          encounterId={o.encounterId}
+          labOrderId={o.id}
+          defaultKind={ClinicalMessageKind.LAB_RESULT}
+          readOnly={!canWork}
+          title="Clinical notes (lab ↔ doctor)"
+        />
       ) : null}
         </div>
       </div>

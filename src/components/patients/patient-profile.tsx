@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DataTable,
   DataTableBody,
@@ -12,23 +13,36 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import { ErrorState, LoadingBlock } from "@/components/shared/state-blocks";
+import { SimpleDialog } from "@/components/shared/simple-dialog";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/auth/hooks";
-import { usePatientBalance, usePatientChart } from "@/features/patients/hooks";
+import {
+  useDeletePatient,
+  usePatientBalance,
+  usePatientChart,
+} from "@/features/patients/hooks";
 import { formatAge } from "@/lib/format/age";
 import { formatCents } from "@/lib/format/money";
 import { invoiceStateBadge } from "@/components/shared/status-badge";
-import { canEditPatient } from "@/lib/permissions";
+import { canDeletePatient, canEditPatient } from "@/lib/permissions";
 import { uniquePanelLabels } from "@/lib/lab/panels";
 import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import { PatientEditDialog } from "./patient-edit-dialog";
 import { PatientQrBadge } from "./patient-qr-badge";
 
 export function PatientProfile({ patientId }: { patientId: string }) {
+  const router = useRouter();
   const { data, isLoading, isError, refetch } = usePatientChart(patientId);
   const { data: user } = useCurrentUser();
   const balance = usePatientBalance(patientId);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const deletePatient = useDeletePatient({
+    onDeleted: () => {
+      setDeleteOpen(false);
+      router.push("/patients");
+    },
+  });
 
   if (isLoading) return <LoadingBlock label="Loading patient chart" />;
   if (isError || !data) {
@@ -43,6 +57,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
     .join(" ");
   const age = formatAge(p.dateOfBirth);
   const canEdit = user ? canEditPatient(user.role) : false;
+  const canDelete = user ? canDeletePatient(user.role) : false;
 
   return (
     <div className="space-y-6">
@@ -70,16 +85,28 @@ export function PatientProfile({ patientId }: { patientId: string }) {
               cashier (Debts)
             </p>
           ) : null}
-          {canEdit ? (
-            <div className="mt-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setEditOpen(true)}
-              >
-                Edit patient
-              </Button>
+          {canEdit || canDelete ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {canEdit ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditOpen(true)}
+                >
+                  Edit patient
+                </Button>
+              ) : null}
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  Delete patient
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </div>
@@ -92,6 +119,32 @@ export function PatientProfile({ patientId }: { patientId: string }) {
         onClose={() => setEditOpen(false)}
         onUpdated={() => void refetch()}
       />
+
+      <SimpleDialog
+        open={deleteOpen}
+        title="Delete this patient?"
+        primaryLabel={deletePatient.isPending ? "Deleting…" : "Yes, delete"}
+        secondaryLabel="Cancel"
+        onSecondary={() => {
+          if (!deletePatient.isPending) setDeleteOpen(false);
+        }}
+        onClose={() => {
+          if (!deletePatient.isPending) setDeleteOpen(false);
+        }}
+        onPrimary={() => {
+          if (deletePatient.isPending) return;
+          deletePatient.mutate(patientId);
+        }}
+      >
+        <p>
+          Delete{" "}
+          <span className="font-medium text-foreground">
+            {fullName} ({p.patientNumber})
+          </span>
+          ? They will disappear from patient search. Related visits, labs, and
+          bills are kept.
+        </p>
+      </SimpleDialog>
 
       <section className="grid gap-4 md:grid-cols-2">
         <InfoCard title="Contact">

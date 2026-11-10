@@ -8,6 +8,7 @@ import { normalizeApiError } from "@/lib/api/errors";
 import type { Patient, PatientDuplicateMatch } from "@/types/patient";
 import {
   createPatient,
+  deletePatient,
   fetchPatient,
   fetchPatientBalance,
   fetchPatientChart,
@@ -135,5 +136,25 @@ export function useUpdatePatient(
       if (duplicate) return;
       toast.error(normalizeApiError(error).message);
     },
+  });
+}
+
+export type UseDeletePatientOptions = {
+  onDeleted?: (patient: Patient) => void;
+};
+
+export function useDeletePatient(options: UseDeletePatientOptions = {}) {
+  const { onDeleted } = options;
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (patientId: string) => deletePatient(patientId),
+    onSuccess: (patient) => {
+      void queryClient.invalidateQueries({ queryKey: ["patients"] });
+      void queryClient.removeQueries({ queryKey: ["patients", patient.id] });
+      toast.success("Patient deleted");
+      onDeleted?.(patient);
+    },
+    onError: (error) => toast.error(normalizeApiError(error).message),
   });
 }

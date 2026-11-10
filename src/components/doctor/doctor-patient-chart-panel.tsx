@@ -19,6 +19,11 @@ import type {
   PatientChartPrescription,
 } from "@/features/patients/api";
 import type { LabOrder } from "@/features/laboratory/api";
+import type { ClinicalMessage } from "@/features/clinical-messages/types";
+import {
+  ClinicalMessageAuthorSide,
+  ClinicalMessageKind,
+} from "@/features/clinical-messages/types";
 import { LabOrderStatus } from "@/types/lab";
 import { PrintHistoryVisitNotesDialog } from "@/components/print/print-history-visit-notes";
 import { isUltrasoundDescription } from "@/lib/clinical/ultrasound";
@@ -26,6 +31,7 @@ import { isUltrasoundDescription } from "@/lib/clinical/ultrasound";
 type HistoryTab =
   | "visits"
   | "labs"
+  | "notes"
   | "ultrasound"
   | "meds"
   | "maternal"
@@ -316,6 +322,10 @@ function PatientHistoryDrawer({
               [
                 ["visits", `Visits (${chart.encounters.length})`],
                 ["labs", `Lab records (${chart.labOrders.length})`],
+                [
+                  "notes",
+                  `Clinical notes (${chart.clinicalMessages?.length ?? 0})`,
+                ],
                 ["ultrasound", `Ultrasound (${ultrasoundRecords.length})`],
                 ["meds", `Medications (${chart.prescriptions.length})`],
                 [
@@ -426,6 +436,12 @@ function PatientHistoryDrawer({
             </div>
           ) : null}
 
+          {tab === "notes" ? (
+            <ClinicalNotesHistoryView
+              messages={chart.clinicalMessages ?? []}
+            />
+          ) : null}
+
           {tab === "maternal" ? <MaternalHistoryView chart={chart} /> : null}
 
           {tab === "fp" ? <FamilyPlanningHistoryView chart={chart} /> : null}
@@ -445,6 +461,80 @@ function PatientHistoryDrawer({
 
 function Empty({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted">{children}</p>;
+}
+
+function ClinicalNotesHistoryView({
+  messages,
+}: {
+  messages: ClinicalMessage[];
+}) {
+  if (messages.length === 0) {
+    return <Empty>No doctor ↔ lab clinical notes on chart.</Empty>;
+  }
+
+  const grouped = new Map<string, ClinicalMessage[]>();
+  for (const m of messages) {
+    const key = m.encounterId;
+    const list = grouped.get(key) ?? [];
+    list.push(m);
+    grouped.set(key, list);
+  }
+
+  return (
+    <div className="space-y-4">
+      {[...grouped.entries()].map(([encounterId, items]) => {
+        const enc = items[0]?.encounter;
+        return (
+          <section
+            key={encounterId}
+            className="rounded-lg border border-border bg-card p-3 shadow-sm"
+          >
+            <SectionLabel>
+              {enc
+                ? `Visit ${enc.visitNumber ?? "—"} · ${enc.encounterNumber} · ${format(new Date(enc.startedAt), "dd MMM yyyy")}`
+                : "Visit notes"}
+            </SectionLabel>
+            <div className="mt-2 space-y-2">
+              {items.map((m) => {
+                const fromLab =
+                  m.authorSide === ClinicalMessageAuthorSide.LAB;
+                const name = [m.author.firstName, m.author.lastName]
+                  .filter(Boolean)
+                  .join(" ");
+                const kind =
+                  m.kind === ClinicalMessageKind.LAB_ORDER
+                    ? "Lab order"
+                    : m.kind === ClinicalMessageKind.LAB_RESULT
+                      ? "Lab result"
+                      : "Note";
+                return (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "rounded-md px-2.5 py-2 text-xs",
+                      fromLab
+                        ? "bg-slate-100 text-slate-900"
+                        : "bg-teal-50 text-teal-950",
+                    )}
+                  >
+                    <p className="font-semibold">
+                      {fromLab ? "Lab" : "Doctor"}
+                      {name ? ` · ${name}` : ""} · {kind} ·{" "}
+                      {format(new Date(m.createdAt), "dd MMM HH:mm")}
+                      {m.labOrder?.orderNumber
+                        ? ` · ${m.labOrder.orderNumber}`
+                        : ""}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap">{m.body}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
 }
 
 function yesNo(v?: boolean | null) {

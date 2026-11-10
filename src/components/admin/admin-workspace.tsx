@@ -3,15 +3,17 @@
 import { useState } from "react";
 import { AdminCatalogPanel } from "./admin-catalog-panel";
 import { AdminLabTestsPanel } from "./admin-lab-tests-panel";
+import { AdminPatientsPanel } from "./admin-patients-panel";
 import { AdminUsersPanel } from "./admin-users-panel";
 
-type Tab = "users" | "catalog" | "lab";
+type Tab = "users" | "patients" | "catalog" | "lab";
 
 export function AdminWorkspace() {
   const [tab, setTab] = useState<Tab>("users");
 
   const tabs: Array<{ id: Tab; label: string }> = [
     { id: "users", label: "Users" },
+    { id: "patients", label: "Patients" },
     { id: "catalog", label: "Facilities & services" },
     { id: "lab", label: "Lab tests" },
   ];
@@ -42,6 +44,7 @@ export function AdminWorkspace() {
         ))}
       </div>
       {tab === "users" ? <AdminUsersPanel /> : null}
+      {tab === "patients" ? <AdminPatientsPanel /> : null}
       {tab === "catalog" ? <AdminCatalogPanel /> : null}
       {tab === "lab" ? <AdminLabTestsPanel /> : null}
     </div>

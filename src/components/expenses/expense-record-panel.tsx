@@ -28,7 +28,10 @@ import {
 } from "@/features/expenses/hooks";
 import { PaymentMethod } from "@/types/finance";
 import { formatCents } from "@/lib/format/money";
-import { paymentMethodLabel } from "@/lib/format/payment-method";
+import {
+  COLLECT_PAYMENT_METHODS,
+  paymentMethodLabel,
+} from "@/lib/format/payment-method";
 import { cn } from "@/lib/utils";
 
 function etbToCents(etb: string): number | null {
@@ -48,13 +51,6 @@ function toApiFrom(date: string) {
 function toApiTo(date: string) {
   return new Date(`${date}T23:59:59.999`).toISOString();
 }
-
-const PRIMARY_METHODS: PaymentMethod[] = [
-  PaymentMethod.CASH,
-  PaymentMethod.CARD,
-  PaymentMethod.TELEBIRR,
-  PaymentMethod.BANK_TRANSFER,
-];
 
 export function ExpenseRecordPanel({ className }: { className?: string }) {
   const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
@@ -156,7 +152,7 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
                 Paid via
               </p>
               <div className="flex flex-wrap gap-2">
-                {PRIMARY_METHODS.map((m) => (
+                {COLLECT_PAYMENT_METHODS.map((m) => (
                   <button
                     key={m}
                     type="button"

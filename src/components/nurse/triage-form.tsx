@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { DoctorFamilyPlanningPanel } from "@/components/doctor/doctor-family-planning-panel";
+import { DoctorMaternalHealthPanel } from "@/components/doctor/doctor-maternal-health-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,11 +15,15 @@ import { LoadingBlock } from "@/components/shared/state-blocks";
 import { useEncounter } from "@/features/encounters/hooks";
 import { useRecordTriage, useTriage } from "@/features/triage/hooks";
 import { triageSchema, type TriageFormValues } from "@/features/triage/schemas";
+import { cn } from "@/lib/utils";
+
+type TriageTab = "triage" | "maternal" | "familyPlanning";
 
 export function TriageForm({ encounterId }: { encounterId: string }) {
   const encounter = useEncounter(encounterId);
   const existing = useTriage(encounterId);
   const record = useRecordTriage(encounterId);
+  const [tab, setTab] = useState<TriageTab>("triage");
 
   const form = useForm<TriageFormValues>({
     resolver: zodResolver(triageSchema),
@@ -64,110 +70,204 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
   const patient = encounter.data.patient;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4">
       <PatientIdentityBar
         patient={patient}
         encounterNumber={encounter.data.encounterNumber}
         encounterStatus={encounter.data.status}
       />
-      <form
-        className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm"
-        onSubmit={form.handleSubmit((values) => record.mutate(values))}
-      >
-        <h2 className="text-sm font-semibold text-foreground">Vitals</h2>
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          <VitalField label="Temp (°C)" error={form.formState.errors.temperature?.message}>
-            <Input type="number" step="0.1" {...form.register("temperature")} />
-          </VitalField>
-          <VitalField label="Systolic" error={form.formState.errors.systolic?.message}>
-            <Input type="number" {...form.register("systolic")} />
-          </VitalField>
-          <VitalField label="Diastolic" error={form.formState.errors.diastolic?.message}>
-            <Input type="number" {...form.register("diastolic")} />
-          </VitalField>
-          <VitalField label="Pulse" error={form.formState.errors.heartRate?.message}>
-            <Input type="number" {...form.register("heartRate")} />
-          </VitalField>
-          <VitalField label="RR" error={form.formState.errors.respiratoryRate?.message}>
-            <Input type="number" {...form.register("respiratoryRate")} />
-          </VitalField>
-          <VitalField label="SpO2 %" error={form.formState.errors.spo2?.message}>
-            <Input type="number" {...form.register("spo2")} />
-          </VitalField>
-          <VitalField label="Weight (kg)" error={form.formState.errors.weightKg?.message}>
-            <Input type="number" step="0.1" {...form.register("weightKg")} />
-          </VitalField>
-          <VitalField label="Height (cm)" error={form.formState.errors.heightCm?.message}>
-            <Input type="number" step="0.1" {...form.register("heightCm")} />
-          </VitalField>
-          <VitalField label="Pain 0–10" error={form.formState.errors.painScore?.message}>
-            <Input type="number" {...form.register("painScore")} />
-          </VitalField>
-          <VitalField
-            label="Blood glucose (mg/dL)"
-            error={form.formState.errors.bloodGlucoseMgDl?.message}
-          >
-            <Input type="number" {...form.register("bloodGlucoseMgDl")} />
-          </VitalField>
-        </div>
-        {bmi ? (
-          <p className="text-sm text-muted">BMI (approx.): {bmi}</p>
-        ) : null}
-        <div className="space-y-3 border-t border-border pt-4">
-          <h2 className="text-sm font-semibold text-foreground">
-            MCH / Family planning
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <VitalField label="Pregnancy suspected">
-              <select
-                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
-                {...form.register("pregnancySuspected")}
-              >
-                <option value="">—</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </VitalField>
-            <VitalField label="MCH needed">
-              <select
-                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
-                {...form.register("mchNeeded")}
-              >
-                <option value="">—</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </VitalField>
-            <VitalField label="FP needed">
-              <select
-                className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
-                {...form.register("fpNeeded")}
-              >
-                <option value="">—</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </select>
-            </VitalField>
-          </div>
-        </div>
-        <div>
-          <Label className="mb-1 block">Notes</Label>
-          <Textarea rows={3} {...form.register("notes")} />
-        </div>
-        <Button type="submit" disabled={record.isPending}>
-          {record.isPending ? "Saving…" : "Complete triage"}
-        </Button>
-        <p className="text-xs text-muted">
-          Submitting sends the patient to the doctor queue (backend workflow).
-        </p>
-      </form>
 
-      <PaymentRequestPanel
-        encounterId={encounterId}
-        returnStation="TRIAGE"
-        title="Charge & send to cashier"
-        disabled={encounter.data.status === "WAITING_PAYMENT"}
-      />
+      <nav
+        className="flex flex-nowrap gap-2 overflow-x-auto border-b border-border pb-2"
+        aria-label="Triage workflow"
+      >
+        {(
+          [
+            ["triage", "Triage"],
+            ["maternal", "Maternal"],
+            ["familyPlanning", "FP"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(
+              "relative shrink-0 rounded-md px-3 py-1.5 text-sm font-medium",
+              tab === id
+                ? "bg-slate-200 text-slate-900 shadow-sm dark:bg-primary dark:text-white"
+                : "bg-white text-slate-800 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-muted-bg dark:text-foreground dark:ring-border dark:hover:bg-hover-strong",
+            )}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      <p className="text-xs text-muted">
+        {tab === "triage"
+          ? "Triage · Record vitals and MCH / FP flags, then complete triage."
+          : tab === "maternal"
+            ? "Maternal · Obstetric history, ANC, labor, and delivery for this patient."
+            : "FP · Family planning counseling, method, and follow-up."}
+      </p>
+
+      {tab === "triage" ? (
+        <>
+          <form
+            className="space-y-4 rounded-lg border border-border bg-card p-6 shadow-sm"
+            onSubmit={form.handleSubmit((values) => record.mutate(values))}
+          >
+            <h2 className="text-sm font-semibold text-foreground">Vitals</h2>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              <VitalField
+                label="Temp (°C)"
+                error={form.formState.errors.temperature?.message}
+              >
+                <Input
+                  type="number"
+                  step="0.1"
+                  {...form.register("temperature")}
+                />
+              </VitalField>
+              <VitalField
+                label="Systolic"
+                error={form.formState.errors.systolic?.message}
+              >
+                <Input type="number" {...form.register("systolic")} />
+              </VitalField>
+              <VitalField
+                label="Diastolic"
+                error={form.formState.errors.diastolic?.message}
+              >
+                <Input type="number" {...form.register("diastolic")} />
+              </VitalField>
+              <VitalField
+                label="Pulse"
+                error={form.formState.errors.heartRate?.message}
+              >
+                <Input type="number" {...form.register("heartRate")} />
+              </VitalField>
+              <VitalField
+                label="RR"
+                error={form.formState.errors.respiratoryRate?.message}
+              >
+                <Input type="number" {...form.register("respiratoryRate")} />
+              </VitalField>
+              <VitalField
+                label="SpO2 %"
+                error={form.formState.errors.spo2?.message}
+              >
+                <Input type="number" {...form.register("spo2")} />
+              </VitalField>
+              <VitalField
+                label="Weight (kg)"
+                error={form.formState.errors.weightKg?.message}
+              >
+                <Input
+                  type="number"
+                  step="0.1"
+                  {...form.register("weightKg")}
+                />
+              </VitalField>
+              <VitalField
+                label="Height (cm)"
+                error={form.formState.errors.heightCm?.message}
+              >
+                <Input
+                  type="number"
+                  step="0.1"
+                  {...form.register("heightCm")}
+                />
+              </VitalField>
+              <VitalField
+                label="Pain 0–10"
+                error={form.formState.errors.painScore?.message}
+              >
+                <Input type="number" {...form.register("painScore")} />
+              </VitalField>
+              <VitalField
+                label="Blood glucose (mg/dL)"
+                error={form.formState.errors.bloodGlucoseMgDl?.message}
+              >
+                <Input type="number" {...form.register("bloodGlucoseMgDl")} />
+              </VitalField>
+            </div>
+            {bmi ? (
+              <p className="text-sm text-muted">BMI (approx.): {bmi}</p>
+            ) : null}
+            <div className="space-y-3 border-t border-border pt-4">
+              <h2 className="text-sm font-semibold text-foreground">
+                MCH / Family planning
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <VitalField label="Pregnancy suspected">
+                  <select
+                    className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
+                    {...form.register("pregnancySuspected")}
+                  >
+                    <option value="">—</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </VitalField>
+                <VitalField label="MCH needed">
+                  <select
+                    className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
+                    {...form.register("mchNeeded")}
+                  >
+                    <option value="">—</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </VitalField>
+                <VitalField label="FP needed">
+                  <select
+                    className="flex h-10 w-full rounded-md border border-border bg-input px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/30"
+                    {...form.register("fpNeeded")}
+                  >
+                    <option value="">—</option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                  </select>
+                </VitalField>
+              </div>
+            </div>
+            <div>
+              <Label className="mb-1 block">Notes</Label>
+              <Textarea rows={3} {...form.register("notes")} />
+            </div>
+            <Button type="submit" disabled={record.isPending}>
+              {record.isPending ? "Saving…" : "Complete triage"}
+            </Button>
+            <p className="text-xs text-muted">
+              Submitting sends the patient to the doctor queue (backend
+              workflow).
+            </p>
+          </form>
+
+          <PaymentRequestPanel
+            encounterId={encounterId}
+            returnStation="TRIAGE"
+            title="Charge & send to cashier"
+            disabled={encounter.data.status === "WAITING_PAYMENT"}
+          />
+        </>
+      ) : null}
+
+      {tab === "maternal" ? (
+        <DoctorMaternalHealthPanel
+          patientId={patient.id}
+          encounterId={encounterId}
+        />
+      ) : null}
+
+      {tab === "familyPlanning" ? (
+        <DoctorFamilyPlanningPanel
+          patientId={patient.id}
+          encounterId={encounterId}
+        />
+      ) : null}
     </div>
   );
 }

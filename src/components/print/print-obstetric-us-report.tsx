@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SuggestingTextarea } from "@/components/shared/suggesting-field";
+import { Textarea } from "@/components/ui/textarea";
 import type { EncounterDetail } from "@/features/encounters/api";
 import { usePatientMaternal } from "@/features/maternal/hooks";
 import type { AncVisit } from "@/features/maternal/types";
@@ -225,8 +225,7 @@ export function PrintObstetricUsReport({
               ))}
               <div className="space-y-1.5">
                 <Label htmlFor="us-index">Index</Label>
-                <SuggestingTextarea
-                  fieldKey="obstetricUs.index"
+                <Textarea
                   id="us-index"
                   rows={3}
                   value={sheet.index}
@@ -235,8 +234,7 @@ export function PrintObstetricUsReport({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="us-rec">Recommendation</Label>
-                <SuggestingTextarea
-                  fieldKey="obstetricUs.recommendation"
+                <Textarea
                   id="us-rec"
                   rows={3}
                   value={sheet.recommendation}

@@ -30,6 +30,11 @@ export function canEditPatient(role: RoleType): boolean {
   return canRegisterPatient(role);
 }
 
+/** Soft-delete patient - DELETE /patients/:id (Admin/CEO). */
+export function canDeletePatient(role: RoleType): boolean {
+  return role === Role.CEO || role === Role.ADMIN;
+}
+
 export function canCreateInvoice(role: RoleType): boolean {
   return DESK_BILLING.includes(role);
 }

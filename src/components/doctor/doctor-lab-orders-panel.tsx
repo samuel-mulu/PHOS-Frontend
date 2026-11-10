@@ -4,9 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SuggestingInput } from "@/components/shared/suggesting-field";
-import { rememberLabClinicalNotes } from "@/lib/field-memory/remember";
-import { useAuthStore } from "@/stores/auth-store";
+import { ClinicalNotesThread } from "@/components/shared/clinical-notes-thread";
 import { Label } from "@/components/ui/label";
 import { LoadingBlock } from "@/components/shared/state-blocks";
 import { SimpleDialog } from "@/components/shared/simple-dialog";
@@ -190,6 +188,7 @@ function WaitingOrderCard({
 
 export function DoctorLabOrdersPanel({
   consultationId,
+  encounterId,
   patientId,
   patientLabel,
   isFinalized,
@@ -201,6 +200,7 @@ export function DoctorLabOrdersPanel({
   onSentToLab,
 }: {
   consultationId?: string;
+  encounterId?: string;
   /** When set (consultation), patient lab report skips search. */
   patientId?: string;
   patientLabel?: string;
@@ -291,10 +291,6 @@ export function DoctorLabOrdersPanel({
     0,
   );
 
-  function rememberClinicalNotes() {
-    rememberLabClinicalNotes(useAuthStore.getState().user?.id, notes);
-  }
-
   function sendCashierLab() {
     if (!selected.length || create.isPending || cashierLabTotalCents < 1) return;
     create.mutate(
@@ -306,7 +302,6 @@ export function DoctorLabOrdersPanel({
       },
       {
         onSuccess: () => {
-          rememberClinicalNotes();
           setSelected([]);
           setOpenCategory(null);
           setNotes("");
@@ -350,6 +345,7 @@ export function DoctorLabOrdersPanel({
   }
 
   return (
+    <div className="space-y-4">
     <div className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-sm font-semibold text-foreground">Laboratory</h2>
@@ -586,8 +582,7 @@ export function DoctorLabOrdersPanel({
                   <Label className="mb-1 block text-2xs text-muted">
                     Notes to lab
                   </Label>
-                  <SuggestingInput
-                    fieldKey="lab.clinicalNotes"
+                  <Input
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Short note for lab (optional)"
@@ -608,7 +603,6 @@ export function DoctorLabOrdersPanel({
                       },
                       {
                         onSuccess: () => {
-                          rememberClinicalNotes();
                           setSelected([]);
                           setOpenCategory(null);
                           setNotes("");
@@ -690,6 +684,15 @@ export function DoctorLabOrdersPanel({
           </p>
         ) : null}
       </SimpleDialog>
+    </div>
+
+      {encounterId ? (
+        <ClinicalNotesThread
+          encounterId={encounterId}
+          readOnly={isFinalized}
+          title="Clinical notes (doctor ↔ lab)"
+        />
+      ) : null}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SuggestingTextarea } from "@/components/shared/suggesting-field";
+import { Textarea } from "@/components/ui/textarea";
 import type { Consultation } from "@/features/consultations/api";
 import type { EncounterDetail } from "@/features/encounters/api";
 import { loadClinicLogoDataUrl } from "@/lib/print/hiwet-brand";
@@ -186,8 +186,7 @@ export function PrintMedicalCertificate({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="mc-dx">Diagnosis</Label>
-                <SuggestingTextarea
-                  fieldKey="certificate.diagnosis"
+                <Textarea
                   id="mc-dx"
                   rows={2}
                   value={sheet.diagnosis}
@@ -205,8 +204,7 @@ export function PrintMedicalCertificate({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="mc-rec">Doctor&apos;s recommendations</Label>
-                <SuggestingTextarea
-                  fieldKey="certificate.recommendations"
+                <Textarea
                   id="mc-rec"
                   rows={4}
                   value={sheet.recommendations}

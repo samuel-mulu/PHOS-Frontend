@@ -4,11 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  SuggestingInput,
-  SuggestingTextarea,
-} from "@/components/shared/suggesting-field";
-import type { FieldMemoryKey } from "@/lib/field-memory/keys";
+import { Textarea } from "@/components/ui/textarea";
 import type { Consultation } from "@/features/consultations/api";
 import {
   buildReferralPrefill,
@@ -173,8 +169,7 @@ export function PrintReferralSheet({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5 sm:col-span-2">
                   <Label htmlFor="refer-to">Refer to</Label>
-                  <SuggestingInput
-                    fieldKey="referral.referTo"
+                  <Input
                     id="refer-to"
                     value={sheet.referTo ?? ""}
                     onChange={(e) => patch("referTo", e.target.value)}
@@ -202,7 +197,6 @@ export function PrintReferralSheet({
               </div>
 
               <Field
-                fieldKey="referral.healthProblemIdentification"
                 id="health-problem"
                 label="Health problem identification"
                 value={sheet.healthProblemIdentification ?? ""}
@@ -210,7 +204,6 @@ export function PrintReferralSheet({
                 rows={4}
               />
               <Field
-                fieldKey="referral.physicalFinding"
                 id="physical-finding"
                 label="Physical finding"
                 value={sheet.physicalFinding ?? ""}
@@ -218,7 +211,6 @@ export function PrintReferralSheet({
                 rows={3}
               />
               <Field
-                fieldKey="referral.laboratoryTests"
                 id="lab-tests"
                 label="Laboratory tests"
                 value={sheet.laboratoryTests ?? ""}
@@ -226,7 +218,6 @@ export function PrintReferralSheet({
                 rows={2}
               />
               <Field
-                fieldKey="referral.tentativeDx"
                 id="tentative-dx"
                 label="Tentative Dx"
                 value={sheet.tentativeDx ?? ""}
@@ -234,7 +225,6 @@ export function PrintReferralSheet({
                 rows={2}
               />
               <Field
-                fieldKey="referral.actionTaken"
                 id="action-taken"
                 label="Action taken"
                 value={sheet.actionTaken ?? ""}
@@ -242,7 +232,6 @@ export function PrintReferralSheet({
                 rows={2}
               />
               <Field
-                fieldKey="referral.reasonForReferral"
                 id="reason"
                 label="Reason for referral"
                 value={sheet.reasonForReferral ?? ""}
@@ -252,8 +241,7 @@ export function PrintReferralSheet({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="referred-by">Referred by</Label>
-                  <SuggestingInput
-                    fieldKey="referral.referredBy"
+                  <Input
                     id="referred-by"
                     value={sheet.referredBy ?? ""}
                     onChange={(e) => patch("referredBy", e.target.value)}
@@ -261,8 +249,7 @@ export function PrintReferralSheet({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="feedback">Please give us feedback</Label>
-                  <SuggestingInput
-                    fieldKey="referral.feedback"
+                  <Input
                     id="feedback"
                     value={sheet.feedback ?? ""}
                     onChange={(e) => patch("feedback", e.target.value)}
@@ -305,14 +292,12 @@ export function PrintReferralSheet({
 }
 
 function Field({
-  fieldKey,
   id,
   label,
   value,
   onChange,
   rows = 3,
 }: {
-  fieldKey: FieldMemoryKey;
   id: string;
   label: string;
   value: string;
@@ -322,8 +307,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
-      <SuggestingTextarea
-        fieldKey={fieldKey}
+      <Textarea
         id={id}
         rows={rows}
         value={value}

@@ -41,7 +41,10 @@ import { useQueue, useUpdateQueueEntry } from "@/features/queues/hooks";
 import { PaymentMethod } from "@/types/finance";
 import { formatCents } from "@/lib/format/money";
 import { formatWaitingSince } from "@/lib/format/wait-time";
-import { paymentMethodLabel } from "@/lib/format/payment-method";
+import {
+  COLLECT_PAYMENT_METHODS,
+  paymentMethodLabel,
+} from "@/lib/format/payment-method";
 import { QueueStation } from "@/types/encounter";
 import { invoiceStateBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
@@ -82,17 +85,6 @@ function whyPayLabel(returnStation: string | null | undefined): string {
   return "Visit";
 }
 
-const PRIMARY_METHODS: PaymentMethod[] = [
-  PaymentMethod.CASH,
-  PaymentMethod.CARD,
-  PaymentMethod.TELEBIRR,
-];
-
-const OTHER_METHODS: PaymentMethod[] = [
-  PaymentMethod.BANK_TRANSFER,
-  PaymentMethod.INSURANCE,
-  PaymentMethod.OTHER,
-];
 
 /** "250" / "250.5" ETB -> cents; NaN when invalid. */
 function etbToCents(value: string): number {
@@ -545,7 +537,6 @@ function PaymentPanel({
     ["ISSUED", "PARTIALLY_PAID"].includes(invoice.status) && balance > 0;
 
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
-  const [showMoreMethods, setShowMoreMethods] = useState(false);
   const [reference, setReference] = useState("");
   const [amountText, setAmountText] = useState(centsToEtbInput(target));
   const [deferReason, setDeferReason] = useState("");
@@ -573,7 +564,6 @@ function PaymentPanel({
     balanceQuery.data?.invoices.filter((i) => i.id !== invoiceId) ?? [];
   const otherDebtCents = otherDebts.reduce((s, i) => s + i.balanceCents, 0);
   const needsReference =
-    method === PaymentMethod.CARD ||
     method === PaymentMethod.TELEBIRR ||
     method === PaymentMethod.BANK_TRANSFER;
   const busy = pay.isPending || defer.isPending || waive.isPending;
@@ -833,7 +823,7 @@ function PaymentPanel({
         <div>
           <p className="mb-2 text-xs font-medium text-muted">Payment method</p>
           <div className="flex flex-wrap gap-2">
-            {PRIMARY_METHODS.map((m) => (
+            {COLLECT_PAYMENT_METHODS.map((m) => (
               <button
                 key={m}
                 type="button"
@@ -843,46 +833,12 @@ function PaymentPanel({
                     ? "border-teal-700 bg-teal-800 text-white"
                     : "border-border bg-card text-foreground hover:bg-muted-bg",
                 )}
-                onClick={() => {
-                  setMethod(m);
-                  setShowMoreMethods(false);
-                }}
+                onClick={() => setMethod(m)}
               >
                 {paymentMethodLabel(m)}
               </button>
             ))}
-            <button
-              type="button"
-              className={cn(
-                "rounded-md border px-4 py-2 text-sm font-medium transition-colors",
-                showMoreMethods || OTHER_METHODS.includes(method)
-                  ? "border-teal-700 bg-teal-50 text-teal-900"
-                  : "border-border bg-card text-foreground hover:bg-muted-bg",
-              )}
-              onClick={() => setShowMoreMethods((v) => !v)}
-            >
-              More…
-            </button>
           </div>
-          {showMoreMethods ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {OTHER_METHODS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  className={cn(
-                    "rounded-md border px-3 py-1.5 text-sm",
-                    method === m
-                      ? "border-teal-700 bg-teal-800 text-white"
-                      : "border-border text-foreground",
-                  )}
-                  onClick={() => setMethod(m)}
-                >
-                  {paymentMethodLabel(m)}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -910,15 +866,11 @@ function PaymentPanel({
           </div>
           {needsReference ? (
             <div>
-              <Label className="text-xs">
-                {method === PaymentMethod.CARD
-                  ? "POS / auth ref (optional)"
-                  : "Reference (optional)"}
-              </Label>
+              <Label className="text-xs">Reference (optional)</Label>
               <Input
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
-                placeholder="Optional"
+                placeholder="Mobile banking / Telebirr ref"
                 className="mt-1"
               />
             </div>

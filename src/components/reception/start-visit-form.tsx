@@ -25,7 +25,10 @@ import { EncounterPriority, EncounterType, QueueStation } from "@/types/encounte
 import { PaymentMethod } from "@/types/finance";
 import type { Patient } from "@/types/patient";
 import { formatCents } from "@/lib/format/money";
-import { paymentMethodLabel } from "@/lib/format/payment-method";
+import {
+  COLLECT_PAYMENT_METHODS,
+  paymentMethodLabel,
+} from "@/lib/format/payment-method";
 import { newIdempotencyKey } from "@/lib/idempotency";
 import { cn } from "@/lib/utils";
 
@@ -57,12 +60,6 @@ type InitialStation = typeof QueueStation.TRIAGE | typeof QueueStation.DOCTOR;
 
 /** How the desk opened this visit - not chosen manually. */
 export type VisitKind = "NEW" | "RETURNING" | "APPOINTMENT";
-
-const PAY_METHODS: PaymentMethod[] = [
-  PaymentMethod.CASH,
-  PaymentMethod.CARD,
-  PaymentMethod.TELEBIRR,
-];
 
 const VISIT_KIND_META: Record<
   VisitKind,
@@ -407,7 +404,7 @@ export function StartVisitForm({
               {formatCents(totalCents)}
             </p>
             <div className="flex flex-wrap gap-2">
-              {PAY_METHODS.map((m) => (
+              {COLLECT_PAYMENT_METHODS.map((m) => (
                 <button
                   key={m}
                   type="button"
@@ -428,7 +425,7 @@ export function StartVisitForm({
                 <Input
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
-                  placeholder="POS / Telebirr ref"
+                  placeholder="Mobile banking / Telebirr ref"
                 />
               </Field>
             ) : null}

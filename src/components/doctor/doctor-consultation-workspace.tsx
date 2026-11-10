@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SuggestingTextarea } from "@/components/shared/suggesting-field";
+import { Textarea } from "@/components/ui/textarea";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
 import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
 import {
@@ -29,6 +29,7 @@ import {
   useSaveConsultation,
 } from "@/features/consultations/hooks";
 import { DoctorPatientChartPanel } from "@/components/doctor/doctor-patient-chart-panel";
+import { ClinicalNotesThread } from "@/components/shared/clinical-notes-thread";
 import {
   DoctorLabOrdersPanel,
   useDoctorLabOrderCounts,
@@ -461,8 +462,7 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-foreground">
                   Vitals
                 </Label>
-                <SuggestingTextarea
-                  fieldKey="physicalExam"
+                <Textarea
                   rows={3}
                   disabled={isFinalized}
                   placeholder="e.g. BP 120/80, Temp 36.5, HR 72, Weight 70kg, Height 170cm"
@@ -474,8 +474,7 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-foreground">
                   Medical Notes / Follow-up Plan / Recommendations
                 </Label>
-                <SuggestingTextarea
-                  fieldKey="notes"
+                <Textarea
                   rows={4}
                   disabled={isFinalized}
                   placeholder="e.g. follow-up in 2 weeks, rest, increase fluids…"
@@ -487,8 +486,7 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-foreground">
                   Lab notes
                 </Label>
-                <SuggestingTextarea
-                  fieldKey="labNotes"
+                <Textarea
                   rows={3}
                   disabled={isFinalized}
                   placeholder="e.g. CBC pending, correlate with fever; previous Hb low…"
@@ -500,8 +498,7 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-foreground">
                   Diagnosis
                 </Label>
-                <SuggestingTextarea
-                  fieldKey="assessment"
+                <Textarea
                   rows={3}
                   disabled={isFinalized}
                   placeholder="e.g. Acute gastritis"
@@ -513,8 +510,7 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-foreground">
                   Ultrasound
                 </Label>
-                <SuggestingTextarea
-                  fieldKey="plan"
+                <Textarea
                   rows={3}
                   disabled={isFinalized}
                   placeholder="e.g. findings…"
@@ -526,8 +522,7 @@ export function DoctorConsultationWorkspace({
                 <Label className="mb-1 block text-xs font-medium text-foreground">
                   Prescription (Rx)
                 </Label>
-                <SuggestingTextarea
-                  fieldKey="historyPresentIllness"
+                <Textarea
                   rows={4}
                   disabled={isFinalized}
                   placeholder={"e.g.\nAmoxicillin 500mg - 1x3x7 days"}
@@ -621,6 +616,7 @@ export function DoctorConsultationWorkspace({
               {orderSubTab === "lab" ? (
                 <DoctorLabOrdersPanel
                   consultationId={consultationId}
+                  encounterId={encounterId}
                   patientId={patient.id}
                   patientLabel={[patient.firstName, patient.lastName]
                     .filter(Boolean)
@@ -708,31 +704,38 @@ export function DoctorConsultationWorkspace({
           ) : null}
 
           {workflowStep === "history" ? (
-            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
-              <h2 className="text-sm font-semibold text-foreground">
-                Patient history (read-only)
-              </h2>
-              <p className="mt-1 text-sm text-muted">
-                Past visits, which doctor saw them, lab results, and medicines.
-                Nothing here is editable.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" onClick={() => setHistoryOpen(true)}>
-                  Open full history
-                </Button>
-                <Link href={`/patients/${patient.id}`}>
-                  <Button type="button" variant="outline">
-                    Patient profile
+            <div className="space-y-4">
+              <ClinicalNotesThread
+                encounterId={encounterId}
+                readOnly
+                title="This visit · clinical notes (doctor ↔ lab)"
+              />
+              <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                <h2 className="text-sm font-semibold text-foreground">
+                  Patient history (read-only)
+                </h2>
+                <p className="mt-1 text-sm text-muted">
+                  Past visits, which doctor saw them, lab results, medicines,
+                  and clinical notes.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button type="button" onClick={() => setHistoryOpen(true)}>
+                    Open full history
                   </Button>
-                </Link>
-              </div>
-              <div className="mt-4">
-                <DoctorPatientChartPanel
-                  patientId={patient.id}
-                  encounterId={encounterId}
-                  open={historyOpen}
-                  onOpenChange={setHistoryOpen}
-                />
+                  <Link href={`/patients/${patient.id}`}>
+                    <Button type="button" variant="outline">
+                      Patient profile
+                    </Button>
+                  </Link>
+                </div>
+                <div className="mt-4">
+                  <DoctorPatientChartPanel
+                    patientId={patient.id}
+                    encounterId={encounterId}
+                    open={historyOpen}
+                    onOpenChange={setHistoryOpen}
+                  />
+                </div>
               </div>
             </div>
           ) : null}

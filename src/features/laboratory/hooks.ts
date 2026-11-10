@@ -136,6 +136,7 @@ export function useVerifyLabOrder(orderId: string) {
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters"] });
       void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({ queryKey: ["clinical-messages"] });
       toast.success("Verified and sent to doctor queue");
     },
     onError: (e) => toast.error(normalizeApiError(e).message),
@@ -152,6 +153,7 @@ export function useCreateLabOrder(consultationId: string) {
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters"] });
       void queryClient.invalidateQueries({ queryKey: ["billing"] });
+      void queryClient.invalidateQueries({ queryKey: ["clinical-messages"] });
       toast.success(
         vars.billFirst
           ? "Sent to cashier - after pay goes to lab"
@@ -179,6 +181,7 @@ export function useSaveDoctorLabNotes(orderId: string) {
       void queryClient.invalidateQueries({ queryKey: ["lab", "orders"] });
       void queryClient.invalidateQueries({ queryKey: ["lab", "patients"] });
       void queryClient.invalidateQueries({ queryKey: ["patients"] });
+      void queryClient.invalidateQueries({ queryKey: ["clinical-messages"] });
       toast.success("Lab notes saved");
     },
     onError: (e) => toast.error(normalizeApiError(e).message),

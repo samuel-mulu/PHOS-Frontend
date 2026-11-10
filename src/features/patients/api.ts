@@ -2,6 +2,7 @@ import { api } from "@/lib/api/client";
 import { dateOfBirthFromAge } from "@/lib/format/age";
 import type { LabOrder } from "@/features/laboratory/api";
 import type { Appointment } from "@/features/appointments/api";
+import type { ClinicalMessage } from "@/features/clinical-messages/types";
 import type { FamilyPlanningRecord } from "@/features/family-planning/types";
 import type {
   AncVisit,
@@ -151,6 +152,7 @@ export type PatientChart = {
   invoices: PatientChartInvoice[];
   appointments: Appointment[];
   maternal?: PatientChartMaternal | null;
+  clinicalMessages?: ClinicalMessage[];
 };
 
 export type PatientListParams = {
@@ -236,5 +238,11 @@ export async function updatePatient(
   const payload = toPatientPayload(values);
   delete payload.patientNumber;
   const { data } = await api.patch<Patient>(`/patients/${id}`, payload);
+  return data;
+}
+
+/** Soft-delete: hides patient from lists; keeps related clinical/billing rows. */
+export async function deletePatient(id: string) {
+  const { data } = await api.delete<Patient>(`/patients/${id}`);
   return data;
 }
