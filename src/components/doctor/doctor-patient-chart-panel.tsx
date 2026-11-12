@@ -27,6 +27,8 @@ import {
 import { LabOrderStatus } from "@/types/lab";
 import { PrintHistoryVisitNotesDialog } from "@/components/print/print-history-visit-notes";
 import { isUltrasoundDescription } from "@/lib/clinical/ultrasound";
+import { PregnancyDatingBanner } from "@/components/maternal/pregnancy-dating-banner";
+import { assessPregnancy, formatPregnancyDate } from "@/lib/maternal/pregnancy-dating";
 
 type HistoryTab =
   | "visits"
@@ -552,8 +554,11 @@ function MaternalHistoryView({ chart }: { chart: PatientChart }) {
     return <Empty>No maternal health records on chart.</Empty>;
   }
 
+  const dating = assessPregnancy(oh);
+
   return (
     <div className="space-y-3">
+      <PregnancyDatingBanner history={oh} />
       {oh ? (
         <article className="rounded-lg border border-border bg-card p-3 shadow-sm">
           <SectionLabel>Obstetric history</SectionLabel>
@@ -562,8 +567,23 @@ function MaternalHistoryView({ chart }: { chart: PatientChart }) {
               GTPAL: {oh.gravidity ?? "—"}-{oh.term ?? "—"}-{oh.preterm ?? "—"}-
               {oh.abortion ?? "—"}-{oh.living ?? "—"}
             </li>
-            <li>LMP: {oh.lmp ? format(new Date(oh.lmp), "dd MMM yyyy") : "—"}</li>
-            <li>EDD: {oh.edd ? format(new Date(oh.edd), "dd MMM yyyy") : "—"}</li>
+            <li>
+              LMP:{" "}
+              {oh.lmpStatus === "UNKNOWN"
+                ? "Unknown"
+                : oh.lmp
+                  ? format(new Date(oh.lmp), "dd MMM yyyy")
+                  : "—"}
+            </li>
+            <li>
+              EDD:{" "}
+              {dating.established
+                ? (formatPregnancyDate(dating.edd) ?? "Not established")
+                : "Not established"}
+            </li>
+            {dating.sourceLabel ? (
+              <li>Dating source: {dating.sourceLabel}</li>
+            ) : null}
             <li>Previous delivery: {oh.previousDelivery ?? "—"}</li>
             <li>Previous CS: {yesNo(oh.previousCs)}</li>
             <li>Previous PPH: {yesNo(oh.previousPph)}</li>

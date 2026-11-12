@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { DoctorFamilyPlanningPanel } from "@/components/doctor/doctor-family-planning-panel";
@@ -9,10 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ClinicalNotesThread } from "@/components/shared/clinical-notes-thread";
 import { PatientIdentityBar } from "@/components/shared/patient-identity-bar";
 import { PaymentRequestPanel } from "@/components/shared/payment-request-panel";
 import { LoadingBlock } from "@/components/shared/state-blocks";
-import { useEncounter } from "@/features/encounters/hooks";
+import {
+  useEncounter,
+  useReturnFromNurse,
+} from "@/features/encounters/hooks";
 import { useRecordTriage, useTriage } from "@/features/triage/hooks";
 import { triageSchema, type TriageFormValues } from "@/features/triage/schemas";
 import { cn } from "@/lib/utils";
@@ -20,10 +25,14 @@ import { cn } from "@/lib/utils";
 type TriageTab = "triage" | "maternal" | "familyPlanning";
 
 export function TriageForm({ encounterId }: { encounterId: string }) {
+  const router = useRouter();
   const encounter = useEncounter(encounterId);
   const existing = useTriage(encounterId);
   const record = useRecordTriage(encounterId);
+  const returnNurse = useReturnFromNurse(encounterId);
   const [tab, setTab] = useState<TriageTab>("triage");
+  const [returnNotes, setReturnNotes] = useState("");
+  const isDoctorReferral = Boolean(encounter.data?.nurseReferralActive);
 
   const form = useForm<TriageFormValues>({
     resolver: zodResolver(triageSchema),
@@ -76,6 +85,49 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
         encounterNumber={encounter.data.encounterNumber}
         encounterStatus={encounter.data.status}
       />
+
+      {isDoctorReferral ? (
+        <div className="rounded-lg border border-teal-200 bg-teal-50/50 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-teal-900">
+              From doctor — mid-visit referral
+            </p>
+            <p className="mt-0.5 text-xs text-teal-800">
+              Read the clinical notes, complete Maternal / FP / vitals as needed,
+              then return the patient to the doctor. Intake triage patients stay
+              on the normal waiting list.
+            </p>
+          </div>
+          <ClinicalNotesThread
+            encounterId={encounterId}
+            title="Doctor notes for nurse"
+          />
+          <div>
+            <Label htmlFor="return-notes" className="text-xs">
+              Optional note back to doctor
+            </Label>
+            <Textarea
+              id="return-notes"
+              className="mt-1"
+              rows={2}
+              value={returnNotes}
+              onChange={(e) => setReturnNotes(e.target.value)}
+              placeholder="What you did / findings…"
+            />
+          </div>
+          <Button
+            type="button"
+            disabled={returnNurse.isPending}
+            onClick={() =>
+              returnNurse.mutate(returnNotes.trim() || undefined, {
+                onSuccess: () => router.push("/nurse"),
+              })
+            }
+          >
+            {returnNurse.isPending ? "Returning…" : "Return to doctor"}
+          </Button>
+        </div>
+      ) : null}
 
       <nav
         className="flex flex-nowrap gap-2 overflow-x-auto border-b border-border pb-2"
@@ -238,11 +290,16 @@ export function TriageForm({ encounterId }: { encounterId: string }) {
               <Textarea rows={3} {...form.register("notes")} />
             </div>
             <Button type="submit" disabled={record.isPending}>
-              {record.isPending ? "Saving…" : "Complete triage"}
+              {record.isPending
+                ? "Saving…"
+                : isDoctorReferral
+                  ? "Save vitals & return to doctor"
+                  : "Complete triage"}
             </Button>
             <p className="text-xs text-muted">
-              Submitting sends the patient to the doctor queue (backend
-              workflow).
+              {isDoctorReferral
+                ? "Saves vitals and returns this referral to the doctor queue."
+                : "Submitting sends the patient to the doctor queue (intake triage)."}
             </p>
           </form>
 

@@ -22,24 +22,30 @@ function kindLabel(kind: string) {
   return "Note";
 }
 
-function sideLabel(side: string) {
-  return side === ClinicalMessageAuthorSide.LAB ? "Lab" : "Doctor";
+function sideLabel(message: ClinicalMessage) {
+  if (message.authorSide === ClinicalMessageAuthorSide.LAB) return "Lab";
+  if (message.author.role === "NURSE") return "Nurse";
+  return "Doctor";
 }
 
 function MessageBubble({ message }: { message: ClinicalMessage }) {
   const fromLab = message.authorSide === ClinicalMessageAuthorSide.LAB;
+  const fromNurse = message.author.role === "NURSE";
   const name = [message.author.firstName, message.author.lastName]
     .filter(Boolean)
     .join(" ");
 
   return (
     <div
-      className={cn("flex", fromLab ? "justify-start" : "justify-end")}
+      className={cn(
+        "flex",
+        fromLab || fromNurse ? "justify-start" : "justify-end",
+      )}
     >
       <div
         className={cn(
           "max-w-[85%] rounded-lg px-3 py-2 text-sm shadow-sm",
-          fromLab
+          fromLab || fromNurse
             ? "bg-slate-100 text-slate-900 ring-1 ring-slate-200"
             : "bg-teal-800 text-white",
         )}
@@ -47,11 +53,11 @@ function MessageBubble({ message }: { message: ClinicalMessage }) {
         <div
           className={cn(
             "mb-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs",
-            fromLab ? "text-slate-600" : "text-teal-100",
+            fromLab || fromNurse ? "text-slate-600" : "text-teal-100",
           )}
         >
           <span className="font-semibold">
-            {sideLabel(message.authorSide)}
+            {sideLabel(message)}
             {name ? ` · ${name}` : ""}
           </span>
           <span>{kindLabel(message.kind)}</span>

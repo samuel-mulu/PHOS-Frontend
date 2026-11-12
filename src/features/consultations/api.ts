@@ -14,6 +14,7 @@ export type Consultation = {
   notes: string | null;
   labNotes: string | null;
   referralSheet?: Record<string, unknown> | null;
+  obstetricUsReport?: Record<string, unknown> | null;
   diagnoses: Array<{
     id: string;
     label: string;

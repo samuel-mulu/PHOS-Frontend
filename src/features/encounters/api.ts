@@ -20,6 +20,8 @@ export type Encounter = {
   assignedDoctorId?: string | null;
   /** After mid-visit payment, patient returns to this station. */
   paymentReturnStation?: "TRIAGE" | "DOCTOR" | "LAB" | "PHARMACY" | "CASHIER" | null;
+  /** Doctor mid-visit send to nurse (vs reception intake triage). */
+  nurseReferralActive?: boolean;
   assignedDoctor?: {
     id: string;
     firstName: string;
@@ -144,6 +146,22 @@ export async function routeEncounter(
   const { data } = await api.post<EncounterDetail>(
     `/encounters/${encounterId}/route`,
     { station },
+  );
+  return data;
+}
+
+export async function requestNurse(encounterId: string, notes: string) {
+  const { data } = await api.post<EncounterDetail>(
+    `/encounters/${encounterId}/nurse-request`,
+    { notes },
+  );
+  return data;
+}
+
+export async function returnFromNurse(encounterId: string, notes?: string) {
+  const { data } = await api.post<EncounterDetail>(
+    `/encounters/${encounterId}/nurse-return`,
+    { notes },
   );
   return data;
 }

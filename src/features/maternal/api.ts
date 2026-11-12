@@ -55,8 +55,31 @@ export function obstetricHistoryToPayload(values: ObstetricHistoryFormValues) {
   if (living !== undefined) out.living = living;
   const lmp = dateOnly(values.lmp);
   const edd = dateOnly(values.edd);
-  if (lmp) out.lmp = lmp;
-  if (edd) out.edd = edd;
+  if (values.lmpStatus === "KNOWN") {
+    out.lmpStatus = "KNOWN";
+    out.datingSource = "LMP";
+    out.lmp = lmp ?? null;
+    out.datingEstablished = Boolean(lmp);
+  } else if (values.lmpStatus === "UNKNOWN") {
+    out.lmpStatus = "UNKNOWN";
+    out.lmp = null;
+    if (values.datingSource === "ULTRASOUND") {
+      out.datingSource = "ULTRASOUND";
+      out.edd = edd ?? null;
+      out.datingEstablished = Boolean(edd);
+    } else if (values.datingSource === "CLINICAL") {
+      out.datingSource = "CLINICAL";
+      out.edd = edd ?? null;
+      out.datingEstablished = values.datingEstablished === true && Boolean(edd);
+    } else {
+      out.datingSource = "NONE";
+      out.edd = null;
+      out.datingEstablished = false;
+    }
+  } else {
+    if (lmp) out.lmp = lmp;
+    if (edd) out.edd = edd;
+  }
   if (values.previousDelivery)
     out.previousDelivery = values.previousDelivery;
   putBool(out, "previousCs", values.previousCs);

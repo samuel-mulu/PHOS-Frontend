@@ -92,6 +92,7 @@ export function QueueBoard({
                 entry={entry}
                 hrefPrefix={hrefPrefix}
                 resolveHref={resolveHref}
+                fromDoctor={Boolean(entry.encounter.nurseReferralActive)}
                 onCall={() =>
                   updateEntry.mutate(
                     { id: entry.id, status: "IN_SERVICE" },
@@ -139,12 +140,14 @@ function QueueRow({
   entry,
   hrefPrefix,
   resolveHref,
+  fromDoctor,
   onCall,
   calling,
 }: {
   entry: QueueEntry;
   hrefPrefix: string;
   resolveHref?: (entry: QueueEntry) => string | null;
+  fromDoctor?: boolean;
   onCall: () => void;
   calling: boolean;
 }) {
@@ -154,13 +157,24 @@ function QueueRow({
   const p = entry.encounter.patient;
   return (
     <DataTableRow
-      className={entry.status === "WAITING" ? "bg-red-50/30" : undefined}
+      className={
+        fromDoctor
+          ? "bg-teal-50/50"
+          : entry.status === "WAITING"
+            ? "bg-red-50/30"
+            : undefined
+      }
     >
       <DataTableCell>
         <span className="font-medium">
           {p.firstName} {p.lastName}
         </span>
         <p className="text-xs text-muted">{p.patientNumber}</p>
+        {fromDoctor ? (
+          <span className="mt-0.5 inline-flex rounded bg-teal-800 px-1.5 py-0.5 text-2xs font-semibold text-white">
+            From doctor
+          </span>
+        ) : null}
       </DataTableCell>
       <DataTableCell>
         <p>{entry.encounter.encounterNumber}</p>

@@ -26,6 +26,7 @@ export type QueueEntry = {
     reason: string | null;
     assignedDoctorId?: string | null;
     paymentReturnStation?: "TRIAGE" | "DOCTOR" | "LAB" | "PHARMACY" | "CASHIER" | null;
+    nurseReferralActive?: boolean;
     assignedDoctor?: {
       id: string;
       firstName: string;

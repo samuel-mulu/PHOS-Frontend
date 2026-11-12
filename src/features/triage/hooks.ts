@@ -37,7 +37,7 @@ export function useRecordTriage(encounterId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["queues"] });
       void queryClient.invalidateQueries({ queryKey: ["encounters", encounterId] });
-      toast.success("Triage completed - patient sent to doctor queue");
+      toast.success("Triage saved — patient sent to doctor queue");
       if (role && DESK_TRIAGE_ROLES.includes(role)) {
         router.push("/front-desk?tab=reception");
       } else {

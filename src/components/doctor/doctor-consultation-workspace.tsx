@@ -35,6 +35,7 @@ import {
   useDoctorLabOrderCounts,
 } from "@/components/doctor/doctor-lab-orders-panel";
 import { DoctorUltrasoundPanel } from "@/components/doctor/doctor-ultrasound-panel";
+import { DoctorNursePanel } from "@/components/doctor/doctor-nurse-panel";
 import { DoctorMaternalHealthPanel } from "@/components/doctor/doctor-maternal-health-panel";
 import { DoctorFamilyPlanningPanel } from "@/components/doctor/doctor-family-planning-panel";
 import { labOrderStatusBadge, StatusBadge } from "@/components/shared/status-badge";
@@ -69,6 +70,7 @@ import { PrintReferralSheet } from "@/components/print/print-referral-sheet";
 import { PrintPatientLabReport } from "@/components/print/print-patient-lab-report";
 import { PrintMedicalCertificate } from "@/components/print/print-medical-certificate";
 import { PrintObstetricUsReport } from "@/components/print/print-obstetric-us-report";
+import type { ObstetricUsReportFormValues } from "@/features/consultations/obstetric-us-report";
 
 type Step =
   | "notes"
@@ -86,6 +88,8 @@ function nextStopLabel(status: string): string {
       return "Pharmacy";
     case "WAITING_PAYMENT":
       return "Cashier / payment";
+    case "WAITING_TRIAGE":
+      return "Nurse / triage";
     case "WAITING_REVIEW":
       return "Doctor review (lab)";
     case "COMPLETED":
@@ -104,9 +108,9 @@ export function DoctorConsultationWorkspace({
   const consultationQuery = useConsultation(encounterId);
   const save = useSaveConsultation(encounterId);
   const [workflowStep, setWorkflowStep] = useState<Step>("notes");
-  const [orderSubTab, setOrderSubTab] = useState<"lab" | "rx" | "ultrasound">(
-    "lab",
-  );
+  const [orderSubTab, setOrderSubTab] = useState<
+    "lab" | "rx" | "ultrasound" | "nurse"
+  >("lab");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [ensuringDraft, setEnsuringDraft] = useState(false);
   const routePatient = useRouteEncounter(encounterId);
@@ -173,6 +177,10 @@ export function DoctorConsultationWorkspace({
       setOrderSubTab("lab");
     }
   }, [labCounts.ready, encounter.data?.status]);
+
+  async function saveObstetricUsReport(obstetricUsReport: ObstetricUsReportFormValues) {
+    await save.mutateAsync({ ...form.getValues(), obstetricUsReport });
+  }
 
   async function ensureConsultation(): Promise<string | null> {
     if (consultationId) return consultationId;
@@ -242,7 +250,13 @@ export function DoctorConsultationWorkspace({
             encounter={encounter.data}
             consultation={consultation}
           />
-          <PrintObstetricUsReport encounter={encounter.data} />
+          <PrintObstetricUsReport
+            encounter={encounter.data}
+            consultation={consultation}
+            saving={save.isPending}
+            locked={isFinalized}
+            onSave={saveObstetricUsReport}
+          />
           <DoctorPatientChartPanel
             patientId={patient.id}
             encounterId={encounterId}
@@ -358,7 +372,7 @@ export function DoctorConsultationWorkspace({
           : workflowStep === "orders"
             ? labCounts.ready > 0
               ? "2 · Review lab results. Medicines, cashier, or appointment - then Finish."
-              : "2 · Lab, medicines, send to cashier, or book a follow-up appointment."
+              : "2 · Lab, medicines, nurse/triage, send to cashier, or book a follow-up."
             : workflowStep === "finish"
               ? "3 · Send to pharmacy if needed, then complete this visit."
               : workflowStep === "maternal"
@@ -518,6 +532,13 @@ export function DoctorConsultationWorkspace({
                   {...form.register("plan")}
                 />
               </div>
+              <PrintObstetricUsReport
+                encounter={encounter.data}
+                consultation={consultation}
+                saving={save.isPending}
+                locked={isFinalized}
+                onSave={saveObstetricUsReport}
+              />
               <div>
                 <Label className="mb-1 block text-xs font-medium text-foreground">
                   Prescription (Rx)
@@ -612,6 +633,18 @@ export function DoctorConsultationWorkspace({
                 >
                   Ultrasound
                 </button>
+                <button
+                  type="button"
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-medium",
+                    orderSubTab === "nurse"
+                      ? "bg-teal-800 text-white"
+                      : "bg-muted-bg text-foreground",
+                  )}
+                  onClick={() => setOrderSubTab("nurse")}
+                >
+                  Nurse / triage
+                </button>
               </div>
               {orderSubTab === "lab" ? (
                 <DoctorLabOrdersPanel
@@ -640,6 +673,16 @@ export function DoctorConsultationWorkspace({
                   paymentReturnStation={encounter.data?.paymentReturnStation}
                   invoiceId={encounter.data?.invoice?.id}
                   disabled={ensuringDraft}
+                />
+              ) : orderSubTab === "nurse" ? (
+                <DoctorNursePanel
+                  encounterId={encounterId}
+                  isFinalized={isFinalized}
+                  alreadyWithNurse={
+                    encounter.data?.status === "WAITING_TRIAGE" ||
+                    encounter.data?.status === "IN_TRIAGE" ||
+                    Boolean(encounter.data?.nurseReferralActive)
+                  }
                 />
               ) : (
                 <PrescriptionTab
@@ -688,19 +731,41 @@ export function DoctorConsultationWorkspace({
           ) : null}
 
           {workflowStep === "maternal" ? (
-            <DoctorMaternalHealthPanel
-              patientId={patient.id}
-              encounterId={encounterId}
-              readOnly={isFinalized}
-            />
+            <div className="space-y-4">
+              <DoctorMaternalHealthPanel
+                patientId={patient.id}
+                encounterId={encounterId}
+                readOnly={isFinalized}
+              />
+              <DoctorNursePanel
+                encounterId={encounterId}
+                isFinalized={isFinalized}
+                alreadyWithNurse={
+                  encounter.data?.status === "WAITING_TRIAGE" ||
+                  encounter.data?.status === "IN_TRIAGE" ||
+                  Boolean(encounter.data?.nurseReferralActive)
+                }
+              />
+            </div>
           ) : null}
 
           {workflowStep === "familyPlanning" ? (
-            <DoctorFamilyPlanningPanel
-              patientId={patient.id}
-              encounterId={encounterId}
-              readOnly={isFinalized}
-            />
+            <div className="space-y-4">
+              <DoctorFamilyPlanningPanel
+                patientId={patient.id}
+                encounterId={encounterId}
+                readOnly={isFinalized}
+              />
+              <DoctorNursePanel
+                encounterId={encounterId}
+                isFinalized={isFinalized}
+                alreadyWithNurse={
+                  encounter.data?.status === "WAITING_TRIAGE" ||
+                  encounter.data?.status === "IN_TRIAGE" ||
+                  Boolean(encounter.data?.nurseReferralActive)
+                }
+              />
+            </div>
           ) : null}
 
           {workflowStep === "history" ? (

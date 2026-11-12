@@ -1,4 +1,6 @@
 export type PreviousDeliveryMode = "SVD" | "CS" | "INSTRUMENTAL";
+export type LmpStatus = "KNOWN" | "UNKNOWN";
+export type DatingSource = "LMP" | "ULTRASOUND" | "CLINICAL" | "NONE";
 export type FetalPresentation = "CEPHALIC" | "BREECH" | "TRANSVERSE";
 export type FetalMovement = "PRESENT" | "ABSENT";
 export type AncRiskLevel = "LOW" | "HIGH";
@@ -27,6 +29,9 @@ export type ObstetricHistory = {
   living?: number | null;
   lmp?: string | null;
   edd?: string | null;
+  lmpStatus?: LmpStatus | null;
+  datingSource?: DatingSource | null;
+  datingEstablished?: boolean | null;
   previousDelivery?: PreviousDeliveryMode | null;
   previousCs?: boolean | null;
   previousPph?: boolean | null;

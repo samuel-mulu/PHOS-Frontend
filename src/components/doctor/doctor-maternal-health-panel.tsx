@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format, addDays, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { PregnancyDatingBanner } from "@/components/maternal/pregnancy-dating-banner";
+import {
+  assessPregnancy,
+  formatGestationalAge,
+  formatPregnancyDate,
+} from "@/lib/maternal/pregnancy-dating";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -63,15 +69,6 @@ function dateTimeLocal(v?: string | null) {
   }
 }
 
-function computeEddFromLmp(lmp?: string) {
-  if (!lmp?.trim()) return null;
-  try {
-    return format(addDays(parseISO(lmp.slice(0, 10)), 280), "yyyy-MM-dd");
-  } catch {
-    return null;
-  }
-}
-
 function yesNoLabel(v?: boolean | null) {
   if (v === true) return "Yes";
   if (v === false) return "No";
@@ -88,9 +85,13 @@ export function DoctorMaternalHealthPanel({
   readOnly?: boolean;
 }) {
   const [tab, setTab] = useState<MaternalTab>("ob");
+  const maternal = usePatientMaternal(patientId);
 
   return (
     <div className="space-y-3">
+      {maternal.isLoading ? null : (
+        <PregnancyDatingBanner history={maternal.data?.obstetricHistory} />
+      )}
       <nav
         className="flex flex-nowrap gap-1.5 overflow-x-auto pb-1"
         aria-label="Maternal health sections"
@@ -130,7 +131,11 @@ export function DoctorMaternalHealthPanel({
         />
       ) : null}
       {tab === "labor" ? (
-        <LaborSection encounterId={encounterId} readOnly={readOnly} />
+        <LaborSection
+          patientId={patientId}
+          encounterId={encounterId}
+          readOnly={readOnly}
+        />
       ) : null}
       {tab === "delivery" ? (
         <DeliverySection encounterId={encounterId} readOnly={readOnly} />
@@ -179,6 +184,9 @@ function ObHistorySection({
       living: str(oh.living),
       lmp: dateInput(oh.lmp),
       edd: dateInput(oh.edd),
+      lmpStatus: oh.lmpStatus ?? (oh.lmp ? "KNOWN" : ""),
+      datingSource: oh.datingSource ?? (oh.lmp ? "LMP" : ""),
+      datingEstablished: oh.datingEstablished ?? (oh.lmp ? true : null),
       previousDelivery: oh.previousDelivery ?? undefined,
       previousCs: oh.previousCs ?? null,
       previousPph: oh.previousPph ?? null,
@@ -193,24 +201,32 @@ function ObHistorySection({
     });
   }, [maternal.data, form]);
 
+  const lmpStatus = form.watch("lmpStatus");
+  const datingSource = form.watch("datingSource");
+  const datingEstablished = form.watch("datingEstablished");
   const lmp = form.watch("lmp");
-  const serverEdd = maternal.data?.obstetricHistory?.edd;
-  const computedEdd = useMemo(() => {
-    if (serverEdd) return dateInput(serverEdd);
-    return computeEddFromLmp(lmp);
-  }, [lmp, serverEdd]);
+  const edd = form.watch("edd");
+  const preview = useMemo(
+    () =>
+      assessPregnancy(
+        { lmpStatus, datingSource, datingEstablished, lmp, edd },
+        format(new Date(), "yyyy-MM-dd"),
+      ),
+    [lmpStatus, datingSource, datingEstablished, lmp, edd],
+  );
 
   if (maternal.isLoading) return <LoadingBlock label="Loading obstetric history" />;
+
+  const showLmpDate = lmpStatus !== "UNKNOWN";
+  const showEnteredEdd =
+    lmpStatus === "UNKNOWN" &&
+    (datingSource === "ULTRASOUND" || datingSource === "CLINICAL");
 
   return (
     <form
       className="space-y-4 rounded-lg border border-border bg-card p-4 shadow-sm"
       onSubmit={form.handleSubmit((values) => {
-        const payload = {
-          ...values,
-          edd: values.edd || computedEdd || undefined,
-        };
-        save.mutate(payload);
+        save.mutate(values);
       })}
     >
       <h2 className="text-sm font-semibold text-foreground">Obstetric history</h2>
@@ -231,21 +247,92 @@ function ObHistorySection({
           <Input type="number" disabled={readOnly} {...form.register("living")} />
         </Field>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="LMP">
-          <Input type="date" disabled={readOnly} {...form.register("lmp")} />
-        </Field>
-        <Field label="EDD">
-          <Input
-            type="date"
-            disabled={readOnly}
-            {...form.register("edd")}
-            placeholder={computedEdd ?? undefined}
-          />
-          {computedEdd && !form.watch("edd") ? (
-            <p className="mt-1 text-2xs text-muted">Computed: {computedEdd}</p>
+      <fieldset className="space-y-3 rounded-md border border-border p-3">
+        <legend className="px-1 text-xs font-semibold text-foreground">
+          Pregnancy dating
+        </legend>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="radio"
+              value="KNOWN"
+              disabled={readOnly}
+              {...form.register("lmpStatus")}
+            />
+            LMP known
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="radio"
+              value="UNKNOWN"
+              disabled={readOnly}
+              {...form.register("lmpStatus")}
+            />
+            LMP unknown
+          </label>
+        </div>
+        {lmpStatus === "UNKNOWN" ? (
+          <Field label="Dating source">
+            <select
+              className={selectClass}
+              disabled={readOnly}
+              {...form.register("datingSource")}
+            >
+              <option value="">Select dating source</option>
+              <option value="ULTRASOUND">Ultrasound dating</option>
+              <option value="CLINICAL">Clinical dating</option>
+              <option value="NONE">No reliable dating</option>
+            </select>
+          </Field>
+        ) : null}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {showLmpDate ? (
+            <Field label="LMP date">
+              <Input type="date" disabled={readOnly} {...form.register("lmp")} />
+            </Field>
           ) : null}
-        </Field>
+          {lmpStatus === "KNOWN" ? (
+            <Field label="EDD">
+              <Input
+                type="text"
+                readOnly
+                value={formatPregnancyDate(preview.edd) ?? "Not established"}
+              />
+              <p className="mt-1 text-xs text-muted">LMP + 280 days</p>
+            </Field>
+          ) : null}
+          {showEnteredEdd ? (
+            <Field
+              label={
+                datingSource === "ULTRASOUND" ? "Ultrasound EDD" : "Clinical EDD"
+              }
+            >
+              <Input type="date" disabled={readOnly} {...form.register("edd")} />
+            </Field>
+          ) : null}
+        </div>
+        {lmpStatus === "UNKNOWN" && datingSource === "CLINICAL" ? (
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              disabled={readOnly}
+              checked={datingEstablished === true}
+              onChange={(event) =>
+                form.setValue("datingEstablished", event.target.checked, {
+                  shouldDirty: true,
+                })
+              }
+            />
+            Dating is sufficiently established
+          </label>
+        ) : null}
+        <p className="text-xs text-muted">
+          {preview.established && preview.ga
+            ? `GA ${formatGestationalAge(preview.ga)} · EDD ${formatPregnancyDate(preview.edd)} · ${preview.sourceLabel}`
+            : preview.note ?? "Gestational age not established"}
+        </p>
+      </fieldset>
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Previous delivery">
           <select
             className={selectClass}
@@ -324,6 +411,7 @@ function AncSection({
   readOnly?: boolean;
 }) {
   const visits = useAncVisits(patientId);
+  const maternal = usePatientMaternal(patientId);
   const create = useCreateAncVisit(patientId);
   const list = visits.data ?? [];
   const nextNumber = list.length + 1;
@@ -336,10 +424,22 @@ function AncSection({
       encounterId,
     },
   });
+  const visitDate = form.watch("visitDate");
+  const visitDating = useMemo(
+    () => assessPregnancy(maternal.data?.obstetricHistory, visitDate),
+    [maternal.data?.obstetricHistory, visitDate],
+  );
+  const gaLocked = visitDating.established && visitDating.ga != null;
 
   useEffect(() => {
     form.setValue("visitNumber", String(nextNumber));
   }, [nextNumber, form]);
+
+  useEffect(() => {
+    if (!gaLocked || !visitDating.ga) return;
+    form.setValue("gaWeeks", String(visitDating.ga.weeks));
+    form.setValue("gaDays", String(visitDating.ga.days));
+  }, [gaLocked, visitDating.ga, form]);
 
   if (visits.isLoading) return <LoadingBlock label="Loading ANC visits" />;
 
@@ -423,10 +523,23 @@ function AncSection({
               </select>
             </Field>
             <Field label="GA weeks">
-              <Input type="number" {...form.register("gaWeeks")} />
+              <Input
+                type="number"
+                readOnly={gaLocked}
+                {...form.register("gaWeeks")}
+              />
             </Field>
             <Field label="GA days">
-              <Input type="number" {...form.register("gaDays")} />
+              <Input
+                type="number"
+                readOnly={gaLocked}
+                {...form.register("gaDays")}
+              />
+              {gaLocked ? (
+                <p className="mt-1 text-xs text-muted">
+                  Calculated from obstetric dating as of this visit date
+                </p>
+              ) : null}
             </Field>
             <Field label="Weight (kg)">
               <Input type="number" step="0.1" {...form.register("weightKg")} />
@@ -504,13 +617,16 @@ function AncSection({
 }
 
 function LaborSection({
+  patientId,
   encounterId,
   readOnly,
 }: {
+  patientId: string;
   encounterId: string;
   readOnly?: boolean;
 }) {
   const labor = useLabor(encounterId);
+  const maternal = usePatientMaternal(patientId);
   const save = useUpsertLabor(encounterId);
   const addMonitoring = useAddLaborMonitoring(encounterId);
 
@@ -527,6 +643,16 @@ function LaborSection({
       recordedAt: dateTimeLocal(new Date().toISOString()),
     },
   });
+
+  const admittedAt = admissionForm.watch("admittedAt");
+  const laborDating = useMemo(
+    () =>
+      assessPregnancy(
+        maternal.data?.obstetricHistory,
+        admittedAt?.slice(0, 10),
+      ),
+    [maternal.data?.obstetricHistory, admittedAt],
+  );
 
   useEffect(() => {
     const data = labor.data;
@@ -548,6 +674,12 @@ function LaborSection({
       temperatureC: str(data.temperatureC),
     });
   }, [labor.data, admissionForm]);
+
+  useEffect(() => {
+    if (labor.data?.gaWeeks != null) return;
+    if (!laborDating.established || !laborDating.ga) return;
+    admissionForm.setValue("gaWeeks", String(laborDating.ga.weeks));
+  }, [labor.data, laborDating, admissionForm]);
 
   if (labor.isLoading) return <LoadingBlock label="Loading labor record" />;
 
@@ -574,6 +706,11 @@ function LaborSection({
               disabled={readOnly}
               {...admissionForm.register("gaWeeks")}
             />
+            {laborDating.established && laborDating.ga ? (
+              <p className="mt-1 text-xs text-muted">
+                Obstetric dating: {formatGestationalAge(laborDating.ga)}
+              </p>
+            ) : null}
           </Field>
           <Field label="Onset">
             <select

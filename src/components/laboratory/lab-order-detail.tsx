@@ -565,15 +565,6 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
 
       {!sendViewOnTop ? step3SendSection : null}
 
-      {labPaymentSection}
-
-      {!canWork && !isDone ? (
-        <p className="text-sm text-amber-800">
-          You are signed in as {user?.role ?? "unknown"}. Lab tech or admin is
-          needed to enter results.
-        </p>
-      ) : null}
-
       {o.encounterId ? (
         <ClinicalNotesThread
           encounterId={o.encounterId}
@@ -582,6 +573,15 @@ export function LabOrderDetail({ orderId }: { orderId: string }) {
           readOnly={!canWork}
           title="Clinical notes (lab ↔ doctor)"
         />
+      ) : null}
+
+      {labPaymentSection}
+
+      {!canWork && !isDone ? (
+        <p className="text-sm text-amber-800">
+          You are signed in as {user?.role ?? "unknown"}. Lab tech or admin is
+          needed to enter results.
+        </p>
       ) : null}
         </div>
       </div>

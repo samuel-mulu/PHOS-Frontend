@@ -46,7 +46,13 @@ import { ExpandablePanel } from "@/components/shared/table-layout";
 import { HmisClinicNav } from "@/components/reports/hmis-clinic-nav";
 import { DoctorAppointmentsPanel } from "@/components/doctor/doctor-appointments-panel";
 
-type DoctorTab = "waiting" | "inLab" | "lab" | "done" | "appointments";
+type DoctorTab =
+  | "waiting"
+  | "inNurse"
+  | "inLab"
+  | "lab"
+  | "done"
+  | "appointments";
 
 function isLabReturn(entry: QueueEntry) {
   return entry.encounter.status === "WAITING_REVIEW";
@@ -54,6 +60,16 @@ function isLabReturn(entry: QueueEntry) {
 
 function isAtLab(entry: QueueEntry) {
   return entry.encounter.status === "WAITING_LAB";
+}
+
+function isNurseReferral(enc: {
+  status: string;
+  nurseReferralActive?: boolean;
+}) {
+  return (
+    Boolean(enc.nurseReferralActive) &&
+    (enc.status === "WAITING_TRIAGE" || enc.status === "IN_TRIAGE")
+  );
 }
 
 function RedBadge({ count }: { count: number }) {
@@ -217,6 +233,18 @@ export function DoctorQueueWorkspace() {
     [mineOpen],
   );
 
+  const waitingForNurse = useMemo(
+    () =>
+      sortByDateField(
+        mineOpen.filter((e) => isNurseReferral(e)),
+        (e) => e.startedAt,
+        direction,
+      ),
+    [mineOpen, direction],
+  );
+
+  const inNurseCount = waitingForNurse.length;
+
   const waitingForLab = useMemo(
     () =>
       sortByDateField(
@@ -304,6 +332,13 @@ export function DoctorQueueWorkspace() {
           onClick={() => setTab("waiting")}
         />
         <SummaryCard
+          label="With nurse"
+          value={inNurseCount}
+          tone="amber"
+          active={tab === "inNurse"}
+          onClick={() => setTab("inNurse")}
+        />
+        <SummaryCard
           label="In lab"
           value={inLabCount}
           tone="violet"
@@ -335,6 +370,12 @@ export function DoctorQueueWorkspace() {
               onClick={() => setTab("waiting")}
               label="Waiting for consultation"
               badge={waitingQueue.length}
+            />
+            <TabButton
+              active={tab === "inNurse"}
+              onClick={() => setTab("inNurse")}
+              label="Waiting for nurse"
+              badge={waitingForNurse.length}
             />
             <TabButton
               active={tab === "inLab"}
@@ -389,6 +430,44 @@ export function DoctorQueueWorkspace() {
                 )
               }
             />
+          )
+        ) : null}
+
+        {tab === "inNurse" ? (
+          waitingForNurse.length === 0 ? (
+            <EmptyState
+              title="No one with nurse"
+              description="Patients you send to nurse / triage for vitals, Maternal, or FP appear here until they return."
+            />
+          ) : (
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {waitingForNurse.map((e) => (
+                <li
+                  key={e.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">
+                      {e.patient
+                        ? `${e.patient.firstName} ${e.patient.lastName}`
+                        : e.encounterNumber}
+                    </p>
+                    <p className="text-xs text-muted">
+                      {e.visitNumber != null ? `Visit ${e.visitNumber} · ` : ""}
+                      {e.encounterNumber} · with nurse
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {encounterStatusBadge(e.status)}
+                    <Link href={`/doctor/${e.id}`}>
+                      <Button type="button" size="sm" variant="outline">
+                        View
+                      </Button>
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
           )
         ) : null}
 

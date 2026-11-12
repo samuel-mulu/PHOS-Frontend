@@ -9,7 +9,9 @@ import {
   fetchEncounter,
   fetchEncounters,
   requestBilling,
+  requestNurse,
   requestPayment,
+  returnFromNurse,
   routeEncounter,
   type CreateEncounterInput,
   type PaymentRequestInput,
@@ -111,6 +113,44 @@ export function useRouteEncounter(encounterId: string) {
         CASHIER: "cashier",
       };
       toast.success(`Patient sent to ${labels[station] ?? station}`);
+    },
+    onError: (error) => toast.error(normalizeApiError(error).message),
+  });
+}
+
+export function useRequestNurse(encounterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (notes: string) => requestNurse(encounterId, notes),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["encounters", encounterId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["clinical-messages", "encounter", encounterId],
+      });
+      toast.success("Patient sent to nurse / triage");
+    },
+    onError: (error) => toast.error(normalizeApiError(error).message),
+  });
+}
+
+export function useReturnFromNurse(encounterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (notes?: string) => returnFromNurse(encounterId, notes),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["encounters", encounterId],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["clinical-messages", "encounter", encounterId],
+      });
+      toast.success("Patient returned to doctor");
     },
     onError: (error) => toast.error(normalizeApiError(error).message),
   });

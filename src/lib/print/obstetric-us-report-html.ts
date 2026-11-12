@@ -1,27 +1,12 @@
 import { format } from "date-fns";
+import type { ObstetricUsReportFormValues } from "@/features/consultations/obstetric-us-report";
 import {
   printBlockField,
   printInlineField,
   wrapHiwetPrintDocument,
 } from "@/lib/print/hiwet-print-shell";
 
-export type ObstetricUsReportFormValues = {
-  patientName: string;
-  age: string;
-  cardNo: string;
-  date: string;
-  numberOfFetus: string;
-  viabilityFhb: string;
-  fetalPresentation: string;
-  gsCrlBpdFlAga: string;
-  amnioticFluidVolume: string;
-  placentalPositionGrade: string;
-  estimatedFetalWeight: string;
-  grossAnomaly: string;
-  index: string;
-  recommendation: string;
-  doctorName: string;
-};
+export type { ObstetricUsReportFormValues };
 
 function escapeHtml(value: string) {
   return value
