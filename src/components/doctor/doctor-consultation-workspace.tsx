@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +17,7 @@ import {
   WorkspacePageSkeleton,
 } from "@/components/shared/state-blocks";
 import {
+  useCloseEncounter,
   useEncounter,
   useRouteEncounter,
 } from "@/features/encounters/hooks";
@@ -104,6 +106,7 @@ export function DoctorConsultationWorkspace({
 }: {
   encounterId: string;
 }) {
+  const router = useRouter();
   const encounter = useEncounter(encounterId);
   const consultationQuery = useConsultation(encounterId);
   const save = useSaveConsultation(encounterId);
@@ -114,10 +117,13 @@ export function DoctorConsultationWorkspace({
   const [historyOpen, setHistoryOpen] = useState(false);
   const [ensuringDraft, setEnsuringDraft] = useState(false);
   const routePatient = useRouteEncounter(encounterId);
+  const closeVisit = useCloseEncounter(encounterId);
 
   const consultation = consultationQuery.data;
   const consultationId = consultation?.id;
-  const isFinalized = consultation?.status === "FINALIZED";
+  const isFinalized =
+    consultation?.status === "FINALIZED" ||
+    consultation?.status === "CORRECTED";
   const labCounts = useDoctorLabOrderCounts(consultationId);
   const allLabOrders = useLabOrders();
   const consultationLabOrders = useMemo(
@@ -275,26 +281,78 @@ export function DoctorConsultationWorkspace({
           className="rounded-lg border border-teal-700/40 bg-teal-950/30 px-4 py-3 text-sm text-teal-50 dark:border-teal-600/40"
           role="status"
         >
-          <p className="font-semibold text-teal-100">Consultation completed</p>
-          <p className="mt-1 text-teal-100/85">
-            Patient left your queue and was sent to{" "}
-            <strong>{nextStopLabel(encounterStatus)}</strong>.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setHistoryOpen(true)}
-            >
-              View history (read-only)
-            </Button>
-            <Link href="/doctor">
-              <Button type="button" size="sm">
-                Doctor queue
-              </Button>
-            </Link>
-          </div>
+          {encounterStatus === "WAITING_REVIEW" ? (
+            <>
+              <p className="font-semibold text-teal-100">
+                Lab results ready — review then close visit
+              </p>
+              <p className="mt-1 text-teal-100/85">
+                Notes are already finalized. Review lab results under Orders,
+                then close the visit so front desk can start a return.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={closeVisit.isPending}
+                  onClick={() =>
+                    closeVisit.mutate(undefined, {
+                      onSuccess: () => router.push("/doctor"),
+                    })
+                  }
+                >
+                  {closeVisit.isPending ? "Closing…" : "Close visit"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setWorkflowStep("orders");
+                    setOrderSubTab("lab");
+                  }}
+                >
+                  Open lab results
+                </Button>
+                <Link href="/doctor">
+                  <Button type="button" size="sm" variant="outline">
+                    Doctor queue
+                  </Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-teal-100">
+                Consultation completed
+              </p>
+              <p className="mt-1 text-teal-100/85">
+                {encounterStatus === "COMPLETED"
+                  ? "Visit is archived under Completed today."
+                  : (
+                      <>
+                        Patient left your queue and was sent to{" "}
+                        <strong>{nextStopLabel(encounterStatus)}</strong>.
+                      </>
+                    )}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setHistoryOpen(true)}
+                >
+                  View history (read-only)
+                </Button>
+                <Link href="/doctor">
+                  <Button type="button" size="sm">
+                    Doctor queue
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
         </div>
       ) : null}
 
@@ -813,8 +871,14 @@ export function DoctorConsultationWorkspace({
               paymentReturnStation={encounter.data.paymentReturnStation}
               isFinalized={Boolean(isFinalized)}
               finalizePending={finalize.isPending}
+              closePending={closeVisit.isPending}
               routePending={routePatient.isPending}
               onComplete={() => finalize.mutate()}
+              onCloseVisit={() =>
+                closeVisit.mutate(undefined, {
+                  onSuccess: () => router.push("/doctor"),
+                })
+              }
               onPharmacy={() => routePatient.mutate(QueueStation.PHARMACY)}
             />
           ) : null}
@@ -992,8 +1056,10 @@ function FinishNextSteps({
   paymentReturnStation,
   isFinalized,
   finalizePending,
+  closePending,
   routePending,
   onComplete,
+  onCloseVisit,
   onPharmacy,
 }: {
   consultationId?: string;
@@ -1002,8 +1068,10 @@ function FinishNextSteps({
   paymentReturnStation?: string | null;
   isFinalized: boolean;
   finalizePending: boolean;
+  closePending: boolean;
   routePending: boolean;
   onComplete: () => void;
+  onCloseVisit: () => void;
   onPharmacy: () => void;
 }) {
   const rxList = usePrescriptions();
@@ -1023,8 +1091,10 @@ function FinishNextSteps({
   const hasUnpaid = unpaidCents > 0;
   const payLaterCents = invoicePayLater(inv);
   const waivedCents = inv?.waivedCents ?? 0;
-  const busy = finalizePending || routePending;
+  const busy = finalizePending || closePending || routePending;
   const atCashier = encounterStatus === "WAITING_PAYMENT";
+  const needsCloseAfterReview =
+    isFinalized && encounterStatus === "WAITING_REVIEW";
 
   return (
     <div className="space-y-4">
@@ -1103,9 +1173,34 @@ function FinishNextSteps({
               {finalizePending ? "Completing…" : "Complete consultation"}
             </Button>
           ) : null}
-          {isFinalized ? (
+          {needsCloseAfterReview ? (
+            <>
+              <p className="mt-3 text-sm text-emerald-900">
+                Notes are finalized and lab results are back. Close the visit so
+                front desk can start a new return.
+              </p>
+              {hasUnpaid ? (
+                <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                  Not paid - due {formatCents(unpaidCents)}. Collect at cashier
+                  before closing.
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                size="lg"
+                className="mt-4 w-full bg-emerald-600 text-base font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                disabled={busy || hasUnpaid}
+                onClick={onCloseVisit}
+              >
+                {closePending ? "Closing…" : "Close visit"}
+              </Button>
+            </>
+          ) : null}
+          {isFinalized && !needsCloseAfterReview ? (
             <p className="mt-4 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">
-              Finished and archived → {nextStopLabel(encounterStatus)}
+              {encounterStatus === "COMPLETED"
+                ? "Visit closed — archived under Completed today"
+                : `Finished and archived → ${nextStopLabel(encounterStatus)}`}
             </p>
           ) : null}
         </div>

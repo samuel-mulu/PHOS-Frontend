@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { normalizeApiError } from "@/lib/api/errors";
 import { isAxiosError } from "axios";
 import {
+  closeEncounter,
   createEncounter,
   fetchEncounter,
   fetchEncounters,
@@ -151,6 +152,22 @@ export function useReturnFromNurse(encounterId: string) {
         queryKey: ["clinical-messages", "encounter", encounterId],
       });
       toast.success("Patient returned to doctor");
+    },
+    onError: (error) => toast.error(normalizeApiError(error).message),
+  });
+}
+
+export function useCloseEncounter(encounterId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => closeEncounter(encounterId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["queues"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["encounters", encounterId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["encounters", "list"] });
+      toast.success("Visit closed — front desk can start a new return");
     },
     onError: (error) => toast.error(normalizeApiError(error).message),
   });

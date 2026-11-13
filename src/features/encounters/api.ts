@@ -165,3 +165,11 @@ export async function returnFromNurse(encounterId: string, notes?: string) {
   );
   return data;
 }
+
+/** Close a finalized visit stuck in WAITING_REVIEW after lab return. */
+export async function closeEncounter(encounterId: string) {
+  const { data } = await api.post<EncounterDetail>(
+    `/encounters/${encounterId}/close`,
+  );
+  return data;
+}
