@@ -9,10 +9,11 @@ function escapeHtml(value: string) {
 }
 
 /** Shared CSS for Hiwet letterhead prints (header, services sidebar, footer). */
-export function hiwetPrintShellCss() {
+export function hiwetPrintShellCss(options?: { landscape?: boolean }) {
   const { colors } = HIWET_BRAND;
   return `
-  @page { size: A4; margin: 12mm; }
+  @page { size: ${options?.landscape ? "A4 landscape" : "A4"}; margin: ${options?.landscape ? "8mm" : "12mm"}; }
+  .layout.no-side { grid-template-columns: 1fr; }
   * { box-sizing: border-box; }
   body {
     font-family: "Noto Sans Ethiopic", "Nyala", "Abyssinica SIL", "Segoe UI", system-ui, sans-serif;
@@ -283,6 +284,9 @@ export function wrapHiwetPrintDocument(input: {
   logoUrl?: string | null;
   encounterNumber?: string;
   headerMetaHtml?: string;
+  sidebar?: boolean;
+  landscape?: boolean;
+  extraCss?: string;
 }): string {
   const {
     title,
@@ -290,6 +294,9 @@ export function wrapHiwetPrintDocument(input: {
     logoUrl = null,
     encounterNumber = "",
     headerMetaHtml = "",
+    sidebar = true,
+    landscape = false,
+    extraCss = "",
   } = input;
 
   const sidebarItems = HIWET_BRAND.sidebarServices
@@ -305,7 +312,7 @@ export function wrapHiwetPrintDocument(input: {
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
 <title>${escapeHtml(title)}</title>
-<style>${hiwetPrintShellCss()}</style></head><body>
+<style>${hiwetPrintShellCss({ landscape })}${extraCss}</style></head><body>
   <header class="header">
     <div class="brand-row">
       ${logoHtml}
@@ -317,11 +324,15 @@ export function wrapHiwetPrintDocument(input: {
     ${headerMetaHtml ? `<div class="header-meta">${headerMetaHtml}</div>` : ""}
   </header>
 
-  <div class="layout">
-    <aside class="sidebar">
+  <div class="layout${sidebar ? "" : " no-side"}">
+    ${
+      sidebar
+        ? `<aside class="sidebar">
       <h2><span class="side-icon">${HIWET_BRAND.sidebarIcon}</span>${escapeHtml(HIWET_BRAND.sidebarTitle)}</h2>
       <ul>${sidebarItems}</ul>
-    </aside>
+    </aside>`
+        : ""
+    }
     <main class="main">
       ${mainHtml}
     </main>

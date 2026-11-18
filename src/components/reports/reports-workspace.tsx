@@ -107,7 +107,7 @@ export function ReportsWorkspace() {
                 ? "Outgoing expenses with clinic net (collections minus spend)."
                 : isHfr
                 ? "Operational counts for this facility (HFR)."
-                : "Live aggregations from doctor diagnoses and lab results."}
+                : "Laboratory, weekly, and monthly counts from visits, diagnoses, lab results, and maternal registers."}
           </p>
           <HmisClinicNav />
         </div>
@@ -149,7 +149,7 @@ export function ReportsWorkspace() {
         />
       ) : null}
       {!isHfr && !isPayments && !isDebts && !isExpenses ? (
-        <HmisReportPanel full={isFull} />
+        <HmisReportPanel key={isFull ? "full" : "live"} full={isFull} />
       ) : null}
 
       {isHfr ? <QueryStaleBanner query={query} /> : null}
