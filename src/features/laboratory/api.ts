@@ -174,6 +174,9 @@ export async function createLabOrder(
     priority?: EncounterPriority;
     clinicalNotes?: string;
     billFirst?: boolean;
+    /** billFirst only: doctor asks the cashier to make this much free. */
+    freeCents?: number;
+    freeReason?: string;
   },
 ) {
   const { data } = await api.post<LabOrder>(

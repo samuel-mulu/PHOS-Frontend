@@ -63,7 +63,7 @@ export function invoiceStatusBadge(status: string) {
   }
 }
 
-/** Money state of a whole invoice: Paid / Part paid / Pay later / Waived / Not paid. */
+/** Money state of a whole invoice: Paid / Part paid / Pay later / Waived / Cancelled / Not paid. */
 export function invoiceStateBadge(inv: InvoiceMoney | null | undefined) {
   if (!inv) return null;
   if (inv.status === "VOID") return <StatusBadge label="Void" tone="red" />;
@@ -72,9 +72,11 @@ export function invoiceStateBadge(inv: InvoiceMoney | null | undefined) {
   const tone: Tone =
     state === "PAID"
       ? "green"
-      : state === "WAIVED" || state === "PARTIAL"
-        ? "blue"
-        : "amber";
+      : state === "CANCELLED"
+        ? "red"
+        : state === "WAIVED" || state === "PARTIAL"
+          ? "blue"
+          : "amber";
   return <StatusBadge label={INVOICE_STATE_LABEL[state]} tone={tone} />;
 }
 
@@ -91,7 +93,9 @@ export function LineStateBadge({
   const tone: Tone =
     state === "PAID"
       ? "green"
-      : state === "WAIVED"
+      : state === "CANCELLED"
+        ? "red"
+        : state === "WAIVED"
         ? "blue"
         : state === "DUE"
           ? "slate"

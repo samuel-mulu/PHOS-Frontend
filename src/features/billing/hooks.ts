@@ -9,6 +9,7 @@ import {
   createInvoice,
   deferInvoice,
   waiveInvoice,
+  cancelInvoice,
   fetchInvoice,
   issueInvoice,
   voidInvoice,
@@ -110,9 +111,28 @@ export function useDeferInvoice(invoiceId: string) {
 export function useWaiveInvoice(invoiceId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { amountCents: number; reason: string }) =>
+    mutationFn: (body: {
+      amountCents: number;
+      reason: string;
+      fromFreeRequest?: boolean;
+    }) =>
       waiveInvoice(invoiceId, { idempotencyKey: newIdempotencyKey(), ...body }),
     onSuccess: () => invalidateMoney(queryClient, invoiceId),
+    onError: (e) => toast.error(normalizeApiError(e).message),
+  });
+}
+
+/** Cancel: patient left without paying. Due amount is voided (not owed). */
+export function useCancelInvoice(invoiceId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (reason: string) =>
+      cancelInvoice(invoiceId, { idempotencyKey: newIdempotencyKey(), reason }),
+    onSuccess: () => {
+      invalidateMoney(queryClient, invoiceId);
+      void queryClient.invalidateQueries({ queryKey: ["lab"] });
+      void queryClient.invalidateQueries({ queryKey: ["consultations"] });
+    },
     onError: (e) => toast.error(normalizeApiError(e).message),
   });
 }

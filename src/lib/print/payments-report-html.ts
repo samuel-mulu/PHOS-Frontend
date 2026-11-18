@@ -1,5 +1,8 @@
 import { format } from "date-fns";
-import type { PaymentReport } from "@/features/payments/report";
+import {
+  ADJUSTMENT_TYPE_LABEL,
+  type PaymentReport,
+} from "@/features/payments/report";
 import { formatCents } from "@/lib/format/money";
 import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { HIWET_BRAND } from "@/lib/print/hiwet-brand";
@@ -12,7 +15,7 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;");
 }
 
-function patientName(row: PaymentReport["rows"][number]) {
+function patientName(row: Pick<PaymentReport["rows"][number], "patient">) {
   return [row.patient.firstName, row.patient.middleName, row.patient.lastName]
     .filter(Boolean)
     .join(" ");
@@ -63,6 +66,25 @@ export function buildPaymentsReportHtml(input: {
         <td class="num">${row.refundedCents > 0 ? escapeHtml(formatCents(row.refundedCents)) : "-"}</td>
         <td class="num"><strong>${escapeHtml(formatCents(row.netCents))}</strong></td>
         <td>${escapeHtml(recorded)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const adjustments = report.adjustments ?? [];
+  const adjustmentRows = adjustments
+    .map((a) => {
+      const recorded = `${a.recordedBy.firstName} ${a.recordedBy.lastName}`;
+      const requested = a.requestedBy
+        ? ` (requested by Dr ${a.requestedBy.firstName} ${a.requestedBy.lastName})`
+        : "";
+      return `<tr>
+        <td class="nowrap">${escapeHtml(format(new Date(a.createdAt), "dd MMM yyyy HH:mm"))}</td>
+        <td>${escapeHtml(ADJUSTMENT_TYPE_LABEL[a.type])}</td>
+        <td>${escapeHtml(a.invoice.invoiceNumber)}</td>
+        <td>${escapeHtml(patientName(a))}</td>
+        <td class="num">${escapeHtml(formatCents(a.amountCents))}</td>
+        <td>${escapeHtml(a.reason)}</td>
+        <td>${escapeHtml(recorded + requested)}</td>
       </tr>`;
     })
     .join("");
@@ -153,6 +175,7 @@ export function buildPaymentsReportHtml(input: {
     <div class="tile net"><div class="label">Net</div><div class="val">${escapeHtml(formatCents(report.totals.netCents))}</div></div>
   </div>
   ${report.totals.debtCollectedCents ? `<p class="sub">Of which old debt collected: <strong>${escapeHtml(formatCents(report.totals.debtCollectedCents))}</strong></p>` : ""}
+  <p class="sub">Waived / free (${report.totals.waivedCount ?? 0}): <strong>${escapeHtml(formatCents(report.totals.waivedCents ?? 0))}</strong> · Cancelled - left without paying (${report.totals.cancelledCount ?? 0}): <strong>${escapeHtml(formatCents(report.totals.cancelledCents ?? 0))}</strong></p>
 
   ${methodRows.length > 0 ? `<h2>By payment method</h2>
   <table><thead><tr><th>Method</th><th class="num">Count</th><th class="num">Amount</th></tr></thead><tbody>${methodSummary}</tbody></table>` : ""}
@@ -177,6 +200,12 @@ export function buildPaymentsReportHtml(input: {
       ${detailRows || `<tr><td colspan="10">No payments in this period.</td></tr>`}
     </tbody>
   </table>
+
+  ${adjustments.length > 0 ? `<h2>Waived &amp; cancelled (${adjustments.length} rows)</h2>
+  <table>
+    <thead><tr><th>Date / time</th><th>Type</th><th>Invoice</th><th>Patient</th><th class="num">Amount</th><th>Reason</th><th>By</th></tr></thead>
+    <tbody>${adjustmentRows}</tbody>
+  </table>` : ""}
 
   <footer class="footer">
     ${escapeHtml(HIWET_BRAND.footerAm)} · ${escapeHtml(HIWET_BRAND.phones)} · ${escapeHtml(HIWET_BRAND.locationEn)}

@@ -74,6 +74,7 @@ export type PatientChartInvoice = {
   paidCents?: number;
   waivedCents?: number;
   deferredCents?: number;
+  cancelledCents?: number;
   balanceCents?: number;
   createdAt: string;
   items: Array<{ description: string; amountCents: number }>;

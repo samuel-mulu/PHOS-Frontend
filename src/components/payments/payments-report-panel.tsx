@@ -23,10 +23,12 @@ import {
 } from "@/components/shared/data-table";
 import { ExpandablePanel } from "@/components/shared/table-layout";
 import {
+  ADJUSTMENT_TYPE_LABEL,
   fetchPaymentReport,
   paymentReportToCsv,
   type PaymentReport,
 } from "@/features/payments/report";
+import { StatusBadge } from "@/components/shared/status-badge";
 import { formatCents } from "@/lib/format/money";
 import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { cn } from "@/lib/utils";
@@ -45,7 +47,7 @@ function toApiTo(date: string) {
   return new Date(`${date}T23:59:59.999`).toISOString();
 }
 
-function patientName(row: PaymentReport["rows"][number]) {
+function patientName(row: Pick<PaymentReport["rows"][number], "patient">) {
   return [row.patient.firstName, row.patient.middleName, row.patient.lastName]
     .filter(Boolean)
     .join(" ");
@@ -245,6 +247,17 @@ export function PaymentsReportPanel({
               value={formatCents(query.data.totals.debtCollectedCents ?? 0)}
             />
           </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <SummaryTile
+              label={`Waived / free · ${query.data.totals.waivedCount ?? 0}`}
+              value={formatCents(query.data.totals.waivedCents ?? 0)}
+            />
+            <SummaryTile
+              label={`Cancelled · ${query.data.totals.cancelledCount ?? 0}`}
+              value={formatCents(query.data.totals.cancelledCents ?? 0)}
+              tone="red"
+            />
+          </div>
 
           {methodRows.length > 0 ? (
             <div className="flex flex-wrap gap-2 text-xs text-muted">
@@ -335,6 +348,77 @@ export function PaymentsReportPanel({
               </DataTable>
             )}
           </ExpandablePanel>
+
+          <ExpandablePanel
+            title={
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">
+                  Waived &amp; cancelled
+                </h2>
+                <p className="text-xs text-muted">
+                  Not collected: free (waived) and cancelled when the patient
+                  left without paying
+                </p>
+              </div>
+            }
+          >
+            {(query.data.adjustments ?? []).length === 0 ? (
+              <EmptyState title="Nothing waived or cancelled in this period." />
+            ) : (
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell>Date / time</DataTableHeaderCell>
+                    <DataTableHeaderCell>Type</DataTableHeaderCell>
+                    <DataTableHeaderCell>Patient</DataTableHeaderCell>
+                    <DataTableHeaderCell>Invoice</DataTableHeaderCell>
+                    <DataTableHeaderCell>Amount</DataTableHeaderCell>
+                    <DataTableHeaderCell>Reason</DataTableHeaderCell>
+                    <DataTableHeaderCell>By</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <DataTableBody>
+                  {(query.data.adjustments ?? []).map((a) => (
+                    <DataTableRow key={a.id}>
+                      <DataTableCell className="whitespace-nowrap tabular-nums">
+                        {format(new Date(a.createdAt), "dd MMM yyyy HH:mm")}
+                      </DataTableCell>
+                      <DataTableCell>
+                        <StatusBadge
+                          label={ADJUSTMENT_TYPE_LABEL[a.type]}
+                          tone={a.type === "CANCEL" ? "red" : "blue"}
+                        />
+                      </DataTableCell>
+                      <DataTableCell>
+                        <div className="font-medium text-foreground">
+                          {patientName(a)}
+                        </div>
+                        <div className="text-xs text-muted">
+                          {a.patient.patientNumber}
+                        </div>
+                      </DataTableCell>
+                      <DataTableCell>{a.invoice.invoiceNumber}</DataTableCell>
+                      <DataTableCell className="tabular-nums font-medium">
+                        {formatCents(a.amountCents)}
+                      </DataTableCell>
+                      <DataTableCell className="max-w-[16rem] text-sm">
+                        {a.reason}
+                      </DataTableCell>
+                      <DataTableCell className="text-muted">
+                        {a.recordedBy.firstName} {a.recordedBy.lastName}
+                        {a.requestedBy ? (
+                          <div className="text-2xs text-violet-800">
+                            Requested by Dr {a.requestedBy.firstName}{" "}
+                            {a.requestedBy.lastName}
+                          </div>
+                        ) : null}
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
+            )}
+          </ExpandablePanel>
         </>
       ) : null}
     </div>
@@ -345,16 +429,19 @@ function SummaryTile({
   label,
   value,
   emphasize,
+  tone,
 }: {
   label: string;
   value: string;
   emphasize?: boolean;
+  tone?: "red";
 }) {
   return (
     <div
       className={cn(
         "rounded-md border border-border bg-card px-3 py-2",
         emphasize && "border-teal-200 bg-teal-50/40",
+        tone === "red" && "border-red-200 bg-red-50/40",
       )}
     >
       <div className="text-2xs font-medium uppercase tracking-wide text-muted">

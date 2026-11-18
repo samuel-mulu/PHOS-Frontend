@@ -124,6 +124,9 @@ export type PaymentRequestInput = {
   description: string;
   amountCents: number;
   returnStation: "DOCTOR" | "LAB" | "PHARMACY" | "TRIAGE";
+  /** Doctor only: ask the cashier to make this much free. */
+  freeCents?: number;
+  freeReason?: string;
 };
 
 export async function requestPayment(

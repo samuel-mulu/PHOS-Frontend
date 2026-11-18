@@ -303,6 +303,7 @@ export function PatientProfile({ patientId }: { patientId: string }) {
                       paidCents: inv.paidCents ?? 0,
                       waivedCents: inv.waivedCents,
                       deferredCents: inv.deferredCents,
+                      cancelledCents: inv.cancelledCents,
                     })}
                   </DataTableCell>
                   <DataTableCell className="tabular-nums">
@@ -313,7 +314,9 @@ export function PatientProfile({ patientId }: { patientId: string }) {
                   </DataTableCell>
                   <DataTableCell className="tabular-nums text-muted">
                     {(inv.waivedCents ?? 0) > 0
-                      ? formatCents(inv.waivedCents ?? 0)
+                      ? (inv.cancelledCents ?? 0) > 0
+                        ? `${formatCents(inv.waivedCents ?? 0)} (cancelled ${formatCents(inv.cancelledCents ?? 0)})`
+                        : formatCents(inv.waivedCents ?? 0)
                       : "-"}
                   </DataTableCell>
                   <DataTableCell

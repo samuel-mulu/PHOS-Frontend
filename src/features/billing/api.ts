@@ -25,6 +25,13 @@ export type Invoice = {
   waivedCents: number;
   /** Approved pay later - owed as debt. */
   deferredCents: number;
+  /** Part of waivedCents cancelled at cashier (patient left without paying). */
+  cancelledCents?: number;
+  /** Doctor asked the cashier to make this much free (pending confirm). */
+  freeRequestCents?: number;
+  freeRequestReason?: string | null;
+  freeRequestedBy?: { id: string; firstName: string; lastName: string } | null;
+  adjustments?: InvoiceAdjustment[];
   issuedAt: string | null;
   patient: Patient;
   encounter: { id: string; encounterNumber: string; status: string };
@@ -39,6 +46,21 @@ export type Invoice = {
     refunds: Array<{ id: string; refundNumber: string; amountCents: number; reason: string }>;
   }>;
 };
+
+export type InvoiceAdjustment = {
+  id: string;
+  type: "DEFER" | "WAIVE" | "CANCEL";
+  amountCents: number;
+  reason: string;
+  createdAt: string;
+  recordedBy?: { id: string; firstName: string; lastName: string } | null;
+  requestedBy?: { id: string; firstName: string; lastName: string } | null;
+};
+
+/** Latest cashier cancel on this invoice (patient left without paying). */
+export function latestCancel(inv: Pick<Invoice, "adjustments"> | null | undefined) {
+  return inv?.adjustments?.find((a) => a.type === "CANCEL") ?? null;
+}
 
 export type AdditionalInvoiceItem = {
   type: "PROCEDURE" | "OTHER";
@@ -83,8 +105,22 @@ export async function deferInvoice(
 
 export async function waiveInvoice(
   id: string,
-  body: { idempotencyKey: string; amountCents: number; reason: string },
+  body: {
+    idempotencyKey: string;
+    amountCents: number;
+    reason: string;
+    fromFreeRequest?: boolean;
+  },
 ) {
   const { data } = await api.post(`/invoices/${id}/waive`, body);
+  return data;
+}
+
+/** Cancel: patient left without paying; due amount voided, sent back. */
+export async function cancelInvoice(
+  id: string,
+  body: { idempotencyKey: string; reason: string },
+) {
+  const { data } = await api.post(`/invoices/${id}/cancel`, body);
   return data;
 }

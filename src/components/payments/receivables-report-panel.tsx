@@ -224,7 +224,7 @@ export function ReceivablesReportPanel({
             <Tile label="Over 30 days" value={formatCents(t.aging.days31plus)} />
             <Tile label="Unpaid invoices" value={String(t.outstandingCount)} />
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Tile label="Billed (period)" value={formatCents(p.billedCents)} />
             <Tile label="Collected" value={formatCents(p.collectedCents)} />
             <Tile label="Debt collected" value={formatCents(p.debtCollectedCents)} />
@@ -235,6 +235,10 @@ export function ReceivablesReportPanel({
             <Tile
               label={`Waived / free · ${p.waivedCount}`}
               value={formatCents(p.waivedCents)}
+            />
+            <Tile
+              label={`Cancelled · ${p.cancelledCount ?? 0}`}
+              value={formatCents(p.cancelledCents ?? 0)}
             />
           </div>
 

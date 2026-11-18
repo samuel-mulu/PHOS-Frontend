@@ -52,6 +52,8 @@ export type ReceivablesReport = {
     payLaterCount: number;
     waivedCents: number;
     waivedCount: number;
+    cancelledCents?: number;
+    cancelledCount?: number;
   };
   rows: ReceivableRow[];
 };

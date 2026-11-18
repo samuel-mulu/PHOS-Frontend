@@ -108,6 +108,7 @@ export function buildReceivablesReportHtml(input: {
     ${tile("Debt collected", money(p.debtCollectedCents))}
     ${tile(`Pay later (${p.payLaterCount})`, money(p.payLaterCents))}
     ${tile(`Waived / free (${p.waivedCount})`, money(p.waivedCents))}
+    ${tile(`Cancelled (${p.cancelledCount ?? 0})`, money(p.cancelledCents ?? 0))}
     ${tile("Invoices billed", String(p.invoiceCount))}
   </div>
 

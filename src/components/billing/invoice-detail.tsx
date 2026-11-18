@@ -18,6 +18,8 @@ import { useCurrentUser } from "@/features/auth/hooks";
 import { canIssueInvoice, canTakePayment } from "@/lib/permissions";
 import { Role } from "@/types/role";
 import { invoiceStateBadge } from "@/components/shared/status-badge";
+import { invoiceCancelled, invoiceWaivedOnly } from "@/lib/billing/invoice-state";
+import { latestCancel } from "@/features/billing/api";
 import { invoiceBalance, invoicePayLater } from "@/lib/billing/invoice-state";
 
 export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
@@ -82,8 +84,17 @@ export function InvoiceDetail({ invoiceId }: { invoiceId: string }) {
             <p>Discount: {formatCents(inv.discountCents)}</p>
             <p className="font-semibold">Total: {formatCents(inv.totalCents)}</p>
             <p>Paid: {formatCents(inv.paidCents)}</p>
-            {inv.waivedCents > 0 ? (
-              <p>Waived (free): {formatCents(inv.waivedCents)}</p>
+            {invoiceWaivedOnly(inv) > 0 ? (
+              <p>Waived (free): {formatCents(invoiceWaivedOnly(inv))}</p>
+            ) : null}
+            {invoiceCancelled(inv) > 0 ? (
+              <p className="text-red-800">
+                Cancelled (left without paying):{" "}
+                {formatCents(invoiceCancelled(inv))}
+                {latestCancel(inv)?.reason
+                  ? ` - ${latestCancel(inv)?.reason}`
+                  : ""}
+              </p>
             ) : null}
             <p className="text-teal-800">Balance: {formatCents(balance)}</p>
             {payLater > 0 ? (

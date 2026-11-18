@@ -8,6 +8,13 @@ import { ClinicalNotesThread } from "@/components/shared/clinical-notes-thread";
 import { Label } from "@/components/ui/label";
 import { LoadingBlock } from "@/components/shared/state-blocks";
 import { SimpleDialog } from "@/components/shared/simple-dialog";
+import {
+  EMPTY_FREE_REQUEST,
+  FreeRequestFields,
+  freeRequestPayload,
+  type FreeRequestState,
+} from "@/components/shared/free-request-fields";
+import { toast } from "sonner";
 import { labOrderStatusBadge } from "@/components/shared/status-badge";
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format/money";
@@ -228,6 +235,7 @@ export function DoctorLabOrdersPanel({
   const [notes, setNotes] = useState("");
   const [orderOpen, setOrderOpen] = useState(false);
   const [cashierLabOpen, setCashierLabOpen] = useState(false);
+  const [labFree, setLabFree] = useState<FreeRequestState>(EMPTY_FREE_REQUEST);
 
   useEffect(() => {
     const fromVisit = visitLabNotes?.trim();
@@ -293,15 +301,23 @@ export function DoctorLabOrdersPanel({
 
   function sendCashierLab() {
     if (!selected.length || create.isPending || cashierLabTotalCents < 1) return;
+    const free = freeRequestPayload(labFree, cashierLabTotalCents);
+    if (!free.ok) {
+      toast.error(free.error);
+      return;
+    }
     create.mutate(
       {
         labTestIds: selected,
         priority,
         clinicalNotes: notes || undefined,
         billFirst: true,
+        freeCents: free.freeCents,
+        freeReason: free.freeReason,
       },
       {
         onSuccess: () => {
+          setLabFree(EMPTY_FREE_REQUEST);
           setSelected([]);
           setOpenCategory(null);
           setNotes("");
@@ -678,6 +694,16 @@ export function DoctorLabOrdersPanel({
         <p className="mt-4 text-base font-semibold text-foreground">
           Total to collect: {formatCents(cashierLabTotalCents)}
         </p>
+        {cashierLabTotalCents > 0 ? (
+          <div className="mt-3">
+            <FreeRequestFields
+              value={labFree}
+              onChange={setLabFree}
+              totalCents={cashierLabTotalCents}
+              disabled={create.isPending}
+            />
+          </div>
+        ) : null}
         {cashierLabTotalCents < 1 ? (
           <p className="mt-2 text-xs text-amber-800">
             Selected tests have no price. Set prices or send to lab directly.

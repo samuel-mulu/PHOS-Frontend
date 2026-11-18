@@ -44,7 +44,9 @@ import { labOrderStatusBadge, StatusBadge } from "@/components/shared/status-bad
 import { cn } from "@/lib/utils";
 import { formatCents } from "@/lib/format/money";
 import {
+  invoiceCancelled,
   invoiceDueNow,
+  invoiceWaivedOnly,
   invoiceLineStates,
   invoicePayLater,
 } from "@/lib/billing/invoice-state";
@@ -53,6 +55,7 @@ import { uniquePanelLabels } from "@/lib/lab/panels";
 import { QueueStation } from "@/types/encounter";
 import { useLabOrders } from "@/features/laboratory/hooks";
 import { useInvoice } from "@/features/billing/hooks";
+import { latestCancel } from "@/features/billing/api";
 import {
   useCreatePrescription,
   useMedicines,
@@ -968,6 +971,7 @@ function OrdersCashierAppointment({
             returnStation="DOCTOR"
             disabled={busy || atCashier}
             title="Send to cashier"
+            allowFree
           />
         ) : (
           <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -1090,7 +1094,9 @@ function FinishNextSteps({
   const unpaidCents = invoiceDueNow(inv);
   const hasUnpaid = unpaidCents > 0;
   const payLaterCents = invoicePayLater(inv);
-  const waivedCents = inv?.waivedCents ?? 0;
+  const waivedCents = invoiceWaivedOnly(inv);
+  const cancelledCents = invoiceCancelled(inv);
+  const lastCancel = latestCancel(inv);
   const busy = finalizePending || closePending || routePending;
   const atCashier = encounterStatus === "WAITING_PAYMENT";
   const needsCloseAfterReview =
@@ -1141,7 +1147,15 @@ function FinishNextSteps({
                 ? "Cashier approved pay later. You can complete - the balance stays on the patient's account."
                 : "Payment settled (or no fee). Completing archives this visit and shows it under Completed today."}
           </p>
-          {payLaterCents > 0 || waivedCents > 0 ? (
+          {lastCancel && !atCashier ? (
+            <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+              Cashier cancelled {formatCents(lastCancel.amountCents)} - patient
+              left without paying
+              {lastCancel.reason ? ` (${lastCancel.reason})` : ""}. You can
+              complete the visit.
+            </p>
+          ) : null}
+          {payLaterCents > 0 || waivedCents > 0 || cancelledCents > 0 ? (
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               {payLaterCents > 0 ? (
                 <span className="rounded-full bg-amber-100 px-2.5 py-1 font-semibold text-amber-950">
@@ -1151,6 +1165,11 @@ function FinishNextSteps({
               {waivedCents > 0 ? (
                 <span className="rounded-full bg-violet-100 px-2.5 py-1 font-semibold text-violet-800">
                   Waived {formatCents(waivedCents)}
+                </span>
+              ) : null}
+              {cancelledCents > 0 ? (
+                <span className="rounded-full bg-red-100 px-2.5 py-1 font-semibold text-red-800">
+                  Cancelled {formatCents(cancelledCents)}
                 </span>
               ) : null}
             </div>

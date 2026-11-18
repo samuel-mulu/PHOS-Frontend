@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { usePaymentRequest } from "@/features/encounters/hooks";
+import {
+  EMPTY_FREE_REQUEST,
+  FreeRequestFields,
+  freeRequestPayload,
+  type FreeRequestState,
+} from "@/components/shared/free-request-fields";
+import { toast } from "sonner";
 import { useAllServices } from "@/features/facilities/hooks";
 import { formatCents } from "@/lib/format/money";
 import { cn } from "@/lib/utils";
@@ -37,18 +44,22 @@ export function PaymentRequestPanel({
   disabled,
   className,
   title = "Send to cashier",
+  allowFree = false,
 }: {
   encounterId: string;
   returnStation: PaymentReturnStation;
   disabled?: boolean;
   className?: string;
   title?: string;
+  /** Doctor: show "Make free (waive)" so the cashier only confirms. */
+  allowFree?: boolean;
 }) {
   const request = usePaymentRequest(encounterId);
   const catalog = useAllServices();
   const [serviceId, setServiceId] = useState("");
   const [customName, setCustomName] = useState("");
   const [amountEtb, setAmountEtb] = useState("");
+  const [free, setFree] = useState<FreeRequestState>(EMPTY_FREE_REQUEST);
 
   const priced = useMemo(
     () =>
@@ -70,6 +81,13 @@ export function PaymentRequestPanel({
     !request.isPending;
 
   const returnLabel = RETURN_LABELS[returnStation];
+  const freeCheck = freeRequestPayload(free, cents);
+  const freeLabel =
+    free.enabled && freeCheck.ok && freeCheck.freeCents
+      ? cents != null && freeCheck.freeCents >= cents
+        ? " · free"
+        : ` · ${formatCents(freeCheck.freeCents)} free`
+      : "";
 
   function applyService(id: string) {
     setServiceId(id);
@@ -150,6 +168,15 @@ export function PaymentRequestPanel({
             disabled={disabled || request.isPending || !serviceId}
           />
         </div>
+
+        {allowFree && serviceId ? (
+          <FreeRequestFields
+            value={free}
+            onChange={setFree}
+            totalCents={cents}
+            disabled={disabled || request.isPending}
+          />
+        ) : null}
       </div>
 
       <Button
@@ -158,23 +185,31 @@ export function PaymentRequestPanel({
         disabled={!canSend}
         onClick={() => {
           if (cents == null) return;
+          const checked = freeRequestPayload(allowFree ? free : EMPTY_FREE_REQUEST, cents);
+          if (!checked.ok) {
+            toast.error(checked.error);
+            return;
+          }
           request.mutate(
             {
               description,
               amountCents: cents,
               returnStation,
+              freeCents: checked.freeCents,
+              freeReason: checked.freeReason,
             },
             {
               onSuccess: () => {
                 setServiceId("");
                 setCustomName("");
                 setAmountEtb("");
+                setFree(EMPTY_FREE_REQUEST);
               },
             },
           );
         }}
       >
-        {request.isPending ? "Sending…" : "Send to cashier"}
+        {request.isPending ? "Sending…" : `Send to cashier${freeLabel}`}
       </Button>
     </div>
   );

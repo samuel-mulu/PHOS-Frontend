@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { fetchInvoice, type Invoice } from "@/features/billing/api";
+import { fetchEncounter } from "@/features/encounters/api";
 import { SimpleDialog } from "@/components/shared/simple-dialog";
 import {
   announcePatientCall,
@@ -29,6 +30,7 @@ import {
   DataTableRow,
 } from "@/components/shared/data-table";
 import {
+  useCancelInvoice,
   useDeferInvoice,
   useInvoice,
   useWaiveInvoice,
@@ -56,8 +58,10 @@ import { ExpenseRecordPanel } from "@/components/expenses/expense-record-panel";
 import { ExpensesReportPanel } from "@/components/expenses/expenses-report-panel";
 import {
   invoiceBalance,
+  invoiceCancelled,
   invoiceDueNow,
   invoicePayLater,
+  invoiceWaivedOnly,
   unpaidInvoiceLines,
 } from "@/lib/billing/invoice-state";
 import { toast } from "sonner";
@@ -103,9 +107,27 @@ type CashierResult = {
   returnStation: string | null;
   paidNowCents: number;
   waivedNowCents: number;
+  /** Cancelled now: patient left without paying (not owed). */
+  cancelledNowCents?: number;
+  cancelReason?: string;
   owedCents: number;
   receipt?: ReceiptData;
 };
+
+/** Where the patient went after leaving the cashier, from the visit status. */
+const STATION_BY_STATUS: Record<string, string> = {
+  WAITING_DOCTOR: "DOCTOR",
+  IN_CONSULTATION: "DOCTOR",
+  WAITING_LAB: "LAB",
+  WAITING_PHARMACY: "PHARMACY",
+  WAITING_TRIAGE: "TRIAGE",
+};
+
+const CANCEL_REASONS = [
+  "Left without paying",
+  "Could not afford - left",
+  "Changed mind - no service",
+];
 
 function RedBadge({ count }: { count: number }) {
   if (count <= 0) return null;
@@ -340,6 +362,11 @@ export function CashierWorkspace({
                         <span className="inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-900">
                           {why}
                         </span>
+                        {inv && (inv.freeRequestCents ?? 0) > 0 ? (
+                          <span className="ml-1.5 inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-900">
+                            Free requested · {formatCents(inv.freeRequestCents ?? 0)}
+                          </span>
+                        ) : null}
                       </DataTableCell>
                       <DataTableCell className="tabular-nums font-semibold">
                         {inv ? formatCents(invoiceDueNow(inv)) : "-"}
@@ -443,6 +470,17 @@ export function CashierWorkspace({
                   </strong>
                 </li>
               ) : null}
+              {(result.cancelledNowCents ?? 0) > 0 ? (
+                <li className="font-medium text-red-800">
+                  Cancelled (left without paying):{" "}
+                  <strong>{formatCents(result.cancelledNowCents ?? 0)}</strong>
+                  {result.cancelReason ? (
+                    <span className="block text-xs font-normal text-muted">
+                      Reason: {result.cancelReason}
+                    </span>
+                  ) : null}
+                </li>
+              ) : null}
               {result.owedCents > 0 ? (
                 <li className="font-medium text-amber-800">
                   Still owes (pay later): {formatCents(result.owedCents)}
@@ -521,6 +559,7 @@ function PaymentPanel({
   const pay = useCreatePayment(invoiceId);
   const defer = useDeferInvoice(invoiceId);
   const waive = useWaiveInvoice(invoiceId);
+  const cancel = useCancelInvoice(invoiceId);
   const balanceQuery = usePatientBalance(invoice.patientId);
   const queryClient = useQueryClient();
 
@@ -540,7 +579,9 @@ function PaymentPanel({
   const [reference, setReference] = useState("");
   const [amountText, setAmountText] = useState(centsToEtbInput(target));
   const [deferReason, setDeferReason] = useState("");
-  const [dialog, setDialog] = useState<"defer" | "waive" | null>(null);
+  const [dialog, setDialog] = useState<"defer" | "waive" | "cancel" | null>(
+    null,
+  );
   const [dialogReason, setDialogReason] = useState("");
   const [waiveText, setWaiveText] = useState(centsToEtbInput(target));
   const [lastReceipt, setLastReceipt] = useState<ReceiptData | null>(null);
@@ -566,7 +607,14 @@ function PaymentPanel({
   const needsReference =
     method === PaymentMethod.TELEBIRR ||
     method === PaymentMethod.BANK_TRANSFER;
-  const busy = pay.isPending || defer.isPending || waive.isPending;
+  const busy =
+    pay.isPending || defer.isPending || waive.isPending || cancel.isPending;
+  const freeRequestCents = Math.min(invoice.freeRequestCents ?? 0, balance);
+  const freeRequestBy = invoice.freeRequestedBy
+    ? `Dr ${invoice.freeRequestedBy.firstName} ${invoice.freeRequestedBy.lastName}`
+    : "Doctor";
+  const waivedOnly = invoiceWaivedOnly(invoice);
+  const cancelledCents = invoiceCancelled(invoice);
 
   async function refreshed() {
     return queryClient.fetchQuery({
@@ -607,6 +655,7 @@ function PaymentPanel({
             totalCents: inv.totalCents,
             paidSoFarCents: inv.paidCents,
             waivedCents: inv.waivedCents,
+            cancelledCents: invoiceCancelled(inv),
             balanceCents: invoiceBalance(inv),
             payLaterCents: invoicePayLater(inv),
           };
@@ -708,6 +757,76 @@ function PaymentPanel({
     );
   }
 
+  /** Cashier confirms the doctor's "send as free" request. */
+  function confirmFree() {
+    if (freeRequestCents < 1) return;
+    const reason = (invoice.freeRequestReason ?? "").trim() || "Doctor request";
+    waive.mutate(
+      { amountCents: freeRequestCents, reason, fromFreeRequest: true },
+      {
+        onSuccess: async () => {
+          const inv = await refreshed();
+          const owed = invoiceBalance(inv);
+          const stillDue = invoiceDueNow(inv);
+          if (atCashier && stillDue > 0) {
+            toast.success(
+              `Free ${formatCents(freeRequestCents)} confirmed - collect ${formatCents(stillDue)}`,
+            );
+            return;
+          }
+          announce(owed === 0);
+          onDone({
+            title: "Free confirmed (doctor request)",
+            patientName,
+            invoiceNumber: invoice.invoiceNumber,
+            returnStation: atCashier ? (returnStation ?? null) : null,
+            paidNowCents: 0,
+            waivedNowCents: freeRequestCents,
+            owedCents: owed,
+          });
+        },
+      },
+    );
+  }
+
+  /** Patient left the clinic without paying: void what is due and send back. */
+  function confirmCancel() {
+    const reason = dialogReason.trim();
+    if (reason.length < 3) {
+      toast.error("Write a short reason for cancelling");
+      return;
+    }
+    const cancelled = dueNow;
+    cancel.mutate(reason, {
+      onSuccess: async () => {
+        const inv = await refreshed();
+        let backTo = returnStation ?? null;
+        try {
+          const enc = await queryClient.fetchQuery({
+            queryKey: ["encounters", invoice.encounterId],
+            queryFn: () => fetchEncounter(invoice.encounterId),
+          });
+          backTo = STATION_BY_STATUS[enc.status] ?? backTo;
+        } catch {
+          // keep the requested return station
+        }
+        setDialog(null);
+        setDialogReason("");
+        onDone({
+          title: "Cancelled - patient left",
+          patientName,
+          invoiceNumber: invoice.invoiceNumber,
+          returnStation: backTo,
+          paidNowCents: 0,
+          waivedNowCents: 0,
+          cancelledNowCents: cancelled,
+          cancelReason: reason,
+          owedCents: invoiceBalance(inv),
+        });
+      },
+    });
+  }
+
   if (!payable) {
     return (
       <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
@@ -763,8 +882,9 @@ function PaymentPanel({
           <p className="mt-0.5 text-xs text-muted tabular-nums">
             Total {formatCents(invoice.totalCents)} · paid{" "}
             {formatCents(invoice.paidCents)}
-            {invoice.waivedCents > 0
-              ? ` · waived ${formatCents(invoice.waivedCents)}`
+            {waivedOnly > 0 ? ` · waived ${formatCents(waivedOnly)}` : ""}
+            {cancelledCents > 0
+              ? ` · cancelled ${formatCents(cancelledCents)}`
               : ""}
           </p>
           {atCashier && payLater > 0 ? (
@@ -774,6 +894,35 @@ function PaymentPanel({
           ) : null}
         </div>
       </div>
+
+      {freeRequestCents > 0 ? (
+        <div
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-violet-300 bg-violet-50 px-3 py-2.5 text-sm text-violet-950"
+          role="status"
+        >
+          <div className="min-w-0">
+            <p className="font-semibold">
+              {freeRequestBy} requested free: {formatCents(freeRequestCents)}
+              {freeRequestCents < target
+                ? ` (collect ${formatCents(target - freeRequestCents)})`
+                : ""}
+            </p>
+            {invoice.freeRequestReason ? (
+              <p className="text-xs">Reason: {invoice.freeRequestReason}</p>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            className="bg-violet-700 hover:bg-violet-800"
+            disabled={busy}
+            onClick={confirmFree}
+          >
+            {waive.isPending
+              ? "Saving…"
+              : `Confirm free · ${formatCents(freeRequestCents)}`}
+          </Button>
+        </div>
+      ) : null}
 
       {otherDebtCents > 0 ? (
         <div
@@ -957,6 +1106,21 @@ function PaymentPanel({
           >
             Waive / free
           </Button>
+          {atCashier && dueNow > 0 ? (
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-50 hover:text-red-800"
+              disabled={busy}
+              onClick={() => {
+                setDialogReason("");
+                setDialog("cancel");
+              }}
+            >
+              Cancel (left)
+            </Button>
+          ) : null}
           {onBackToQueue ? (
             <Button
               type="button"
@@ -1049,6 +1213,66 @@ function PaymentPanel({
               value={dialogReason}
               onChange={(e) => setDialogReason(e.target.value)}
               placeholder="e.g. poor patient, staff family, approved by director"
+              className="mt-1 min-h-[64px]"
+            />
+          </div>
+        </div>
+      </SimpleDialog>
+
+      <SimpleDialog
+        open={dialog === "cancel"}
+        title="Cancel - patient left without paying"
+        primaryLabel={cancel.isPending ? "Saving…" : "Cancel charge & send back"}
+        onPrimary={confirmCancel}
+        secondaryLabel="Keep waiting"
+        onSecondary={() => setDialog(null)}
+        onClose={() => setDialog(null)}
+      >
+        <div className="space-y-3">
+          <p>
+            <strong>{formatCents(dueNow)}</strong> is cancelled and{" "}
+            <strong>not owed</strong>.{" "}
+            <strong className="text-foreground">{patientName}</strong> goes
+            back
+            {returnStationLabel(returnStation)
+              ? ` to ${returnStationLabel(returnStation)}`
+              : ""}{" "}
+            so the visit can be completed.
+            {returnStation === "LAB"
+              ? " Unpaid lab tests on this bill are cancelled; with no lab work left the patient returns to the doctor."
+              : ""}
+          </p>
+          {payLater > 0 ? (
+            <p className="text-xs text-amber-800">
+              Earlier pay later ({formatCents(payLater)}) stays as debt.
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-1.5">
+            {CANCEL_REASONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs",
+                  dialogReason === r
+                    ? "border-red-400 bg-red-50 text-red-800"
+                    : "border-border bg-card text-foreground hover:bg-muted-bg",
+                )}
+                onClick={() => setDialogReason(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <div>
+            <Label htmlFor="cancel-reason" className="text-xs">
+              Reason (required)
+            </Label>
+            <Textarea
+              id="cancel-reason"
+              value={dialogReason}
+              onChange={(e) => setDialogReason(e.target.value)}
+              placeholder="e.g. patient left the clinic without paying"
               className="mt-1 min-h-[64px]"
             />
           </div>

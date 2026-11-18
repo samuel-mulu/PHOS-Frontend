@@ -43,6 +43,8 @@ export type QueueEntry = {
       paidCents: number;
       waivedCents?: number;
       deferredCents?: number;
+      cancelledCents?: number;
+      freeRequestCents?: number;
     } | null;
   };
 };

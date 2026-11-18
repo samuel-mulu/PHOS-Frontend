@@ -24,6 +24,8 @@ export type ReceiptData = {
   totalCents?: number;
   paidSoFarCents?: number;
   waivedCents?: number;
+  /** Part of waivedCents cancelled at cashier (left without paying). */
+  cancelledCents?: number;
   balanceCents?: number;
   /** Part of the balance approved as pay later. */
   payLaterCents?: number;
@@ -43,7 +45,13 @@ export function PrintReceipt({
             r.paidSoFarCents != null
               ? row("Paid so far", formatCents(r.paidSoFarCents))
               : "",
-            r.waivedCents ? row("Waived (free)", formatCents(r.waivedCents)) : "",
+            r.waivedCents && r.waivedCents - (r.cancelledCents ?? 0) > 0
+              ? row(
+                  "Waived (free)",
+                  formatCents(r.waivedCents - (r.cancelledCents ?? 0)),
+                )
+              : "",
+            r.cancelledCents ? row("Cancelled", formatCents(r.cancelledCents)) : "",
             r.balanceCents != null
               ? row(
                   r.payLaterCents ? "Balance owed (pay later)" : "Balance",
