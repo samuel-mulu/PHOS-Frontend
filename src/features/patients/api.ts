@@ -53,6 +53,8 @@ export type PatientChartEncounter = {
     plan?: string | null;
     notes?: string | null;
     labNotes?: string | null;
+    referralSheet?: Record<string, unknown> | null;
+    obstetricUsReport?: Record<string, unknown> | null;
     finalizedAt?: string | null;
     doctor?: PatientChartPerson | null;
     diagnoses: Array<{
