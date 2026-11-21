@@ -454,6 +454,7 @@ function PatientHistoryDrawer({
         <PrintHistoryVisitNotesDialog
           patient={chart.patient}
           encounters={selectedEncounters}
+          maternal={chart.maternal}
           onClose={() => setPrintOpen(false)}
         />
       ) : null}

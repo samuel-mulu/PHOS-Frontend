@@ -24,6 +24,7 @@ function chartEncounterToPrintSource(
   enc: PatientChartEncounter,
 ): VisitNoteEncounterSource {
   return {
+    id: enc.id,
     visitNumber: enc.visitNumber,
     startedAt: enc.startedAt,
     encounterNumber: enc.encounterNumber,
@@ -36,6 +37,7 @@ function currentEncounterToPrintSource(
   encounter: EncounterDetail,
 ): VisitNoteEncounterSource {
   return {
+    id: encounter.id,
     visitNumber: encounter.visitNumber,
     startedAt: encounter.startedAt,
     encounterNumber: encounter.encounterNumber,
@@ -132,6 +134,11 @@ export function PrintVisitNote({
     selectedEncounterId,
     chart.data?.encounters,
   );
+  const maternal = chart.data?.maternal ?? null;
+  const sectionCtx = {
+    maternal,
+    encounterId: selectedEncounterId,
+  };
   const visitNumber = selectedPrintSource.visitNumber ?? 1;
 
   useEffect(() => {
@@ -165,6 +172,7 @@ export function PrintVisitNote({
       encounter: selectedPrintSource,
       selected,
       logoUrl,
+      maternal,
     });
     const w = window.open("", "_blank", "width=900,height=1100");
     if (!w) return;
@@ -234,7 +242,7 @@ export function PrintVisitNote({
                         onChange={() => toggle(key)}
                       />
                       {VISIT_NOTE_SECTION_LABEL[key]}
-                      {!visitNoteSectionText(consultation, key) ? (
+                      {!visitNoteSectionText(consultation, key, sectionCtx) ? (
                         <span className="text-2xs text-slate-400">
                           (empty)
                         </span>

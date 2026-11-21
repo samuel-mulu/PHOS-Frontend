@@ -48,7 +48,9 @@ export type VisitPrintSectionKey =
   | "labNotes"
   | "diagnosis"
   | "ultrasound"
-  | "prescription";
+  | "prescription"
+  | "maternal"
+  | "familyPlanning";
 
 export const VISIT_SECTION_STYLE: Record<
   VisitPrintSectionKey,
@@ -101,6 +103,20 @@ export const VISIT_SECTION_STYLE: Record<
     bar: "#22c55e",
     title: "#15803d",
     tint: "#f0fdf4",
+  },
+  maternal: {
+    label: "Maternal",
+    icon: "🤰",
+    bar: "#db2777",
+    title: "#be185d",
+    tint: "#fdf2f8",
+  },
+  familyPlanning: {
+    label: "FP",
+    icon: "📋",
+    bar: "#0891b2",
+    title: "#0e7490",
+    tint: "#ecfeff",
   },
 };
 

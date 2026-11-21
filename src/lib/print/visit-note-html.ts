@@ -1,5 +1,11 @@
 import { format } from "date-fns";
+import type { FamilyPlanningRecord } from "@/features/family-planning/types";
+import type { AncVisit, ObstetricHistory } from "@/features/maternal/types";
 import { ageYears } from "@/lib/format/age";
+import {
+  assessPregnancy,
+  formatPregnancyDate,
+} from "@/lib/maternal/pregnancy-dating";
 import {
   HIWET_BRAND,
   VISIT_SECTION_STYLE,
@@ -16,6 +22,8 @@ export const VISIT_NOTE_SECTION_LABEL: Record<VisitNoteSection, string> = {
   diagnosis: VISIT_SECTION_STYLE.diagnosis.label,
   ultrasound: VISIT_SECTION_STYLE.ultrasound.label,
   prescription: VISIT_SECTION_STYLE.prescription.label,
+  maternal: VISIT_SECTION_STYLE.maternal.label,
+  familyPlanning: VISIT_SECTION_STYLE.familyPlanning.label,
 };
 
 export const DEFAULT_VISIT_NOTE_SECTIONS: Record<VisitNoteSection, boolean> = {
@@ -25,6 +33,8 @@ export const DEFAULT_VISIT_NOTE_SECTIONS: Record<VisitNoteSection, boolean> = {
   diagnosis: true,
   ultrasound: true,
   prescription: true,
+  maternal: true,
+  familyPlanning: true,
 };
 
 export type VisitNoteConsultation = {
@@ -37,7 +47,19 @@ export type VisitNoteConsultation = {
   doctor?: { firstName: string; lastName: string } | null;
 } | null;
 
+export type VisitNoteMaternal = {
+  obstetricHistory?: ObstetricHistory | null;
+  ancVisits?: AncVisit[];
+  familyPlanningRecords?: FamilyPlanningRecord[];
+} | null;
+
+export type VisitNoteSectionContext = {
+  maternal?: VisitNoteMaternal;
+  encounterId?: string | null;
+};
+
 export type VisitNoteEncounterSource = {
+  id?: string;
   visitNumber?: number | null;
   startedAt: string;
   encounterNumber?: string;
@@ -63,10 +85,167 @@ function formatSex(sex: string) {
   return sex.replaceAll("_", " ");
 }
 
+function yesNo(v?: boolean | null) {
+  if (v === true) return "Yes";
+  if (v === false) return "No";
+  return "—";
+}
+
+function enumLabel(value?: string | null) {
+  if (!value) return "—";
+  return value.replaceAll("_", " ");
+}
+
+function formatShortDate(value?: string | null) {
+  if (!value) return "—";
+  try {
+    return format(new Date(value), "dd MMM yyyy");
+  } catch {
+    return "—";
+  }
+}
+
+function formatObstetricHistory(oh: ObstetricHistory): string {
+  const dating = assessPregnancy(oh);
+  const lines = [
+    `GTPAL: ${oh.gravidity ?? "—"}-${oh.term ?? "—"}-${oh.preterm ?? "—"}-${oh.abortion ?? "—"}-${oh.living ?? "—"}`,
+    `LMP: ${oh.lmpStatus === "UNKNOWN" ? "Unknown" : formatShortDate(oh.lmp)}`,
+    `EDD: ${dating.established ? (formatPregnancyDate(dating.edd) ?? "Not established") : "Not established"}`,
+  ];
+  if (dating.sourceLabel) lines.push(`Dating source: ${dating.sourceLabel}`);
+  lines.push(`Previous delivery: ${enumLabel(oh.previousDelivery)}`);
+  lines.push(`Previous CS: ${yesNo(oh.previousCs)}`);
+  lines.push(`Previous PPH: ${yesNo(oh.previousPph)}`);
+  lines.push(`PET/eclampsia: ${yesNo(oh.previousPetEclampsia)}`);
+  lines.push(`Stillbirth: ${yesNo(oh.stillbirth)}`);
+  if (oh.bloodGroupRh) lines.push(`Blood group: ${oh.bloodGroupRh}`);
+  if (oh.hivStatus) lines.push(`HIV: ${oh.hivStatus}`);
+  if (oh.syphilisStatus) lines.push(`Syphilis: ${oh.syphilisStatus}`);
+  if (oh.hepatitisBStatus) lines.push(`Hepatitis B: ${oh.hepatitisBStatus}`);
+  if (oh.tetanusStatus) lines.push(`Tetanus: ${oh.tetanusStatus}`);
+  if (oh.otherComplications?.trim()) {
+    lines.push(`Other complications: ${oh.otherComplications.trim()}`);
+  }
+  return lines.join("\n");
+}
+
+function formatAncVisit(v: AncVisit): string {
+  const ga =
+    v.gaWeeks != null
+      ? `${v.gaWeeks}w${v.gaDays != null ? `+${v.gaDays}d` : ""}`
+      : "—";
+  const bp =
+    v.systolic != null ? `${v.systolic}/${v.diastolic ?? "—"}` : "—";
+  const lines = [
+    `ANC visit ${v.visitNumber} · ${formatShortDate(v.visitDate)}`,
+    `GA: ${ga}`,
+    `BP: ${bp}`,
+    `Weight: ${v.weightKg ?? "—"}`,
+    `FHR: ${v.fetalHeartRate ?? "—"}`,
+    `Presentation: ${enumLabel(v.fetalPresentation)}`,
+    `Movement: ${enumLabel(v.fetalMovement)}`,
+    `Risk: ${enumLabel(v.riskAssessment)}`,
+  ];
+  if (v.treatment?.trim()) lines.push(`Treatment: ${v.treatment.trim()}`);
+  if (v.ultrasoundFindings?.trim()) {
+    lines.push(`Ultrasound: ${v.ultrasoundFindings.trim()}`);
+  }
+  if (v.nextAppointment) {
+    lines.push(`Next appointment: ${formatShortDate(v.nextAppointment)}`);
+  }
+  return lines.join("\n");
+}
+
+function formatFpRecord(r: FamilyPlanningRecord): string {
+  const title = [
+    enumLabel(r.visitType) !== "—" ? enumLabel(r.visitType) : "FP visit",
+    r.currentMethod ? enumLabel(r.currentMethod) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const lines = [
+    title,
+    `G/P/Living: ${r.gravidity ?? "—"}/${r.parity ?? "—"}/${r.livingChildren ?? "—"}`,
+    `BP: ${r.systolic != null ? `${r.systolic}/${r.diastolic ?? "—"}` : "—"}`,
+    `Previous method: ${enumLabel(r.previousMethod)}`,
+    `Outcome: ${enumLabel(r.outcome)}`,
+    `Counseling: ${yesNo(r.counselingDone)}`,
+    `Procedure: ${formatShortDate(r.procedureDate)}`,
+  ];
+  if (r.pregnancyStatus?.trim()) {
+    lines.push(`Pregnancy status: ${r.pregnancyStatus.trim()}`);
+  }
+  if (r.contraindications?.trim()) {
+    lines.push(`Contraindications: ${r.contraindications.trim()}`);
+  }
+  if (r.counselingNotes?.trim()) {
+    lines.push(`Counseling notes: ${r.counselingNotes.trim()}`);
+  }
+  if (r.sideEffects?.trim()) lines.push(`Side effects: ${r.sideEffects.trim()}`);
+  if (r.nextAppointment) {
+    lines.push(`Next appointment: ${formatShortDate(r.nextAppointment)}`);
+  }
+  return lines.join("\n");
+}
+
+function ancForEncounter(
+  maternal: VisitNoteMaternal,
+  encounterId?: string | null,
+): AncVisit[] {
+  const visits = maternal?.ancVisits ?? [];
+  if (!encounterId) return visits;
+  return visits.filter((v) => v.encounterId === encounterId);
+}
+
+function fpForEncounter(
+  maternal: VisitNoteMaternal,
+  encounterId?: string | null,
+): FamilyPlanningRecord[] {
+  const records = maternal?.familyPlanningRecords ?? [];
+  if (!encounterId) return records;
+  return records.filter((r) => r.encounterId === encounterId);
+}
+
+function maternalSectionText(
+  maternal: VisitNoteMaternal,
+  encounterId?: string | null,
+): string {
+  if (!maternal) return "";
+  const parts: string[] = [];
+  if (maternal.obstetricHistory) {
+    parts.push(
+      `Obstetric history\n${formatObstetricHistory(maternal.obstetricHistory)}`,
+    );
+  }
+  const anc = ancForEncounter(maternal, encounterId);
+  for (const visit of anc) {
+    parts.push(formatAncVisit(visit));
+  }
+  return parts.join("\n\n").trim();
+}
+
+function familyPlanningSectionText(
+  maternal: VisitNoteMaternal,
+  encounterId?: string | null,
+): string {
+  if (!maternal) return "";
+  return fpForEncounter(maternal, encounterId)
+    .map(formatFpRecord)
+    .join("\n\n")
+    .trim();
+}
+
 export function visitNoteSectionText(
   consultation: VisitNoteConsultation,
   key: VisitNoteSection,
+  ctx?: VisitNoteSectionContext,
 ): string {
+  if (key === "maternal") {
+    return maternalSectionText(ctx?.maternal ?? null, ctx?.encounterId);
+  }
+  if (key === "familyPlanning") {
+    return familyPlanningSectionText(ctx?.maternal ?? null, ctx?.encounterId);
+  }
   if (!consultation) return "";
   switch (key) {
     case "vitals":
@@ -117,9 +296,15 @@ export function buildVisitNoteHtml(input: {
   encounter: VisitNoteEncounterSource;
   selected: Record<VisitNoteSection, boolean>;
   logoUrl?: string | null;
+  maternal?: VisitNoteMaternal;
 }): string {
-  const { patient, encounter, selected, logoUrl = null } = input;
+  const { patient, encounter, selected, logoUrl = null, maternal = null } =
+    input;
   const c = encounter.consultation ?? null;
+  const sectionCtx: VisitNoteSectionContext = {
+    maternal,
+    encounterId: encounter.id,
+  };
   const visitNumber = encounter.visitNumber ?? 1;
   const name = [patient.firstName, patient.middleName, patient.lastName]
     .filter(Boolean)
@@ -131,13 +316,18 @@ export function buildVisitNoteHtml(input: {
   const order: VisitNoteSection[] = [
     "vitals",
     "notes",
+    "labNotes",
     "diagnosis",
     "ultrasound",
     "prescription",
+    "maternal",
+    "familyPlanning",
   ];
   const blocks = order
     .filter((key) => selected[key])
-    .map((key) => sectionBlock(key, visitNoteSectionText(c, key)));
+    .map((key) =>
+      sectionBlock(key, visitNoteSectionText(c, key, sectionCtx)),
+    );
 
   const sidebarItems = HIWET_BRAND.sidebarServices
     .map(
@@ -491,6 +681,7 @@ export function buildCombinedVisitNotesHtml(input: {
   encounters: VisitNoteEncounterSource[];
   selected: Record<VisitNoteSection, boolean>;
   logoUrl?: string | null;
+  maternal?: VisitNoteMaternal;
 }): string {
   if (input.encounters.length === 0) return "";
   if (input.encounters.length === 1) {
@@ -499,6 +690,7 @@ export function buildCombinedVisitNotesHtml(input: {
       encounter: input.encounters[0]!,
       selected: input.selected,
       logoUrl: input.logoUrl,
+      maternal: input.maternal,
     });
   }
   const pages = input.encounters.map((enc, i) => {
@@ -507,6 +699,7 @@ export function buildCombinedVisitNotesHtml(input: {
       encounter: enc,
       selected: input.selected,
       logoUrl: input.logoUrl,
+      maternal: input.maternal,
     });
     let page = extractVisitPage(html);
     if (i > 0) {
@@ -522,6 +715,7 @@ export function buildCombinedVisitNotesHtml(input: {
     encounter: input.encounters[0]!,
     selected: input.selected,
     logoUrl: input.logoUrl,
+    maternal: input.maternal,
   });
   const head =
     shell.match(/<head[\s\S]*?<\/head>/i)?.[0] ??

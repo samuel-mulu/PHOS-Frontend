@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type { PatientChartEncounter } from "@/features/patients/api";
+import type {
+  PatientChartEncounter,
+  PatientChartMaternal,
+} from "@/features/patients/api";
 import type { Patient } from "@/types/patient";
 import { loadClinicLogoDataUrl } from "@/lib/print/hiwet-brand";
 import {
@@ -16,17 +19,25 @@ import {
 function encounterHasSectionContent(
   enc: PatientChartEncounter,
   key: VisitNoteSection,
+  maternal?: PatientChartMaternal | null,
 ): boolean {
-  return Boolean(visitNoteSectionText(enc.consultation ?? null, key));
+  return Boolean(
+    visitNoteSectionText(enc.consultation ?? null, key, {
+      maternal: maternal ?? null,
+      encounterId: enc.id,
+    }),
+  );
 }
 
 export function PrintHistoryVisitNotesDialog({
   patient,
   encounters,
+  maternal,
   onClose,
 }: {
   patient: Patient;
   encounters: PatientChartEncounter[];
+  maternal?: PatientChartMaternal | null;
   onClose: () => void;
 }) {
   const [logoDataUrl, setLogoDataUrl] = useState<string | null>(null);
@@ -67,6 +78,7 @@ export function PrintHistoryVisitNotesDialog({
     const html = buildCombinedVisitNotesHtml({
       patient,
       encounters: sorted.map((enc) => ({
+        id: enc.id,
         visitNumber: enc.visitNumber,
         startedAt: enc.startedAt,
         encounterNumber: enc.encounterNumber,
@@ -75,6 +87,7 @@ export function PrintHistoryVisitNotesDialog({
       })),
       selected,
       logoUrl,
+      maternal: maternal ?? null,
     });
     const w = window.open("", "_blank", "width=900,height=1100");
     if (!w) return;
@@ -116,7 +129,7 @@ export function PrintHistoryVisitNotesDialog({
           {(Object.keys(VISIT_NOTE_SECTION_LABEL) as VisitNoteSection[]).map(
             (key) => {
               const anyContent = sorted.some((enc) =>
-                encounterHasSectionContent(enc, key),
+                encounterHasSectionContent(enc, key, maternal),
               );
               return (
                 <li key={key}>
