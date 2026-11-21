@@ -1,19 +1,27 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import Script from "next/script";
 import { Providers } from "./providers";
 import "./globals.css";
 import { APP_NAME } from "@/lib/constants";
 import { APPEARANCE_BOOT_SCRIPT } from "@/lib/appearance";
 
-const geistSans = Geist({
+// Geist fonts are bundled locally (src/app/fonts) so production builds
+// never need internet access to fonts.googleapis.com / fonts.gstatic.com.
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
+  fallback: ["system-ui", "Segoe UI", "Arial", "sans-serif"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
+  fallback: ["ui-monospace", "Consolas", "Courier New", "monospace"],
 });
 
 export const metadata: Metadata = {
