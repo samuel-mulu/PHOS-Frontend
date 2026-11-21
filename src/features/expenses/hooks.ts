@@ -31,7 +31,8 @@ export function useCreateExpense() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: {
-      categoryId: string;
+      categoryId?: string;
+      newCategoryName?: string;
       amountCents: number;
       expenseDate: string;
       method: PaymentMethod;

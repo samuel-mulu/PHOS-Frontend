@@ -93,7 +93,7 @@ export function ReportsWorkspace() {
               : isDebts
                 ? "Unpaid & debts"
                 : isExpenses
-                ? "Expense report"
+                ? "Expenses & income report"
                 : isHfr
                 ? "Health facility report"
                 : "HMIS clinic report"}
@@ -104,7 +104,7 @@ export function ReportsWorkspace() {
               : isDebts
                 ? "Who still owes (pay later, part paid), aging, and pay later / waived totals."
                 : isExpenses
-                ? "Outgoing expenses with clinic net (collections minus spend)."
+                ? "Expenses, other income, and clinic net (collections + other income − expenses)."
                 : isHfr
                 ? "Operational counts for this facility (HFR)."
                 : "Laboratory, weekly, and monthly counts from visits, diagnoses, lab results, and maternal registers."}

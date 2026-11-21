@@ -28,6 +28,11 @@ import {
   type ExpenseReport,
 } from "@/features/expenses/report";
 import { fetchPaymentReport } from "@/features/payments/report";
+import {
+  fetchOtherIncomeReport,
+  otherIncomeReportToCsv,
+  type OtherIncomeReport,
+} from "@/features/other-income/report";
 import { formatCents } from "@/lib/format/money";
 import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { cn } from "@/lib/utils";
@@ -59,6 +64,7 @@ async function printPdf(
   from: string,
   to: string,
   collectionsNetCents: number | null,
+  otherIncome: OtherIncomeReport | null,
 ) {
   const logoUrl = await loadClinicLogoDataUrl();
   const fromLabel = format(new Date(`${from}T12:00:00`), "dd MMM yyyy");
@@ -69,6 +75,7 @@ async function printPdf(
     toLabel,
     logoUrl,
     collectionsNetCents,
+    otherIncome,
   });
   const w = window.open("", "_blank", "width=1100,height=800");
   if (!w) return;
@@ -78,8 +85,17 @@ async function printPdf(
   window.setTimeout(() => w.print(), 80);
 }
 
-function downloadCsv(report: ExpenseReport, from: string, to: string) {
-  const csv = expenseReportToCsv(report);
+function downloadCsv(
+  report: ExpenseReport,
+  otherIncome: OtherIncomeReport | null,
+  from: string,
+  to: string,
+) {
+  const sections = [`"Expenses"`, expenseReportToCsv(report)];
+  if (otherIncome) {
+    sections.push("", `"Other income"`, otherIncomeReportToCsv(otherIncome));
+  }
+  const csv = sections.join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -129,11 +145,31 @@ export function ExpensesReportPanel({
     enabled: Boolean(from && to),
   });
 
+  const otherIncomeQuery = useQuery({
+    queryKey: ["other-income", "report", from, to],
+    queryFn: () => fetchOtherIncomeReport(apiFrom, apiTo),
+    enabled: Boolean(from && to),
+  });
+
   const collectionsNet = collectionsQuery.data?.totals.netCents ?? null;
+  const otherIncomeCents = otherIncomeQuery.data?.totals.amountCents ?? null;
   const clinicNet =
-    collectionsNet != null && query.data
-      ? collectionsNet - query.data.totals.amountCents
+    collectionsNet != null && otherIncomeCents != null && query.data
+      ? collectionsNet + otherIncomeCents - query.data.totals.amountCents
       : null;
+
+  const incomeSourceRows = useMemo(
+    () => otherIncomeQuery.data?.totals.bySource ?? [],
+    [otherIncomeQuery.data],
+  );
+
+  const recordedIncomeRows = useMemo(
+    () =>
+      (otherIncomeQuery.data?.rows ?? []).filter(
+        (r) => r.status === "RECORDED",
+      ),
+    [otherIncomeQuery.data],
+  );
 
   const categoryRows = useMemo(
     () => query.data?.totals.byCategory ?? [],
@@ -152,11 +188,11 @@ export function ExpensesReportPanel({
       {showHeading ? (
         <div>
           <h2 className="text-sm font-semibold text-foreground">
-            Expense report
+            Expenses, other income &amp; clinic net
           </h2>
           <p className="text-xs text-muted">
-            Recorded expenses by category · compare to collections for net cash
-            · print PDF or CSV
+            Collections + other income − expenses = clinic net · print PDF or
+            CSV
           </p>
         </div>
       ) : null}
@@ -222,7 +258,13 @@ export function ExpensesReportPanel({
               variant="secondary"
               size="sm"
               onClick={() =>
-                void printPdf(query.data!, from, to, collectionsNet)
+                void printPdf(
+                  query.data!,
+                  from,
+                  to,
+                  collectionsNet,
+                  otherIncomeQuery.data ?? null,
+                )
               }
             >
               Print / PDF
@@ -231,7 +273,9 @@ export function ExpensesReportPanel({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => downloadCsv(query.data!, from, to)}
+              onClick={() =>
+                downloadCsv(query.data!, otherIncomeQuery.data ?? null, from, to)
+              }
             >
               Export CSV
             </Button>
@@ -250,19 +294,7 @@ export function ExpensesReportPanel({
 
       {query.data ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <SummaryTile
-              label="Expenses"
-              value={String(query.data.totals.count)}
-            />
-            <SummaryTile
-              label="Total spent"
-              value={formatCents(query.data.totals.amountCents)}
-            />
-            <SummaryTile
-              label="Voided"
-              value={`${query.data.totals.voidedCount} · ${formatCents(query.data.totals.voidedCents)}`}
-            />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <SummaryTile
               label="Collections (net)"
               value={
@@ -272,6 +304,28 @@ export function ExpensesReportPanel({
                     ? formatCents(collectionsNet)
                     : "-"
               }
+            />
+            <SummaryTile
+              label="Other income"
+              value={
+                otherIncomeQuery.isLoading
+                  ? "…"
+                  : otherIncomeQuery.data
+                    ? `${otherIncomeQuery.data.totals.count} · ${formatCents(otherIncomeQuery.data.totals.amountCents)}`
+                    : "-"
+              }
+            />
+            <SummaryTile
+              label="Expenses"
+              value={String(query.data.totals.count)}
+            />
+            <SummaryTile
+              label="Total spent"
+              value={formatCents(query.data.totals.amountCents)}
+            />
+            <SummaryTile
+              label="Voided (expenses)"
+              value={`${query.data.totals.voidedCount} · ${formatCents(query.data.totals.voidedCents)}`}
             />
             <SummaryTile
               label="Clinic net"
@@ -342,6 +396,86 @@ export function ExpensesReportPanel({
                           {formatCents(row.amountCents)}
                         </DataTableCell>
                         <DataTableCell className="max-w-[200px] truncate text-muted">
+                          {note || "-"}
+                        </DataTableCell>
+                        <DataTableCell className="text-muted">
+                          {row.receiptReference ?? "-"}
+                        </DataTableCell>
+                        <DataTableCell className="text-muted">
+                          {row.recordedBy.firstName} {row.recordedBy.lastName}
+                        </DataTableCell>
+                      </DataTableRow>
+                    );
+                  })}
+                </DataTableBody>
+              </DataTable>
+            )}
+          </ExpandablePanel>
+
+          {otherIncomeQuery.isError ? (
+            <ErrorState message="Could not load other income." />
+          ) : null}
+
+          {incomeSourceRows.length > 0 ? (
+            <div className="flex flex-wrap gap-2 text-xs text-muted">
+              {incomeSourceRows.map((s) => (
+                <span
+                  key={s.sourceId}
+                  className="rounded-md bg-teal-50/60 px-2 py-1 tabular-nums"
+                >
+                  {s.name}: {s.count} · {formatCents(s.amountCents)}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <ExpandablePanel
+            title={
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">
+                  Other income detail
+                </h2>
+                <p className="text-xs text-muted">{periodLabel}</p>
+              </div>
+            }
+          >
+            {recordedIncomeRows.length === 0 ? (
+              <EmptyState title="No other income in this period." />
+            ) : (
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell>Date</DataTableHeaderCell>
+                    <DataTableHeaderCell>Income</DataTableHeaderCell>
+                    <DataTableHeaderCell>Source</DataTableHeaderCell>
+                    <DataTableHeaderCell>Method</DataTableHeaderCell>
+                    <DataTableHeaderCell>Amount</DataTableHeaderCell>
+                    <DataTableHeaderCell>From / reason</DataTableHeaderCell>
+                    <DataTableHeaderCell>Receipt ref</DataTableHeaderCell>
+                    <DataTableHeaderCell>Staff</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <DataTableBody>
+                  {recordedIncomeRows.map((row) => {
+                    const note = [row.payer, row.notes]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <DataTableRow key={row.id}>
+                        <DataTableCell className="whitespace-nowrap tabular-nums">
+                          {row.incomeDate}
+                        </DataTableCell>
+                        <DataTableCell className="font-medium">
+                          {row.incomeNumber}
+                        </DataTableCell>
+                        <DataTableCell>{row.source.name}</DataTableCell>
+                        <DataTableCell>
+                          {paymentMethodLabel(row.method)}
+                        </DataTableCell>
+                        <DataTableCell className="tabular-nums">
+                          {formatCents(row.amountCents)}
+                        </DataTableCell>
+                        <DataTableCell className="max-w-[240px] truncate text-muted">
                           {note || "-"}
                         </DataTableCell>
                         <DataTableCell className="text-muted">

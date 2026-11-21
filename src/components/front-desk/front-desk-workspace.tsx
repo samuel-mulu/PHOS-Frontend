@@ -9,6 +9,7 @@ import { AppointmentsPanel } from "@/components/front-desk/appointments-panel";
 import { PaymentsReportPanel } from "@/components/payments/payments-report-panel";
 import { ExpenseRecordPanel } from "@/components/expenses/expense-record-panel";
 import { ExpensesReportPanel } from "@/components/expenses/expenses-report-panel";
+import { OtherIncomeRecordPanel } from "@/components/other-income/other-income-record-panel";
 import { useQueue } from "@/features/queues/hooks";
 import { useAppointments } from "@/features/appointments/hooks";
 import { QueueStation } from "@/types/encounter";
@@ -21,7 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "reception", label: "Reception" },
   { id: "appointments", label: "Appointments" },
   { id: "payments", label: "Payments" },
-  { id: "expenses", label: "Expenses" },
+  { id: "expenses", label: "Expenses & income" },
   { id: "report", label: "Report" },
 ];
 
@@ -134,7 +135,12 @@ export function FrontDeskWorkspace() {
           onInvoiceFullyPaid={() => onTab("payments")}
         />
       ) : null}
-      {tab === "expenses" ? <ExpenseRecordPanel /> : null}
+      {tab === "expenses" ? (
+        <div className="space-y-8">
+          <ExpenseRecordPanel />
+          <OtherIncomeRecordPanel />
+        </div>
+      ) : null}
       {tab === "report" ? (
         <div className="space-y-6">
           <PaymentsReportPanel />

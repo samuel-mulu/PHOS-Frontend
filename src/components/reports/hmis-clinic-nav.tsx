@@ -10,7 +10,7 @@ const LINKS = [
   { href: "/reports", label: "HMIS", view: "live" },
   { href: "/reports?view=payments", label: "Collections", view: "payments" },
   { href: "/reports?view=debts", label: "Unpaid & debts", view: "debts" },
-  { href: "/reports?view=expenses", label: "Expenses", view: "expenses" },
+  { href: "/reports?view=expenses", label: "Expenses & income", view: "expenses" },
   { href: "/doctor", label: "HIS", view: "his" },
   { href: "/reports?view=hfr", label: "HFR", view: "hfr" },
 ] as const;

@@ -56,6 +56,7 @@ import { PaymentsReportPanel } from "@/components/payments/payments-report-panel
 import { ReceivablesReportPanel } from "@/components/payments/receivables-report-panel";
 import { ExpenseRecordPanel } from "@/components/expenses/expense-record-panel";
 import { ExpensesReportPanel } from "@/components/expenses/expenses-report-panel";
+import { OtherIncomeRecordPanel } from "@/components/other-income/other-income-record-panel";
 import {
   invoiceBalance,
   invoiceCancelled,
@@ -249,7 +250,7 @@ export function CashierWorkspace({
             <TabButton
               active={tab === "expenses"}
               onClick={() => setTab("expenses")}
-              label="Expenses"
+              label="Expenses & income"
               badge={0}
               muted
             />
@@ -432,6 +433,7 @@ export function CashierWorkspace({
       {!embedded && tab === "expenses" ? (
         <div className="space-y-6">
           <ExpenseRecordPanel className="rounded-lg border border-border bg-card p-4 shadow-sm" />
+          <OtherIncomeRecordPanel className="rounded-lg border border-border bg-card p-4 shadow-sm" />
           <ExpensesReportPanel className="rounded-lg border border-border bg-card p-4 shadow-sm" />
         </div>
       ) : null}

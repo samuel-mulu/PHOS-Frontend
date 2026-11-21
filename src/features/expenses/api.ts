@@ -39,7 +39,8 @@ export async function fetchExpenses(from: string, to: string, status = "RECORDED
 }
 
 export async function createExpense(body: {
-  categoryId: string;
+  categoryId?: string;
+  newCategoryName?: string;
   amountCents: number;
   expenseDate: string;
   method: PaymentMethod;

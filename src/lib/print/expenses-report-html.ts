@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import type { ExpenseReport } from "@/features/expenses/report";
+import type { OtherIncomeReport } from "@/features/other-income/report";
 import { formatCents } from "@/lib/format/money";
 import { paymentMethodLabel } from "@/lib/format/payment-method";
 import { HIWET_BRAND } from "@/lib/print/hiwet-brand";
@@ -19,15 +20,18 @@ export function buildExpensesReportHtml(input: {
   title?: string;
   logoUrl?: string | null;
   collectionsNetCents?: number | null;
+  otherIncome?: OtherIncomeReport | null;
 }): string {
   const {
     report,
     fromLabel,
     toLabel,
-    title = "Clinic expenses",
+    title = "Expenses, other income & clinic net",
     logoUrl = null,
     collectionsNetCents = null,
+    otherIncome = null,
   } = input;
+  const otherIncomeCents = otherIncome?.totals.amountCents ?? 0;
   const { colors } = HIWET_BRAND;
 
   const logoHtml = logoUrl
@@ -59,9 +63,58 @@ export function buildExpensesReportHtml(input: {
     })
     .join("");
 
+  const sourceRows = (otherIncome?.totals.bySource ?? [])
+    .map(
+      (s) =>
+        `<tr><td>${escapeHtml(s.name)}</td><td class="num">${s.count}</td><td class="num">${escapeHtml(formatCents(s.amountCents))}</td></tr>`,
+    )
+    .join("");
+
+  const incomeDetailRows = (otherIncome?.rows ?? [])
+    .filter((row) => row.status === "RECORDED")
+    .map((row) => {
+      const recorded = `${row.recordedBy.firstName} ${row.recordedBy.lastName}`;
+      const note = [row.payer, row.notes].filter(Boolean).join(" · ");
+      return `<tr>
+        <td class="nowrap">${escapeHtml(format(new Date(`${row.incomeDate}T12:00:00`), "dd MMM yyyy"))}</td>
+        <td>${escapeHtml(row.incomeNumber)}</td>
+        <td>${escapeHtml(row.source.name)}</td>
+        <td>${escapeHtml(paymentMethodLabel(row.method))}</td>
+        <td class="num">${escapeHtml(formatCents(row.amountCents))}</td>
+        <td>${escapeHtml(note || "-")}</td>
+        <td>${escapeHtml(row.receiptReference ?? "-")}</td>
+        <td>${escapeHtml(recorded)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const otherIncomeSection = otherIncome
+    ? `${sourceRows ? `<h2>Other income by source</h2>
+  <table><thead><tr><th>Source</th><th class="num">Count</th><th class="num">Amount</th></tr></thead><tbody>${sourceRows}</tbody></table>` : ""}
+
+  <h2>Other income detail</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Income #</th>
+        <th>Source</th>
+        <th>Method</th>
+        <th class="num">Amount</th>
+        <th>From / reason</th>
+        <th>Receipt ref</th>
+        <th>Recorded by</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${incomeDetailRows || `<tr><td colspan="8">No other income in this period.</td></tr>`}
+    </tbody>
+  </table>`
+    : "";
+
   const netTile =
     collectionsNetCents != null
-      ? `<div class="tile net"><div class="label">Net (collections − expenses)</div><div class="val">${escapeHtml(formatCents(collectionsNetCents - report.totals.amountCents))}</div></div>`
+      ? `<div class="tile net"><div class="label">Net (collections + other income − expenses)</div><div class="val">${escapeHtml(formatCents(collectionsNetCents + otherIncomeCents - report.totals.amountCents))}</div></div>`
       : "";
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"/>
@@ -103,7 +156,7 @@ export function buildExpensesReportHtml(input: {
   .sub { margin: 4px 0 0; font-size: 11px; color: ${colors.muted}; }
   .summary {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     margin-bottom: 14px;
   }
@@ -144,10 +197,11 @@ export function buildExpensesReportHtml(input: {
   </header>
 
   <div class="summary">
-    <div class="tile"><div class="label">Recorded</div><div class="val">${report.totals.count}</div></div>
-    <div class="tile"><div class="label">Total spent</div><div class="val">${escapeHtml(formatCents(report.totals.amountCents))}</div></div>
-    <div class="tile"><div class="label">Voided (excluded)</div><div class="val">${report.totals.voidedCount} · ${escapeHtml(formatCents(report.totals.voidedCents))}</div></div>
     ${collectionsNetCents != null ? `<div class="tile"><div class="label">Collections (net)</div><div class="val">${escapeHtml(formatCents(collectionsNetCents))}</div></div>` : `<div class="tile"></div>`}
+    <div class="tile"><div class="label">Other income</div><div class="val">${otherIncome ? `${otherIncome.totals.count} · ${escapeHtml(formatCents(otherIncomeCents))}` : "-"}</div></div>
+    <div class="tile"><div class="label">Expenses recorded</div><div class="val">${report.totals.count}</div></div>
+    <div class="tile"><div class="label">Total spent</div><div class="val">${escapeHtml(formatCents(report.totals.amountCents))}</div></div>
+    <div class="tile"><div class="label">Voided expenses (excluded)</div><div class="val">${report.totals.voidedCount} · ${escapeHtml(formatCents(report.totals.voidedCents))}</div></div>
   </div>
   ${netTile ? `<div class="summary">${netTile}</div>` : ""}
 
@@ -172,6 +226,8 @@ export function buildExpensesReportHtml(input: {
       ${detailRows || `<tr><td colspan="8">No expenses in this period.</td></tr>`}
     </tbody>
   </table>
+
+  ${otherIncomeSection}
 
   <footer class="footer">
     ${escapeHtml(HIWET_BRAND.footerAm)} · ${escapeHtml(HIWET_BRAND.phones)} · ${escapeHtml(HIWET_BRAND.locationEn)}

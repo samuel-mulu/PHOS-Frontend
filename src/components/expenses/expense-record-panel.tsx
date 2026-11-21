@@ -62,6 +62,7 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
   const voidMut = useVoidExpense();
 
   const [categoryId, setCategoryId] = useState("");
+  const [otherName, setOtherName] = useState("");
   const [amountEtb, setAmountEtb] = useState("");
   const [expenseDate, setExpenseDate] = useState(today);
   const [method, setMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
@@ -75,8 +76,11 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
   const [voidReason, setVoidReason] = useState("");
 
   const cents = etbToCents(amountEtb);
+  const isOther =
+    (categories.data ?? []).find((c) => c.id === categoryId)?.code === "OTHER";
   const canSave =
     categoryId &&
+    (!isOther || otherName.trim()) &&
     cents != null &&
     expenseDate &&
     !create.isPending;
@@ -84,6 +88,7 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
   const recentRows = useMemo(() => list.data ?? [], [list.data]);
 
   function resetForm() {
+    setOtherName("");
     setAmountEtb("");
     setVendor("");
     setDescription("");
@@ -124,6 +129,22 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
                 ))}
               </select>
             </div>
+            {isOther ? (
+              <div>
+                <Label htmlFor="exp-other">Specify expense</Label>
+                <Input
+                  id="exp-other"
+                  value={otherName}
+                  onChange={(e) => setOtherName(e.target.value)}
+                  placeholder="e.g. Generator fuel"
+                  maxLength={120}
+                  className="mt-1"
+                />
+                <p className="mt-1 text-2xs text-muted">
+                  Saved as a new category, so it appears in the list next time.
+                </p>
+              </div>
+            ) : null}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="exp-date">Expense date</Label>
@@ -205,7 +226,9 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
               onClick={() =>
                 create.mutate(
                   {
-                    categoryId,
+                    ...(isOther
+                      ? { newCategoryName: otherName.trim() }
+                      : { categoryId }),
                     amountCents: cents!,
                     expenseDate,
                     method,
@@ -213,7 +236,12 @@ export function ExpenseRecordPanel({ className }: { className?: string }) {
                     description: description || undefined,
                     receiptReference: receiptReference || undefined,
                   },
-                  { onSuccess: () => resetForm() },
+                  {
+                    onSuccess: (saved) => {
+                      resetForm();
+                      if (isOther) setCategoryId(saved.category.id);
+                    },
+                  },
                 )
               }
             >
